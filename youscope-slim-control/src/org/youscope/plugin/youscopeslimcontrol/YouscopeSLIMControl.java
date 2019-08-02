@@ -16,16 +16,25 @@ package org.youscope.plugin.youscopeslimcontrol;
 import org.youscope.common.microscope.Device;
 
 import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.rmi.RemoteException;
+import java.awt.GridBagLayout;
 
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JFrame;
+import javax.swing.border.TitledBorder;
+import javax.swing.JRadioButton;
 
 import org.youscope.addon.AddonException;
 import org.youscope.addon.tool.ToolAddonUI;
@@ -54,15 +63,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 				"SLIM Control and Calibration",
 				"icons/ghost.png");
 	}
-	
-	/**
-	 * Constructor. Provides the adapter class {@link ToolAddonUIAdapter} with all necessary information to provide the standard
-	 * functionality which has to be exposed by every tool, such that we can concentrate on the fundamentals. 
-	 * Do not initialize the UI elements here (do this in {@link #createUI()}). 
-	 * @param client Interface to the YouScope client, e.g. allowing to open or close new windows, or permanently save settings.
-	 * @param server Interface to the YouScope server, e.g. allowing access to the microscope.
-	 * @throws AddonException 
-	 */
+
 	public YouscopeSLIMControl(YouScopeClient client, YouScopeServer server) throws AddonException
 	{
 		super(getMetadata(), client, server); 
@@ -70,166 +71,105 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	@Override
 	public java.awt.Component createUI()
 	{
-		/**
-		 *  This is the place to setup the UI elements of the first window of your tool.
-		 */
-		
-		// Title of the window, as well as basic configuration.
+		// General Settings regarding the main frame (created by YouScope)
 		setMaximizable(false);
 		setResizable(true);
 		setTitle("SLIM Control and Calibration Panel");
-			        
-		// All UI elements should be placed inside a panel, typically referred to as content pane.
-				// A {@link DynamicPanel} is a special kind of panel used nearly everywhere in YouScope. It simplifies positioning 
-				// of UI elements such that they look "native" for YouScope.
-				DynamicPanel contentPane = new DynamicPanel();
-		        // Let us add some content...
-		        JLabel label = new JLabel("Wheel controller");
-		        contentPane.add(label);
-		        JTextArea textArea = new JTextArea(
-		        		 "This allows you to control the weels in the slim addon\n");
-		        // addFill means that the added element can take up extra space when the frame containing it is resized.
-		        contentPane.addFill(textArea);
-        
-        
-        
-        // Let's add a button to actually do something. In this case, to find out the camera name
-        contentPane.add(new JLabel("Servo 1 Control:"));
-        JButton button1 = new JButton("Servo 1 pos1");
-        contentPane.add(button1);
-
-
-        button1.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-					try {
-					
-						Move1();
-					} catch (RemoteException | DeviceException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (MicroscopeException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (MicroscopeLockedException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (InterruptedException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-				}
-			});
-
-        JButton button2 = new JButton("Servo 1 pos2");
-        contentPane.add(button2);
-        
-        button2.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-					try {
-						Move2();
-					} catch (RemoteException | DeviceException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-				}
-			});
-        
-        JButton button3 = new JButton("Servo 1 pos0");
-        contentPane.add(button3);
-        
-        button3.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-					try {
-						Move0();
-					} catch (RemoteException | DeviceException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-				}
-			});
 		
-        // finally, let us add a listener (ourselves) which gets notified when the frame containing this tool is made visible, or when it is closed.
-        getContainingFrame().addFrameListener(this);
-        
-        return contentPane;
+		// General Settings regarding the content pane
+		DynamicPanel contentPane = new DynamicPanel();
+		
+		// Settings regarding the left side of the content pane
+		JPanel leftPanel = new JPanel();
+
+		// Settings regarding the right side of the content pane
+		JPanel rightPanel = new JPanel();
+		rightPanel.setLayout(new BorderLayout());
+		
+		CalibrationOneInterface CalOneInterface = new CalibrationOneInterface();
+		JPanel CalibrationOnePanel = CalOneInterface.calibrationOneInterfaceCreator("title", "description", "Start Calibration One");
+		rightPanel.add(CalibrationOnePanel, BorderLayout.NORTH);
+		
+		CalibrationTwoInterface CalTwoInterface = new CalibrationTwoInterface();
+		JPanel CalibrationTwoPanel = CalTwoInterface.calibrationTwoInterfaceCreator("title", "description", "Start Calibration Two");
+		rightPanel.add(CalibrationTwoPanel, BorderLayout.WEST);
+		
+		AttenuationFactorInterface AttFactorInterface = new AttenuationFactorInterface();
+		JPanel AttenuationFactorPanel = AttFactorInterface.calibrationAttenuationFactorCreator("title", "description", "Start Calculation", "User Confirmation", "Confirm");
+		rightPanel.add(AttenuationFactorPanel, BorderLayout.SOUTH);
+		
+		// Settings regarding the upper panel of the left side of the content pane
+		JPanel leftUpPanel = new JPanel();
+		leftUpPanel.setLayout(new GridBagLayout());
+		TitledBorder titleLeftUpPanel = new TitledBorder("Manual Control");
+		titleLeftUpPanel.setTitleJustification(TitledBorder.LEFT);
+		titleLeftUpPanel.setTitlePosition(TitledBorder.TOP);
+		leftUpPanel.setBorder(titleLeftUpPanel);
+		
+			// Content of the upper panel, left side.
+		
+		GridBagConstraints upperLeftGC = new GridBagConstraints();
+		upperLeftGC.fill = GridBagConstraints.HORIZONTAL;
+
+		PanelsManualWheels wheelsPanel = new PanelsManualWheels();
+		
+		String[] wheelOneButtonsNames = {"Position One", "Empty", "Position two"};
+		ButtonGroup wheelOneButtons = new ButtonGroup();
+		JPanel wheelOnePanel = wheelsPanel.wheelsPanelCreator(wheelOneButtonsNames, "Polarizer Wheel" , wheelOneButtons, false);
+		upperLeftGC.gridx = 1;
+		upperLeftGC.gridy = 1;
+		leftUpPanel.add(wheelOnePanel, upperLeftGC);
+		
+		String[] wheelTwoButtonsNames = {"Lens One", "Empty", "Polarizer"};
+		ButtonGroup wheelTwoButtons = new ButtonGroup();
+		JPanel wheelTwoPanel = wheelsPanel.wheelsPanelCreator(wheelTwoButtonsNames, "Second Wheel" , wheelTwoButtons, false);
+		upperLeftGC.gridx = 1;
+		upperLeftGC.gridy = 2;
+		leftUpPanel.add(wheelTwoPanel, upperLeftGC);
+		
+		String[] wheelThreeButtonsNames = {"Lens One", "Lens Two", "Lens Three", "Lens Four", "Lens Five", "Lens Six"};
+		ButtonGroup wheelThreeButtons = new ButtonGroup();
+		JPanel wheelThreePanel = wheelsPanel.wheelsPanelCreator(wheelThreeButtonsNames, "Lens Wheel" , wheelThreeButtons, false);
+		upperLeftGC.gridx = 1;
+		upperLeftGC.gridy = 3;
+		leftUpPanel.add(wheelThreePanel, upperLeftGC);
+		
+		
+		
+			// Settings regarding the lower panel of the left side of the content pane
+		JPanel leftDownPanel = new JPanel();
+		leftDownPanel.setLayout(new BorderLayout());
+		TitledBorder titleLeftDownPanel = new TitledBorder("Hardware Setup");
+		titleLeftDownPanel.setTitleJustification(TitledBorder.LEFT);
+		titleLeftDownPanel.setTitlePosition(TitledBorder.TOP);
+		
+		String[] HardwareSetUpButtonsNames = {"SLIM mode", "Fluorescence mode", "Calibration One", "Calibration Two"};
+		ButtonGroup setupModeButtons = new ButtonGroup();
+		JPanel setupModePanel = wheelsPanel.wheelsPanelCreator(HardwareSetUpButtonsNames, "" , setupModeButtons, true);
+		leftDownPanel.add(setupModePanel, BorderLayout.WEST);
+		leftDownPanel.setBorder(titleLeftDownPanel);
+
+
+		
+		JSplitPane horizontalSplitPanel = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
+		horizontalSplitPanel.setDividerLocation(0.5);
+		
+		JSplitPane verticalLeftSplitPanel = new JSplitPane (JSplitPane.VERTICAL_SPLIT, leftUpPanel, leftDownPanel);
+		verticalLeftSplitPanel.setDividerLocation(0.5);
+		
+		leftPanel.add(verticalLeftSplitPanel);
+		contentPane.add(horizontalSplitPanel);
+		
+
+		// finally, let us add a listener (ourselves) which gets notified when the frame containing this tool is made visible, or when it is closed.
+		getContainingFrame().addFrameListener(this);
+
+		return contentPane;
 	}
-	
-	private void Move1() throws RemoteException, DeviceException, MicroscopeException, MicroscopeLockedException, InterruptedException
-	{
-		/**
-		 *  In this function we find out the name of the current standard camera, and display it in
-		 *  the provided text field.
-		 */
 
-		// First, we get a reference to the YouScope server. The server contains all "real" functionality of YouScope, e.g. the possibility
-		// to access devices.
-		YouScopeServer server = getServer();
-		
-		// Now, let's get a reference to the microscope object. This object allows to directly access and manipulate the state of
-		// microscope devices.
-		Microscope microscope = server.getMicroscope();
-		Device arduino = microscope.getDevice("NextGenArduino");
-		arduino.getProperty("Pin53").setValue("1");
-		/*
-		 * try { arduino.getProperty("Pin53").setValue("1"); } catch
-		 * (MicroscopeException | MicroscopeLockedException | InterruptedException |
-		 * RemoteException | DeviceException e) { // TODO Auto-generated catch block
-		 * e.printStackTrace(); }
-		 */
-	}
 	
-	
-	private void Move2() throws RemoteException, DeviceException
-	{
-		/**
-		 *  In this function we find out the name of the current standard camera, and display it in
-		 *  the provided text field.
-		 */
 
-		// First, we get a reference to the YouScope server. The server contains all "real" functionality of YouScope, e.g. the possibility
-		// to access devices.
-		YouScopeServer server = getServer();
-		
-		// Now, let's get a reference to the microscope object. This object allows to directly access and manipulate the state of
-		// microscope devices.
-		Microscope microscope = server.getMicroscope();
-		Device arduino = microscope.getDevice("NextGenArduino");
-		
-		try {
-			arduino.getProperty("Pin53").setValue("2");
-			} catch (MicroscopeException | MicroscopeLockedException | 
-			 InterruptedException | RemoteException | DeviceException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			}
-	}
-	
-	private void Move0() throws RemoteException, DeviceException
-	{
-		/**
-		 *  In this function we find out the name of the current standard camera, and display it in
-		 *  the provided text field.
-		 */
 
-		// First, we get a reference to the YouScope server. The server contains all "real" functionality of YouScope, e.g. the possibility
-		// to access devices.
-		YouScopeServer server = getServer();
-		
-		// Now, let's get a reference to the microscope object. This object allows to directly access and manipulate the state of
-		// microscope devices.
-		Microscope microscope = server.getMicroscope();
-		Device arduino = microscope.getDevice("NextGenArduino");
-		
-		try {
-			arduino.getProperty("Pin53").setValue("0");
-			} catch (MicroscopeException | MicroscopeLockedException | 
-			 InterruptedException | RemoteException | DeviceException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			}
-	}
-	
-	
 	@Override
 	public void frameClosed()
 	{
