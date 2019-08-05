@@ -15,6 +15,7 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
@@ -95,7 +96,8 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		if(e.getSource() == startCalibrationTwo) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO_POS);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS_POS);
-			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
+			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
+			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 	

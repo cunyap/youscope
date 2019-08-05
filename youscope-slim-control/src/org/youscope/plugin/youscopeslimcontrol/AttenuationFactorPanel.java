@@ -15,6 +15,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JSplitPane;
@@ -63,6 +64,7 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
 		startProcess = new JButton("Calculate Attenuation Factor");
+		startProcess.addActionListener(this);
 		manualConfirmationButton = new JRadioButton("Manual Confirmation");
 		infoAndButtonPanel.add(startProcess);
 		startProcess.setAlignmentX(LEFT_ALIGNMENT);
@@ -110,7 +112,8 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		if(e.getSource() == startProcess) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
-			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
+			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
+			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 	

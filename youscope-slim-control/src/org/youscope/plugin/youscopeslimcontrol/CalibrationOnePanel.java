@@ -13,33 +13,37 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JFrame;
 import javax.swing.border.TitledBorder;
+
+import org.youscope.common.microscope.MicroscopeException;
+
 import javafx.scene.layout.Border;
 
 public class CalibrationOnePanel extends JPanel implements ActionListener{
-	
+
 	SLIMController slimCTRL = null;
 	JButton startCalibrationOne;
-	
+
 	public CalibrationOnePanel(SLIMController slimController) {
-	slimCTRL = slimController;
-	setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-	setTitle();
-	JPanel textPanel = createInfoBox();
-	startCalibrationOne = new JButton("Start Calibration One");
-	add(startCalibrationOne);
-	startCalibrationOne.setAlignmentX(LEFT_ALIGNMENT);
-	startCalibrationOne.addActionListener(this);
-	add(Box.createHorizontalGlue());
-	add(textPanel);
-	textPanel.setAlignmentX(RIGHT_ALIGNMENT);
+		slimCTRL = slimController;
+		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+		setTitle();
+		JPanel textPanel = createInfoBox();
+		startCalibrationOne = new JButton("Start Calibration One");
+		add(startCalibrationOne);
+		startCalibrationOne.setAlignmentX(LEFT_ALIGNMENT);
+		startCalibrationOne.addActionListener(this);
+		add(Box.createHorizontalGlue());
+		add(textPanel);
+		textPanel.setAlignmentX(RIGHT_ALIGNMENT);
 	}
-	
+
 	private void setTitle() {
 		TitledBorder titlePanel = new TitledBorder("Calibration One");
 		titlePanel.setTitleJustification(TitledBorder.LEFT);
@@ -56,13 +60,16 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		textPanel.add(descriptionText);
 		return textPanel;	
 	}
-	
-	public void actionPerformed(ActionEvent e) {
+
+	public void actionPerformed(ActionEvent e){
 		if(e.getSource() == startCalibrationOne) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE_POS);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY_POS);
-			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE_POS);
+
+			// slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE_POS);
+			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
-	
+
+
 }
