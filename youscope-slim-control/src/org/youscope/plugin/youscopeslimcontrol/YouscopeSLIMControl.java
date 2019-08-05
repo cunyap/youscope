@@ -25,8 +25,6 @@ import java.awt.event.ActionListener;
 import java.rmi.RemoteException;
 import java.awt.GridBagLayout;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -73,74 +71,103 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	@Override
 	public java.awt.Component createUI()
 	{
-		SLIMController slimController = setSLIMController("NextGenArduino");
-		
 		// General Settings regarding the main frame (created by YouScope)
 		setMaximizable(false);
 		setResizable(true);
 		setTitle("SLIM Control and Calibration Panel");
 		
-		
-
 		// General Settings regarding the content pane
 		DynamicPanel contentPane = new DynamicPanel();
-
-
-		// Setting up the left side
-		JPanel leftPanel = new JPanel();
-		leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
-		JPanel leftUpPanel = new ManualControlPanel(slimController);
-		JPanel leftDownPanel = new HardwareSetUpPanel(slimController);
-		leftPanel.add(leftUpPanel);
-		leftUpPanel.setAlignmentX(0);
-		leftPanel.add(leftDownPanel);
-		leftDownPanel.setAlignmentX(0);
-
 		
-		// Setting up the right side
-		JPanel rightPanel = new JPanel();
-		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
-		rightPanel.add(new CalibrationOnePanel(slimController));
-		rightPanel.add(new CalibrationTwoPanel(slimController));
-		rightPanel.add(new AttenuationFactorPanel(slimController));
+		// Settings regarding the left side of the content pane
+		JPanel leftPanel = new JPanel();
 
-		// Adding the elements to the content panel.
+		// Settings regarding the right side of the content pane
+		JPanel rightPanel = new JPanel();
+		rightPanel.setLayout(new BorderLayout());
+		
+		CalibrationOneInterface CalOneInterface = new CalibrationOneInterface();
+		JPanel CalibrationOnePanel = CalOneInterface.calibrationOneInterfaceCreator("title", "description", "Start Calibration One");
+		rightPanel.add(CalibrationOnePanel, BorderLayout.NORTH);
+		
+		CalibrationTwoInterface CalTwoInterface = new CalibrationTwoInterface();
+		JPanel CalibrationTwoPanel = CalTwoInterface.calibrationTwoInterfaceCreator("title", "description", "Start Calibration Two");
+		rightPanel.add(CalibrationTwoPanel, BorderLayout.WEST);
+		
+		AttenuationFactorInterface AttFactorInterface = new AttenuationFactorInterface();
+		JPanel AttenuationFactorPanel = AttFactorInterface.calibrationAttenuationFactorCreator("title", "description", "Start Calculation", "User Confirmation", "Confirm");
+		rightPanel.add(AttenuationFactorPanel, BorderLayout.SOUTH);
+		
+		// Settings regarding the upper panel of the left side of the content pane
+		JPanel leftUpPanel = new JPanel();
+		leftUpPanel.setLayout(new GridBagLayout());
+		TitledBorder titleLeftUpPanel = new TitledBorder("Manual Control");
+		titleLeftUpPanel.setTitleJustification(TitledBorder.LEFT);
+		titleLeftUpPanel.setTitlePosition(TitledBorder.TOP);
+		leftUpPanel.setBorder(titleLeftUpPanel);
+		
+			// Content of the upper panel, left side.
+		
+		GridBagConstraints upperLeftGC = new GridBagConstraints();
+		upperLeftGC.fill = GridBagConstraints.HORIZONTAL;
+
+		PanelsManualWheels wheelsPanel = new PanelsManualWheels();
+		
+		String[] wheelOneButtonsNames = {"Position One", "Empty", "Position two"};
+		ButtonGroup wheelOneButtons = new ButtonGroup();
+		JPanel wheelOnePanel = wheelsPanel.wheelsPanelCreator(wheelOneButtonsNames, "Polarizer Wheel" , wheelOneButtons, false);
+		upperLeftGC.gridx = 1;
+		upperLeftGC.gridy = 1;
+		leftUpPanel.add(wheelOnePanel, upperLeftGC);
+		
+		String[] wheelTwoButtonsNames = {"Lens One", "Empty", "Polarizer"};
+		ButtonGroup wheelTwoButtons = new ButtonGroup();
+		JPanel wheelTwoPanel = wheelsPanel.wheelsPanelCreator(wheelTwoButtonsNames, "Second Wheel" , wheelTwoButtons, false);
+		upperLeftGC.gridx = 1;
+		upperLeftGC.gridy = 2;
+		leftUpPanel.add(wheelTwoPanel, upperLeftGC);
+		
+		String[] wheelThreeButtonsNames = {"Lens One", "Lens Two", "Lens Three", "Lens Four", "Lens Five", "Lens Six"};
+		ButtonGroup wheelThreeButtons = new ButtonGroup();
+		JPanel wheelThreePanel = wheelsPanel.wheelsPanelCreator(wheelThreeButtonsNames, "Lens Wheel" , wheelThreeButtons, false);
+		upperLeftGC.gridx = 1;
+		upperLeftGC.gridy = 3;
+		leftUpPanel.add(wheelThreePanel, upperLeftGC);
+		
+		
+		
+			// Settings regarding the lower panel of the left side of the content pane
+		JPanel leftDownPanel = new JPanel();
+		leftDownPanel.setLayout(new BorderLayout());
+		TitledBorder titleLeftDownPanel = new TitledBorder("Hardware Setup");
+		titleLeftDownPanel.setTitleJustification(TitledBorder.LEFT);
+		titleLeftDownPanel.setTitlePosition(TitledBorder.TOP);
+		
+		String[] HardwareSetUpButtonsNames = {"SLIM mode", "Fluorescence mode", "Calibration One", "Calibration Two"};
+		ButtonGroup setupModeButtons = new ButtonGroup();
+		JPanel setupModePanel = wheelsPanel.wheelsPanelCreator(HardwareSetUpButtonsNames, "" , setupModeButtons, true);
+		leftDownPanel.add(setupModePanel, BorderLayout.WEST);
+		leftDownPanel.setBorder(titleLeftDownPanel);
+
+
 		
 		JSplitPane horizontalSplitPanel = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
 		horizontalSplitPanel.setDividerLocation(0.5);
-		horizontalSplitPanel.setResizeWeight(0.5);
+		
+		JSplitPane verticalLeftSplitPanel = new JSplitPane (JSplitPane.VERTICAL_SPLIT, leftUpPanel, leftDownPanel);
+		verticalLeftSplitPanel.setDividerLocation(0.5);
+		
+		leftPanel.add(verticalLeftSplitPanel);
 		contentPane.add(horizontalSplitPanel);
-
-
+		
 
 		// finally, let us add a listener (ourselves) which gets notified when the frame containing this tool is made visible, or when it is closed.
 		getContainingFrame().addFrameListener(this);
 
-
-
-
 		return contentPane;
 	}
-	
-	private Device getArduinoDevice(String deviceName) throws RemoteException, DeviceException{
-		YouScopeServer server = getServer();
-		Microscope microscope = server.getMicroscope();
-		Device nextGenArduino = microscope.getDevice(deviceName);
-		return nextGenArduino;
-	}
-	
-	private SLIMController setSLIMController(String deviceName) {
-		ArduinoController nextGenArduino = null;
-		try {
-			nextGenArduino = new ArduinoController(getArduinoDevice(deviceName));
-		}
-		catch (RemoteException | DeviceException e) { 
-			  e.printStackTrace();
-			  }
-		SLIMController slimController = new SLIMController(nextGenArduino);
-		return slimController;
-	}
 
+	
 
 
 	@Override

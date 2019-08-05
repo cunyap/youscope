@@ -17,23 +17,28 @@ import javax.swing.JTextField;
 import javax.swing.JFrame;
 import javax.swing.border.TitledBorder;
 import javafx.scene.layout.Border;
-import javax.swing.JRadioButton;
 
-public class ManualControlPanel extends JPanel {
-	
-	public ManualControlPanel(SLIMController slimController) {
-		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS)); 
-		setTitle();
-		add(new WheelOnePanel(slimController));
-		add(new WheelTwoPanel(slimController));
-		add(new WheelThreePanel(slimController));
-	}
-	
-	private void setTitle() {
-		TitledBorder titlePanel = new TitledBorder("Manual Control");
+public class CalibrationOneInterface {
+	public JPanel calibrationOneInterfaceCreator(String title, String description, String ButtonName) {
+		JPanel panel = new JPanel();
+		panel.setLayout(new BorderLayout());
+		
+		JTextField descriptionText = new JTextField(description);
+		descriptionText.setEditable(false);
+		descriptionText.setEnabled(false);
+		
+		
+		TitledBorder titlePanel = new TitledBorder(title);
 		titlePanel.setTitleJustification(TitledBorder.LEFT);
 		titlePanel.setTitlePosition(TitledBorder.TOP);
-		setBorder(titlePanel);
+		panel.setBorder(titlePanel);
+		
+		JButton startCalibration = new JButton(ButtonName);
+		
+		panel.add(startCalibration, BorderLayout.WEST);
+		panel.add(descriptionText, BorderLayout.CENTER);
+		
+		return panel;
 	}
 
 }
