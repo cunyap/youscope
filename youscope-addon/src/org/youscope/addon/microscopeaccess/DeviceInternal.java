@@ -97,7 +97,7 @@ public interface DeviceInternal
 	/**
 	 * Sets the explicit delay in ms.
 	 * See waitForDevice() for more information.
-	 * @param delay Delay iin ms.
+	 * @param delay Delay in ms.
 	 * @param accessID The access ID of the current microscope object. If the microscope is locked with a different accessID, a MicroscopeLockedException is thrown.
 	 * @throws MicroscopeException
 	 * @throws MicroscopeLockedException
