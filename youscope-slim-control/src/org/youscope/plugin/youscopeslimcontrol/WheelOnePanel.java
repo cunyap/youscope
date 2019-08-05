@@ -70,5 +70,6 @@ public class WheelOnePanel extends JPanel implements ActionListener{
 		slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO_POS);
 		}
 	}
+	//hiii
 }
 
