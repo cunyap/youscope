@@ -12,53 +12,40 @@
  * 
  */
 package org.youscope.plugin.youscopeslimcontrol;
-
 import org.youscope.common.microscope.Device;
-
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.rmi.RemoteException;
-import java.awt.GridBagLayout;
-
-import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
-import javax.swing.JButton;
-import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.JFrame;
-import javax.swing.border.TitledBorder;
-import javax.swing.JRadioButton;
-
 import org.youscope.addon.AddonException;
-import org.youscope.addon.tool.ToolAddonUI;
 import org.youscope.addon.tool.ToolAddonUIAdapter;
 import org.youscope.addon.tool.ToolMetadata;
 import org.youscope.addon.tool.ToolMetadataAdapter;
 import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.clientinterfaces.YouScopeFrameListener;
-import org.youscope.common.microscope.CameraDevice;
 import org.youscope.common.microscope.DeviceException;
 import org.youscope.common.microscope.Microscope;
 import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.DynamicPanel;
-import org.youscope.common.microscope.MicroscopeException;
-import org.youscope.common.microscope.MicroscopeLockedException;
 
 
+/**
+ * A plug-in to automate the calibration process in the SLIM system. 
+ * @author localadmin
+ *
+ */
 public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeFrameListener
 {
-
+	/**
+	 * Define the identifier of the tool. 
+	 */
 	public final static String TYPE_IDENTIFIER = "YouScope.SLIM.Control";
 
+	/**
+	 * 
+	 * @return Metadata of the tool.
+	 */
 	public static ToolMetadata getMetadata()
 	{
 		return new ToolMetadataAdapter(TYPE_IDENTIFIER, "SLIM Control", new String[]{}, 
@@ -66,27 +53,35 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 				"icons/ghost.png");
 	}
 
+	/**
+	 * 
+	 * @param client Interface to the YouScope client, e.g. allowing to open or close new windows, or permanently save settings.
+	 * @param server Interface to the YouScope server, e.g. allowing access to the microscope.
+	 * @throws AddonException 
+	 */
+	
 	public YouscopeSLIMControl(YouScopeClient client, YouScopeServer server) throws AddonException
 	{
 		super(getMetadata(), client, server); 
 	}
 	@Override
+	
+	/*
+	 * This method defines the user interface which is exposed to the user.
+	 */
 	public java.awt.Component createUI()
 	{
 		SLIMController slimController = setSLIMController("NextGenArduino");
-		
-		// General Settings regarding the main frame (created by YouScope)
+
+		// General Settings regarding the main frame.
 		setMaximizable(false);
 		setResizable(true);
 		setTitle("SLIM Control and Calibration Panel");
-		
-		
 
-		// General Settings regarding the content pane
+		// Create the content panel.
 		DynamicPanel contentPane = new DynamicPanel();
 
-
-		// Setting up the left side
+		// Adding the Manual Control Panel and the Hardware SetUp Panel to the left side of the window.
 		JPanel leftPanel = new JPanel();
 		leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
 		JPanel leftUpPanel = new ManualControlPanel(slimController);
@@ -96,32 +91,31 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		leftPanel.add(leftDownPanel);
 		leftDownPanel.setAlignmentX(0);
 
-		
-		// Setting up the right side
+		// Adding the Calibration One, Calibration Two and Attenuation Factor panels to the right side of the window,
 		JPanel rightPanel = new JPanel();
 		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 		rightPanel.add(new CalibrationOnePanel(slimController));
 		rightPanel.add(new CalibrationTwoPanel(slimController));
 		rightPanel.add(new AttenuationFactorPanel(slimController));
 
-		// Adding the elements to the content panel.
-		
+		// Adding all the elements to the content panel.
 		JSplitPane horizontalSplitPanel = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
 		horizontalSplitPanel.setDividerLocation(0.5);
 		horizontalSplitPanel.setResizeWeight(0.5);
 		contentPane.add(horizontalSplitPanel);
 
-
-
-		// finally, let us add a listener (ourselves) which gets notified when the frame containing this tool is made visible, or when it is closed.
 		getContainingFrame().addFrameListener(this);
-
-
-
 
 		return contentPane;
 	}
-	
+
+	/**
+	 * 
+	 * @param deviceName Name of the device to be loaded. In this case an Arduino.
+	 * @return	nextGenArduino, a device which is properly set up.
+	 * @throws RemoteException
+	 * @throws DeviceException
+	 */
 	private Device getArduinoDevice(String deviceName) throws RemoteException, DeviceException{
 		YouScopeServer server = getServer();
 		Microscope microscope = server.getMicroscope();
@@ -129,30 +123,34 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		return nextGenArduino;
 	}
 	
+	/**
+	 * 
+	 * @param deviceName Name of the device to be loaded. In this case an Arduino.
+	 * @return slimController an instance of SLIMController which allows to control the loaded device.
+	 */
 	private SLIMController setSLIMController(String deviceName) {
 		ArduinoController nextGenArduino = null;
 		try {
 			nextGenArduino = new ArduinoController(getArduinoDevice(deviceName));
 		}
 		catch (RemoteException | DeviceException e) { 
-			  e.printStackTrace();
-			  }
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "No Arduino Device connected", "Arduino Error",
+											JOptionPane.ERROR_MESSAGE);
+		}
 		SLIMController slimController = new SLIMController(nextGenArduino);
 		return slimController;
 	}
 
-
-
 	@Override
 	public void frameClosed()
 	{
-		// Put in things here which should be done when frame containing tool closes, e.g. some cleanup...
+		
 	}
 
 	@Override
 	public void frameOpened()
 	{
-		// Put in things here which should be done when the frame containing this tool opens. This might e.g.
-		// be automatically taking an image or similar.
+
 	}
 }

@@ -1,5 +1,10 @@
 package org.youscope.plugin.youscopeslimcontrol;
 
+/**
+ * Enum with the possible positions of the Lens Wheel.
+ * @author localadmin
+ *
+ */
 public enum LensesWheelPosition {
 	LENS_ONE_POS,
 	LENS_TWO_POS,

@@ -1,35 +1,28 @@
 package org.youscope.plugin.youscopeslimcontrol;
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
-
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
 import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.JFrame;
 import javax.swing.border.TitledBorder;
 
-import org.youscope.common.microscope.MicroscopeException;
-
-import javafx.scene.layout.Border;
-
+/**
+ *  This class deals with the creation of the panel for the Calibration One.
+ * @author localadmin
+ *
+ */
 public class CalibrationOnePanel extends JPanel implements ActionListener{
-
 	SLIMController slimCTRL = null;
 	JButton startCalibrationOne;
 
+	/**
+	 * Constructor.
+	 * Adds all the elements created to a JPanel and creates the start button.
+	 * @param slimController an instance of SLIMController which allows to control the loaded device.
+	 */
 	public CalibrationOnePanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -44,12 +37,20 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		textPanel.setAlignmentX(RIGHT_ALIGNMENT);
 	}
 
+	/**
+	 * Set the title and the border of the panel
+	 */
 	private void setTitle() {
 		TitledBorder titlePanel = new TitledBorder("Calibration One");
 		titlePanel.setTitleJustification(TitledBorder.LEFT);
 		titlePanel.setTitlePosition(TitledBorder.TOP);
 		setBorder(titlePanel);
 	}
+	
+	/**
+	 * Creates the panel that contains the description of the computation
+	 * @return textPanel a panel containing the description.
+	 */
 	private JPanel createInfoBox() {
 		JPanel textPanel = new JPanel();
 		JTextArea descriptionText = new JTextArea("Match the ring displayed on the LCPM \n"
@@ -60,16 +61,16 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		textPanel.add(descriptionText);
 		return textPanel;	
 	}
-
+	
+	/**
+	 * Programs the listeners to the buttons, allowing the starting of the process and the control of the motors from the 
+	 * GUI.
+	 */
 	public void actionPerformed(ActionEvent e){
 		if(e.getSource() == startCalibrationOne) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE_POS);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY_POS);
-
-			// slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
-
-
 }

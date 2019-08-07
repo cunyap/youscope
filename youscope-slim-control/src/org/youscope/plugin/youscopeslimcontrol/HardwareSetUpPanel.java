@@ -1,31 +1,20 @@
 package org.youscope.plugin.youscopeslimcontrol;
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
-
-
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JRadioButton;
-import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JSplitPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.JFrame;
 import javax.swing.border.TitledBorder;
 
-import javafx.scene.layout.Border;
 
-
+/**
+ * This class deals with the creation of the panel for the Hardware SetUp.
+ * @author localadmin
+ *
+ */
 public class HardwareSetUpPanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
 	JRadioButton slimModeButton = new JRadioButton("SLIM mode");
@@ -33,15 +22,22 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 	JRadioButton calOneModeButton = new JRadioButton("Calibration One");
 	JRadioButton calTwoModeButton = new JRadioButton("Calibration Two");
 	
+	/**
+	 * Constructor.
+	 * Adds all the elements created to a JPanel.
+	 * @param slimController an instance of SLIMController which allows to control the loaded device.
+	 */
 	public HardwareSetUpPanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS)); 
 		setTitle();
 		createRadioButton();
 		add(Box.createGlue());
-
 	}
 	
+	/**
+	 * Set the title and the border of the panel
+	 */
 	private void setTitle() {
 		TitledBorder titlePanel = new TitledBorder("Hardware Setup");
 		titlePanel.setTitleJustification(TitledBorder.LEFT);
@@ -49,11 +45,12 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 		setBorder(titlePanel);
 	}
 	
+	/**
+	 * Creates the buttons to drive the motors in the appropriate position for the selected mode.
+	 */
 	private void createRadioButton() {
-
 		ButtonGroup buttonGroup = new ButtonGroup();
-
-
+		
 		buttonGroup.add(slimModeButton); 
 		buttonGroup.add(fluoModeButton); 
 		buttonGroup.add(calOneModeButton); 
@@ -68,9 +65,11 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 		fluoModeButton.addActionListener(this);
 		calOneModeButton.addActionListener(this);
 		calTwoModeButton.addActionListener(this);
-		
 	}
 	
+	/**
+	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
+	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == slimModeButton) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);

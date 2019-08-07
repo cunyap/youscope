@@ -1,30 +1,23 @@
 package org.youscope.plugin.youscopeslimcontrol;
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
-
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
-import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.JFrame;
 import javax.swing.border.TitledBorder;
-import javafx.scene.layout.Border;
 
+
+/**
+ * This class deals with the creation of the panel for the Attenuation Factor computing.
+ * @author localadmin
+ *
+ */
 public class AttenuationFactorPanel extends JPanel implements ActionListener{
 
 	SLIMController slimCTRL = null;
@@ -32,7 +25,11 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	JRadioButton manualConfirmationButton;
 	JButton confirmButton;
 	
-	
+	/**
+	 * Constructor.
+	 * Adds all the elements created to a JPanel.
+	 * @param slimController an instance of SLIMController which allows to control the loaded device.
+	 */
 	public AttenuationFactorPanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -48,6 +45,9 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		
 	}
 	
+	/**
+	 * Set the title and the border of the panel
+	 */
 	private void setTitle() {
 		TitledBorder titlePanel = new TitledBorder("Attenuation Factor");
 		titlePanel.setTitleJustification(TitledBorder.LEFT);
@@ -55,6 +55,11 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		setBorder(titlePanel);
 	}
 	
+	/**
+	 * Creates the panel that contains the description of the computation, the start button and the option to ask for
+	 * manual confirmation.
+	 * @return infoAndButtonPanel a panel with description and button.
+	 */
 	private JPanel createInfoAndStartPanel() {
 		JPanel infoAndButtonPanel = new JPanel();
 		infoAndButtonPanel.setLayout(new BoxLayout(infoAndButtonPanel, BoxLayout.PAGE_AXIS));
@@ -78,12 +83,15 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		return infoAndButtonPanel;
 	}
 	
+	/**
+	 * Creates the panel that contains the graph for visual confirmation, the computed Attenuation Factor and the 
+	 * confirm button.
+	 * @return graphAndOutput a panel with the graph, the numerical parameter and the button
+	 */
 	private JPanel createGraphAndOutputPanel() {
 		JPanel graphAndOutput = new JPanel();
 		graphAndOutput.setLayout(new BoxLayout(graphAndOutput, BoxLayout.PAGE_AXIS));
-		
 		JPanel placeHolder = new JPanel();
-		//placeHolder.setPreferredSize(new Dimension(100,100));
 		placeHolder.setBackground(Color.pink);
 		JTextArea outputNumbers = new JTextArea("Attenuation Factor: ");
 		Font font = new Font("Courier New",Font.BOLD, 15);
@@ -94,7 +102,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		outputNumbers.setEditable(false);
 		outputNumbers.setEnabled(false);
 		confirmButton = new JButton("Confirm");
-		
 		
 		graphAndOutput.add(placeHolder);
 		graphAndOutput.add(Box.createGlue());
@@ -108,6 +115,11 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		return graphAndOutput;
 		
 	}
+	
+	/**
+	 * Programs the listeners to the buttons, allowing the starting of the process and the control of the motors from the 
+	 * GUI.
+	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == startProcess) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
@@ -116,6 +128,4 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
-	
-	
 }

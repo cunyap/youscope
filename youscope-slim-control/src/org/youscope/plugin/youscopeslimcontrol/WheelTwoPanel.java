@@ -1,30 +1,18 @@
 package org.youscope.plugin.youscopeslimcontrol;
 
 import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
-import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSplitPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.JFrame;
-import javax.swing.border.TitledBorder;
-
-import javafx.scene.layout.Border;
-
 import javax.swing.JRadioButton;
 
+/**
+ *  This class deals with the creation of the panel for the control of the second Wheel.
+ * @author localadmin
+ *
+ */
 public class WheelTwoPanel extends JPanel implements ActionListener{
 	
 	SLIMController slimCTRL = null;
@@ -32,6 +20,11 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 	JRadioButton EmptyButton = new JRadioButton("Empty");
 	JRadioButton PolarizerButton = new JRadioButton("Polarizer");
 	
+	/**
+	 * Constructor.
+	 * Adds all the elements created to a JPanel
+	 * @param slimController an instance of SLIMController which allows to control the loaded device.
+	 */
 	public WheelTwoPanel(SLIMController slimController) {
 		slimCTRL = slimController;	
 		setLayout(new BorderLayout());
@@ -41,6 +34,9 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 		add(buttonPanel, BorderLayout.WEST);
 	}
 	
+	/**
+	 * Creates the buttons to drive the motor in the selected position and adds the listeners.
+	 */
 	private JPanel createRadioButton() {
 		JPanel buttonPanel = new JPanel();
 		ButtonGroup buttonGroup = new ButtonGroup();
@@ -58,9 +54,11 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 		PolarizerButton.addActionListener(this);
 		
 		return buttonPanel;
-
 	}
 	
+	/**
+	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
+	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == PolarizerButton) {
 		slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);

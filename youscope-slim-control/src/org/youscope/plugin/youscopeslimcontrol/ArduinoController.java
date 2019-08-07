@@ -1,32 +1,39 @@
 package org.youscope.plugin.youscopeslimcontrol;
 import java.rmi.RemoteException;
-import org.youscope.addon.AddonException;
-import org.youscope.addon.tool.ToolAddonUI;
-import org.youscope.addon.tool.ToolAddonUIAdapter;
-import org.youscope.addon.tool.ToolMetadata;
-import org.youscope.addon.tool.ToolMetadataAdapter;
-import org.youscope.clientinterfaces.YouScopeClient;
-import org.youscope.clientinterfaces.YouScopeFrameListener;
-import org.youscope.common.microscope.CameraDevice;
 import org.youscope.common.microscope.Device;
 import org.youscope.common.microscope.DeviceException;
-import org.youscope.common.microscope.Microscope;
-import org.youscope.serverinterfaces.YouScopeServer;
-import org.youscope.uielements.DynamicPanel;
 import org.youscope.common.microscope.MicroscopeException;
 import org.youscope.common.microscope.MicroscopeLockedException;
 
-
+/**
+ * This class deals with the direct communication with the Arduino device.
+ * @author localadmin
+ *
+ */
 public class ArduinoController {
 	Device arduino;
+	
+	/**
+	 * Constructor
+	 * @param arduinoDevice the loaded device to communicate with.
+	 */
 	public ArduinoController(Device arduinoDevice){
 		arduino = arduinoDevice;
 	}
-	public void setPinValue(int pinNumber, int pinValue) throws RemoteException, DeviceException, MicroscopeException, MicroscopeLockedException, InterruptedException{
-		  try { arduino.getProperty("Pin"+ pinNumber).setValue(Integer.toString(pinValue)); } catch
-		  (MicroscopeException | MicroscopeLockedException | InterruptedException |
-		  RemoteException | DeviceException e) { 
-		  e.printStackTrace(); }
-		 
+	
+	/**
+	 * Sets the given pinNumber to the given pinValue.
+	 * @param pinNumber is the pin on the Arduino board that controls an actuator.
+	 * @param pinValue is the state of the pin one desires to set it to (e.g. Value n corresponds to
+	 *  position x of the actuator).
+	 */
+	public void setPinValue(int pinNumber, int pinValue) {
+		  try { 
+			  arduino.getProperty("Pin"+ pinNumber).setValue(Integer.toString(pinValue)); 
+		  } 
+		  catch (MicroscopeException | MicroscopeLockedException | InterruptedException |
+				  RemoteException | DeviceException e) { 
+		  e.printStackTrace(); 
+		  }
 	}
 }
