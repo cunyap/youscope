@@ -13,6 +13,7 @@
  */
 package org.youscope.plugin.youscopeslimcontrol;
 import org.youscope.common.microscope.Device;
+import org.youscope.common.microscope.CameraDevice;
 import java.rmi.RemoteException;
 import javax.swing.BoxLayout;
 import javax.swing.JOptionPane;
@@ -72,6 +73,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	public java.awt.Component createUI()
 	{
 		SLIMController slimController = setSLIMController("NextGenArduino");
+		CameraDevice cam = getCameraDevice("ImageCamera");
 
 		// General Settings regarding the main frame.
 		setMaximizable(false);
@@ -95,7 +97,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		JPanel rightPanel = new JPanel();
 		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 		rightPanel.add(new CalibrationOnePanel(slimController));
-		rightPanel.add(new CalibrationTwoPanel(slimController));
+		rightPanel.add(new CalibrationTwoPanel(slimController, cam));
 		rightPanel.add(new AttenuationFactorPanel(slimController));
 
 		// Adding all the elements to the content panel.
@@ -121,6 +123,22 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		Microscope microscope = server.getMicroscope();
 		Device nextGenArduino = microscope.getDevice(deviceName);
 		return nextGenArduino;
+	}
+	
+	private CameraDevice getCameraDevice(String deviceName) {
+		CameraDevice cameraDevice = null;
+		try {
+		YouScopeServer server = getServer();
+		Microscope microscope = server.getMicroscope();
+		cameraDevice = microscope.getCameraDevice(deviceName);
+		String img = cameraDevice.
+		}
+		catch(RemoteException | DeviceException e) { 
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "No Camera Device connected", "Camera Error",
+											JOptionPane.ERROR_MESSAGE);
+		}
+		return cameraDevice;
 	}
 	
 	/**

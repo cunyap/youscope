@@ -13,6 +13,8 @@ import javax.swing.JTextArea;
 import javax.swing.border.TitledBorder;
 
 
+
+
 /**
  * This class deals with the creation of the panel for the Attenuation Factor computing.
  * @author localadmin
