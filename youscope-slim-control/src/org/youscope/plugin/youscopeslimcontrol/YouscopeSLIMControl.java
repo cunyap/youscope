@@ -97,7 +97,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		JPanel rightPanel = new JPanel();
 		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 		rightPanel.add(new CalibrationOnePanel(slimController));
-		rightPanel.add(new CalibrationTwoPanel(slimController, cam));
+		rightPanel.add(new CalibrationTwoPanel(slimController, cam, getClient(), getServer()));
 		rightPanel.add(new AttenuationFactorPanel(slimController));
 
 		// Adding all the elements to the content panel.
@@ -131,7 +131,6 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		YouScopeServer server = getServer();
 		Microscope microscope = server.getMicroscope();
 		cameraDevice = microscope.getCameraDevice(deviceName);
-		String img = cameraDevice.
 		}
 		catch(RemoteException | DeviceException e) { 
 			e.printStackTrace();

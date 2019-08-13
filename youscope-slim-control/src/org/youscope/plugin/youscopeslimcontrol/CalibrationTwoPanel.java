@@ -41,6 +41,7 @@ import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.CameraField;
 import org.youscope.uielements.HistogramPanel;
 import org.youscope.uielements.LiveStreamPanel.ChannelControl;
+import org.youscope.addon.component.ComponentAddonUI;
 /**
  * This class deals with the creation of the panel for the Calibration Two process.
  * @author Elisa Garulli
@@ -50,7 +51,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 
 	SLIMController slimCTRL = null;
 	JButton startCalibrationTwo;
-
+	CameraDevice cam;
 	
 
 	/**
@@ -64,19 +65,20 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
 		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
-		JPanel graphAndOutput = createGraphAndOutputPanel();
+//		JPanel graphAndOutput = createGraphAndOutputPanel();
 		add(infoAndButtonPanel);
 		add(Box.createHorizontalGlue());
-		add(graphAndOutput);
+	//	add(graphAndOutput);
 	}
-	public CalibrationTwoPanel(SLIMController slimController, CameraDevice camera) {
+	public CalibrationTwoPanel(SLIMController slimController, CameraDevice camera, YouScopeClient cl, YouScopeServer svr) {
 		slimCTRL = slimController;
 //		channelControl = new ChannelControl(client, server);
-//		cam = camera;
+		cam = camera;
+		//String img = camera.makeImage(channelGroupID, channelID, exposure);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
 		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
-		JPanel graphAndOutput = createGraphAndOutputPanel();
+		JPanel graphAndOutput = createGraphAndOutputPanel(cl, svr);
 		add(infoAndButtonPanel);
 		add(Box.createHorizontalGlue());
 		add(graphAndOutput);
@@ -123,21 +125,24 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 * confirm button.
 	 * @return graphAndOutput a panel with the graph, the numerical parameter and the button
 	 */
-	private JPanel createGraphAndOutputPanel() {
+	private JPanel createGraphAndOutputPanel(YouScopeClient cli, YouScopeServer serv) {
 		JPanel graphAndOutput = new JPanel();
 		graphAndOutput.setLayout(new BoxLayout(graphAndOutput, BoxLayout.PAGE_AXIS));
-		//LCPMCalibration placeHolder = new LCPMCalibration();
 		JPanel placeHolder = new JPanel();
-		//placeHolder.add(imm);
+		//placeHolder.add(new LCPMCal(cam));
 		placeHolder.setPreferredSize(new Dimension(100,100));
 		placeHolder.setBackground(Color.darkGray);
 		JTextArea outputNumbers = new JTextArea("Output number: ");	
 		Font font = new Font("Courier New",Font.BOLD, 15);
 		outputNumbers.setFont(font);
 		outputNumbers.setForeground(Color.black);
+		
+		LCPMCal sweetLord = new LCPMCal(cli, serv);
+		placeHolder.add(sweetLord);
+		
 		int averageIntensityOne = getAverageIntensity()[0];
 		int averageIntensityTwo = getAverageIntensity()[1];
-		outputNumbers.append(averageIntensityOne +", "+ averageIntensityTwo + ", NN, NN");
+		outputNumbers.append(averageIntensityTwo + ", NN, NN");
 		outputNumbers.setOpaque(false);
 		outputNumbers.setEditable(false);
 		outputNumbers.setEnabled(false);
@@ -196,23 +201,6 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	}
 }
 	
-	private JLabel snapImage()  {
-		String channel = config.getChannel();
-		String channelGroup = config.getChannelGroup();
-		ImageIcon image = null;
-		ImageEvent img = null;
-		JLabel label;
-		try {
-			img = cam.makeImage(channelGroup, channel, 500);
-		}
-		catch(RemoteException | MicroscopeException | InterruptedException | SettingException 
-				| MicroscopeLockedException e) {
-			JOptionPane.showMessageDialog(null, "No Valid Image", "Error", JOptionPane.ERROR_MESSAGE);
-		}
-		image = (ImageIcon) img.getImageData();
-		label = new JLabel(image);
-		return label;
-	
-	}
+
 	
 
