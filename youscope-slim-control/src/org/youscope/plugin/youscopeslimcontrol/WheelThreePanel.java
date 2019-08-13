@@ -10,8 +10,8 @@ import javax.swing.JRadioButton;
 
 
 /**
- *  This class deals with the creation of the panel for the control of the lenses Wheel.
- * @author localadmin
+ *  This class represents the panel for the control of the lenses Wheel.
+ * @author Elisa Garulli
  *
  */
 public class WheelThreePanel extends JPanel implements ActionListener{
@@ -22,7 +22,10 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 	JRadioButton LensFourButton = new JRadioButton("Lens Four");
 	JRadioButton LensFiveButton = new JRadioButton("Lens Five");
 	JRadioButton LensSixButton = new JRadioButton("Lens Six");
-	
+	JRadioButton[] buttonsArray = { LensOneButton, LensTwoButton,
+			LensThreeButton, LensFourButton, LensFiveButton, LensSixButton
+	};
+
 	/**
 	 * Constructor.
 	 * Adds all the elements created to a JPanel
@@ -36,61 +39,52 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 		JPanel buttonPanel = createRadioButton();
 		add(buttonPanel, BorderLayout.WEST);
 	}
-	
+
 	/**
 	 * Creates the buttons to drive the motor in the selected position and adds the listeners.
 	 */
 	private JPanel createRadioButton() {
 		JPanel buttonPanel = new JPanel();
 		ButtonGroup buttonGroup = new ButtonGroup();
+
+		for (JRadioButton button : buttonsArray) {
+			buttonGroup.add(button);
+		}
 		
-		buttonGroup.add(LensOneButton); 
-		buttonGroup.add(LensTwoButton); 
-		buttonGroup.add(LensThreeButton); 
-		buttonGroup.add(LensFourButton); 
-		buttonGroup.add(LensFiveButton); 
-		buttonGroup.add(LensSixButton); 
+		for (JRadioButton button : buttonsArray) {
+			buttonPanel.add(button);
+		}
 		
-		buttonPanel.add(LensOneButton);
-		buttonPanel.add(LensTwoButton);
-		buttonPanel.add(LensThreeButton);
-		buttonPanel.add(LensFourButton);
-		buttonPanel.add(LensFiveButton);
-		buttonPanel.add(LensSixButton);
-		
-		LensOneButton.addActionListener(this);
-		LensTwoButton.addActionListener(this);
-		LensThreeButton.addActionListener(this);
-		LensFourButton.addActionListener(this);
-		LensFiveButton.addActionListener(this);
-		LensSixButton.addActionListener(this);
-		
+		for (JRadioButton button : buttonsArray) {
+			button.addActionListener(this);;
+		}
+
 		return buttonPanel;
 	}
-	
+
 	/**
 	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
 		JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
-//		if(e.getSource() == LensOneButton) {
-//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE_POS);
-//		}
-//		if(e.getSource() == LensTwoButton) {
-//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
-//		}
-//		if(e.getSource() == LensThreeButton) {
-//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
-//		}
-//		if(e.getSource() == LensFourButton) {
-//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FOUR_POS);
-//		}
-//		if(e.getSource() == LensFiveButton) {
-//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FIVE_POS);
-//		}
-//		if(e.getSource() == LensSixButton) {
-//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_SIX_POS);
-//		}
+		//		if(e.getSource() == LensOneButton) {
+		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE);
+		//		}
+		//		if(e.getSource() == LensTwoButton) {
+		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO);
+		//		}
+		//		if(e.getSource() == LensThreeButton) {
+		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE);
+		//		}
+		//		if(e.getSource() == LensFourButton) {
+		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FOUR);
+		//		}
+		//		if(e.getSource() == LensFiveButton) {
+		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FIVE);
+		//		}
+		//		if(e.getSource() == LensSixButton) {
+		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_SIX);
+		//		}
 	}
 }
 

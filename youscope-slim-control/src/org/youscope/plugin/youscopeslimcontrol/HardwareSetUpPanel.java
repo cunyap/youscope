@@ -11,8 +11,8 @@ import javax.swing.border.TitledBorder;
 
 
 /**
- * This class deals with the creation of the panel for the Hardware SetUp.
- * @author localadmin
+ * This class represents the panel for the Hardware SetUp.
+ * @author Elisa Garulli
  *
  */
 public class HardwareSetUpPanel extends JPanel implements ActionListener{

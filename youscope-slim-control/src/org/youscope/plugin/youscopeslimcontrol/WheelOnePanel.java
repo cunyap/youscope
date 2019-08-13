@@ -8,17 +8,17 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 
 /**
- *  This class deals with the creation of the panel for the control of the Polarizers Wheel.
- * @author localadmin
+ *  This class represents the panel for the control of the Polarizers Wheel.
+ * @author Elisa Garulli
  *
  */
-public class WheelOnePanel extends JPanel implements   ActionListener{
-	
+public class WheelOnePanel extends JPanel implements ActionListener{
+
 	SLIMController slimCTRL = null;
 	JRadioButton PolarizerOneButton = new JRadioButton("Polarizer One");
 	JRadioButton EmptyButton = new JRadioButton("Empty");
 	JRadioButton PolarizerTwoButton = new JRadioButton("Polarizer Two");
-	
+
 	/**
 	 * Constructor.
 	 * Adds all the elements created to a JPanel
@@ -32,7 +32,7 @@ public class WheelOnePanel extends JPanel implements   ActionListener{
 		JPanel buttonPanel = createRadioButton();
 		add(buttonPanel, BorderLayout.WEST);
 	}
-	
+
 	/**
 	 * Creates the buttons to drive the motor in the selected position and add the listeners.
 	 */
@@ -43,30 +43,30 @@ public class WheelOnePanel extends JPanel implements   ActionListener{
 		buttonGroup.add(PolarizerOneButton); 
 		buttonGroup.add(EmptyButton); 
 		buttonGroup.add(PolarizerTwoButton); 
-		
+
 		buttonPanel.add(PolarizerOneButton);
 		buttonPanel.add(EmptyButton);
 		buttonPanel.add(PolarizerTwoButton);
-		
+
 		PolarizerOneButton.addActionListener(this);
 		EmptyButton.addActionListener(this);
 		PolarizerTwoButton.addActionListener(this);
-		
+
 		return buttonPanel;
 	}
-	
+
 	/**
 	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == PolarizerOneButton) {
-		slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
 		}
 		else if(e.getSource() == EmptyButton) {
-		slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
 		}
 		else if(e.getSource() == PolarizerTwoButton) {
-		slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO);
 		}
 	}
 }

@@ -5,8 +5,8 @@ import javax.swing.border.TitledBorder;
 
 
 /**
- * This class deals with the creation of the panel for the Manual Control.
- * @author localadmin
+ * This class represents the panel for the Manual Control.
+ * @author Elisa Garulli
  *
  */
 public class ManualControlPanel extends JPanel {

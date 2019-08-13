@@ -17,14 +17,14 @@ import com.sun.corba.se.impl.protocol.InfoOnlyServantCacheLocalCRDImpl;
 import javafx.scene.layout.Border;
 
 /**
- * This class deals with the creation of the panel for the Calibration Two process.
- * @author localadmin
+ * This class represents the panel for the Calibration Two process.
+ * @author Elisa Garulli
  *
  */
 public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	
 	SLIMController slimCTRL = null;
-	JButton startCalibrationTwo;
+	JButton startCalibrationTwoButton;
 	
 	/**
 	 * Constructor.
@@ -59,15 +59,15 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	private JPanel createInfoAndButtonPanel() {
 		JPanel infoAndButtonPanel = new JPanel();
 		infoAndButtonPanel.setLayout(new BoxLayout(infoAndButtonPanel, BoxLayout.PAGE_AXIS));
-		startCalibrationTwo = new JButton("Start Calibration Two");
-		startCalibrationTwo.addActionListener(this);
+		startCalibrationTwoButton = new JButton("Start Calibration Two");
+		startCalibrationTwoButton.addActionListener(this);
 		JTextArea descriptionText = new JTextArea("Calibrate the phase modulation \n"
 				+ "values.");
 		descriptionText.setEditable(false);
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
-		infoAndButtonPanel.add(startCalibrationTwo);
-		startCalibrationTwo.setAlignmentX(LEFT_ALIGNMENT);
+		infoAndButtonPanel.add(startCalibrationTwoButton);
+		startCalibrationTwoButton.setAlignmentX(LEFT_ALIGNMENT);
 		infoAndButtonPanel.add(Box.createGlue());
 		infoAndButtonPanel.add(descriptionText);
 		descriptionText.setAlignmentX(LEFT_ALIGNMENT);
@@ -108,8 +108,8 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 * GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
-		if(e.getSource() == startCalibrationTwo) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO_POS);
+		if(e.getSource() == startCalibrationTwoButton) {
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS_POS);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", 

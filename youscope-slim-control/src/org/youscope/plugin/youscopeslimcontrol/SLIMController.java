@@ -1,14 +1,16 @@
 package org.youscope.plugin.youscopeslimcontrol;
 
 /**
- * This class deals with the communication from the GUI to the Arduino device, through the ArduinoController.
- * @author localadmin
+ * This class represents the communication from the GUI to the Arduino device, through the ArduinoController.
+ * @author Elisa Garulli
  *
  */
 public class SLIMController {
 	
 	ArduinoController arduino;
-	
+	int PolarizerMotorPin = 53;
+	int SecondMotorPin = 53;
+	int LensMotorPin = 13;
 	/**
 	 * Constructor
 	 * @param arduinoName the Arduino controller to communicate with.
@@ -23,16 +25,16 @@ public class SLIMController {
 	 */
 	public void setPolarizerWheelPosition(PolarizerWheelPosition wheelPosition) {
 		switch (wheelPosition) {
-		case POLARIZER_ONE_POS:	
-				arduino.setPinValue(53, 0);
+		case POLARIZER_ONE:	
+				arduino.setPinValue(PolarizerMotorPin, 0);
 			break;
 			
 		case EMPTY_POS:
-				arduino.setPinValue(53, 1);
+				arduino.setPinValue(PolarizerMotorPin, 1);
 			break;
 		
-		case POLARIZER_TWO_POS:
-				arduino.setPinValue(53, 2);
+		case POLARIZER_TWO:
+				arduino.setPinValue(PolarizerMotorPin, 2);
 			break;
 		}	
 	}
@@ -45,15 +47,15 @@ public class SLIMController {
 		switch (wheelPosition) {
 		
 		case POLARIZER_POS:	
-				arduino.setPinValue(53, 0);
+				arduino.setPinValue(SecondMotorPin, 0);
 			break;
 			
 		case EMPTY_POS:
-				arduino.setPinValue(53, 1);
+				arduino.setPinValue(SecondMotorPin, 1);
 			break;
 		
 		case LENS_POS:
-				arduino.setPinValue(53, 2);
+				arduino.setPinValue(SecondMotorPin, 2);
 			break;
 		}	
 	}
@@ -65,27 +67,27 @@ public class SLIMController {
 	public void setLensesWheelPosition(LensesWheelPosition wheelPosition) {
 		switch (wheelPosition) {
 		case LENS_ONE_POS:	
-				arduino.setPinValue(13, 0);
+				arduino.setPinValue(LensMotorPin, 0);
 			break;
 			
-		case LENS_TWO_POS:
-				arduino.setPinValue(13, 1);
+		case LENS_TWO:
+				arduino.setPinValue(LensMotorPin, 1);
 			break;
 		
-		case LENS_THREE_POS:
-				arduino.setPinValue(13, 2);
+		case LENS_THREE:
+				arduino.setPinValue(LensMotorPin, 2);
 			break;
 		
-		case LENS_FOUR_POS:	
-				arduino.setPinValue(13, 3);
+		case LENS_FOUR:	
+				arduino.setPinValue(LensMotorPin, 3);
 			break;
 			
-		case LENS_FIVE_POS:
-				arduino.setPinValue(13, 4);
+		case LENS_FIVE:
+				arduino.setPinValue(LensMotorPin, 4);
 			break;
 		
-		case LENS_SIX_POS:
-				arduino.setPinValue(13, 5);
+		case LENS_SIX:
+				arduino.setPinValue(LensMotorPin, 5);
 			break;
 		}	
 	}
