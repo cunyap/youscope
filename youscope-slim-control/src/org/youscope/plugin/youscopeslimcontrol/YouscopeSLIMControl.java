@@ -74,6 +74,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	{
 		SLIMController slimController = setSLIMController("NextGenArduino");
 		CameraDevice cam = getCameraDevice("ImageCamera");
+		Device LCPM = getLCPMDevice("Reflector");
 
 		// General Settings regarding the main frame.
 		setMaximizable(false);
@@ -97,7 +98,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		JPanel rightPanel = new JPanel();
 		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 		rightPanel.add(new CalibrationOnePanel(slimController));
-		rightPanel.add(new CalibrationTwoPanel(slimController, cam, getClient(), getServer()));
+		rightPanel.add(new CalibrationTwoPanel(slimController, cam, getClient(), getServer(), LCPM));
 		rightPanel.add(new AttenuationFactorPanel(slimController));
 
 		// Adding all the elements to the content panel.
@@ -138,6 +139,21 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 											JOptionPane.ERROR_MESSAGE);
 		}
 		return cameraDevice;
+	}
+	
+	private Device getLCPMDevice(String deviceName) {
+		Device LCPMDevice = null;
+		try {
+		YouScopeServer server = getServer();
+		Microscope microscope = server.getMicroscope();
+		LCPMDevice = microscope.getDevice(deviceName);
+		}
+		catch(RemoteException | DeviceException e) { 
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "No LCPM connected", "LCPM Error",
+											JOptionPane.ERROR_MESSAGE);
+		}
+		return LCPMDevice;
 	}
 	
 	/**

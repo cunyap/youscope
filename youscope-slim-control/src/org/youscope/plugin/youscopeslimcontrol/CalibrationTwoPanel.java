@@ -52,39 +52,40 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
 	JButton startCalibrationTwo;
 	CameraDevice cam;
-	
+
 
 	/**
 	 * Constructor.
 	 * Adds all the elements created to a JPanel.
 	 * @param slimController an instance of SLIMController which allows to control the loaded device.
 	 */
-	
+
 	public CalibrationTwoPanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
 		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
-//		JPanel graphAndOutput = createGraphAndOutputPanel();
+		//		JPanel graphAndOutput = createGraphAndOutputPanel();
 		add(infoAndButtonPanel);
 		add(Box.createHorizontalGlue());
-	//	add(graphAndOutput);
+		//	add(graphAndOutput);
 	}
-	public CalibrationTwoPanel(SLIMController slimController, CameraDevice camera, YouScopeClient cl, YouScopeServer svr) {
+	public CalibrationTwoPanel(SLIMController slimController, CameraDevice camera, YouScopeClient client, 
+			YouScopeServer sever, Device LCPM) {
 		slimCTRL = slimController;
-//		channelControl = new ChannelControl(client, server);
+		//		channelControl = new ChannelControl(client, server);
 		cam = camera;
 		//String img = camera.makeImage(channelGroupID, channelID, exposure);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
 		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
-		JPanel graphAndOutput = createGraphAndOutputPanel(cl, svr);
+		JPanel graphAndOutput = createGraphAndOutputPanel(client, sever, camera, LCPM);
 		add(infoAndButtonPanel);
 		add(Box.createHorizontalGlue());
 		add(graphAndOutput);
-		
-		
-		
+
+
+
 	}
 
 	/**
@@ -125,24 +126,22 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 * confirm button.
 	 * @return graphAndOutput a panel with the graph, the numerical parameter and the button
 	 */
-	private JPanel createGraphAndOutputPanel(YouScopeClient cli, YouScopeServer serv) {
+	private JPanel createGraphAndOutputPanel(YouScopeClient client, YouScopeServer server, 
+			CameraDevice camera, Device reflector) {
 		JPanel graphAndOutput = new JPanel();
 		graphAndOutput.setLayout(new BoxLayout(graphAndOutput, BoxLayout.PAGE_AXIS));
 		JPanel placeHolder = new JPanel();
-		//placeHolder.add(new LCPMCal(cam));
+
 		placeHolder.setPreferredSize(new Dimension(100,100));
 		placeHolder.setBackground(Color.darkGray);
 		JTextArea outputNumbers = new JTextArea("Output number: ");	
 		Font font = new Font("Courier New",Font.BOLD, 15);
 		outputNumbers.setFont(font);
-		outputNumbers.setForeground(Color.black);
-		
-		LCPMCal sweetLord = new LCPMCal(cli, serv);
-		placeHolder.add(sweetLord);
-		
-		int averageIntensityOne = getAverageIntensity()[0];
-		int averageIntensityTwo = getAverageIntensity()[1];
-		outputNumbers.append(averageIntensityTwo + ", NN, NN");
+		outputNumbers.setForeground(Color.black);		
+
+		LCPMCal calibrationResults = new LCPMCal(client, server, camera, reflector);
+		placeHolder.add(calibrationResults);
+		outputNumbers.append("NN, NN, NN, NN");
 		outputNumbers.setOpaque(false);
 		outputNumbers.setEditable(false);
 		outputNumbers.setEnabled(false);
@@ -169,38 +168,9 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		}
 	}
 
-	private int[] getAverageIntensity() {
-		BufferedImage[] images = new BufferedImage[2];
-		BufferedImage currentImage = null;
-		for (int x = 0; x < images.length; x++) {
-			String path = "C:\\Users\\localadmin\\Pictures\\ExPics\\SampleImage" + x + ".png";
-			try {
-				currentImage =  ImageIO.read(new File(path));
-				images[x] = currentImage.getSubimage(currentImage.getWidth()/2 - 50,
-							currentImage.getHeight()/2 + 50, 100, 100);
-			}
-			catch(IOException e) {
-				JOptionPane.showMessageDialog(null, "No Valid Image", "Error", JOptionPane.ERROR_MESSAGE);
-			}
-		}
-		int[] averageArray = new int[2];
-		int average = 0;
 
-		for (int y = 0; y < images.length; y++ ) {
-			int sumIntensity = 0;
-			Raster raster = images[y].getData();
-			for (int i = 0; i < images[y].getWidth(); i++) {
-				for (int j = 0; j < images[y].getHeight(); j++) {
-					sumIntensity += raster.getSample(i, j, 0);
-				}
-			}
-			average = sumIntensity / (images[y].getWidth() * images[y].getHeight());
-			averageArray[y] = average;
-		}
-		return averageArray;
-	}
 }
-	
 
-	
+
+
 
