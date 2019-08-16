@@ -1,4 +1,5 @@
 package org.youscope.plugin.youscopeslimcontrol;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.io.File;
@@ -12,6 +13,8 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
+
 import org.youscope.common.configuration.ChannelConfiguration;
 import org.youscope.common.image.ImageEvent;
 import org.youscope.common.microscope.CameraDevice;
@@ -43,10 +46,10 @@ public class LCPMCal extends JPanel {
 
 	public LCPMCal(YouScopeClient client, YouScopeServer server, CameraDevice camera, Device LCPM) {
 
-		double[] averageIntensityArray = new double[255];
-		double[] normalizedIntensityArray = new double[255];
+		double[] averageIntensityArray = new double[256];
+		double[] normalizedIntensityArray = new double[256];
 		BufferedImage croppedImage = null;
-		for (int grayValue = 0; grayValue < 255; grayValue++) {
+		for (int grayValue = 0; grayValue < 256; grayValue++) {
 			setLCPMImage(grayValue, LCPM);
 			BufferedImage rawImage = getImage(client, server, camera);
 			croppedImage = cropImage(rawImage);
@@ -55,30 +58,34 @@ public class LCPMCal extends JPanel {
 		}
 		double minIntensity = findMin(averageIntensityArray);
 		double maxIntensity = findMax(averageIntensityArray);
-		for (int index = 0; index < 255; index++) {
+		for (int index = 0; index < 256; index++) {
 			double intensity = averageIntensityArray[index];
 			normalizedIntensityArray[index] = (intensity - minIntensity)/(maxIntensity-minIntensity);
 			
 		}
 		for (int index = 0; index < 256; index++) {
-			normalizedIntensityArray[index] = 2*normalizedIntensityArray[index]-0.5;
+			normalizedIntensityArray[index] = 2*(normalizedIntensityArray[index]-0.5);
 		}
+		double[] realIntensityValues = normalizedIntensityArray.clone();
 		HilbertTransform.FHT((normalizedIntensityArray), FourierTransform.Direction.Forward);
-		double[] angles = new double[255];
-		for (int y = 0; y < 256; y++) {
-			angles[y] = Math.atan(normalizedIntensityArray[y]); 
-		}
-		//double[] angles = Math.atan2(normalizedIntesityArray);
 		
+		
+		double[] angles = new double[256];
+		for (int y = 0; y < 256; y++) {
+			angles[y] = Math.atan2(normalizedIntensityArray[y],realIntensityValues[y]); 
+		}
+		double[] unwrapped = new PhaseUnwrapping().unwrap(angles);
 		int[] range = IntStream.rangeClosed(0, 255).toArray();
 		
-		JOptionPane.showMessageDialog(null, angles, "Life Error",
-				JOptionPane.ERROR_MESSAGE);
-
-		img = new ImageIcon(croppedImage);
-		
-		imm = new JLabel(Double.toString(averageIntensityArray[23]));
-		add(imm);
+		add(new PhaseChart(range, unwrapped));
+//		img = new ImageIcon(croppedImage);
+//		JTextArea UnwrappedNumbers = new JTextArea("unwrapped number: ");	
+//		UnwrappedNumbers.setForeground(Color.black);	
+//		for(int i = 0; i < 256; i++) {
+//			UnwrappedNumbers.append(Double.toString(unwrapped[i]) + "/");
+//		}
+		//imm = new JLabel(Double.toString(averageIntensityArray[23]));
+		//add(UnwrappedNumbers);
 
 	}
 

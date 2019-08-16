@@ -130,23 +130,23 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 			CameraDevice camera, Device reflector) {
 		JPanel graphAndOutput = new JPanel();
 		graphAndOutput.setLayout(new BoxLayout(graphAndOutput, BoxLayout.PAGE_AXIS));
-		JPanel placeHolder = new JPanel();
-
-		placeHolder.setPreferredSize(new Dimension(100,100));
-		placeHolder.setBackground(Color.darkGray);
+		//JPanel placeHolder = new JPanel();
+		LCPMCal calibrationResults = new LCPMCal(client, server, camera, reflector);
+		calibrationResults.setPreferredSize(new Dimension(400,300));
 		JTextArea outputNumbers = new JTextArea("Output number: ");	
 		Font font = new Font("Courier New",Font.BOLD, 15);
 		outputNumbers.setFont(font);
 		outputNumbers.setForeground(Color.black);		
 
-		LCPMCal calibrationResults = new LCPMCal(client, server, camera, reflector);
-		placeHolder.add(calibrationResults);
+		
+		//placeHolder.add(calibrationResults);
 		outputNumbers.append("NN, NN, NN, NN");
 		outputNumbers.setOpaque(false);
 		outputNumbers.setEditable(false);
 		outputNumbers.setEnabled(false);
-		graphAndOutput.add(placeHolder);
-		placeHolder.setAlignmentX(RIGHT_ALIGNMENT);
+		graphAndOutput.add(calibrationResults);
+		//placeHolder.setAlignmentX(RIGHT_ALIGNMENT);
+		calibrationResults.setAlignmentX(RIGHT_ALIGNMENT);
 		graphAndOutput.add(Box.createGlue());
 		graphAndOutput.add(outputNumbers);
 		outputNumbers.setAlignmentX(RIGHT_ALIGNMENT);
