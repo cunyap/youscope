@@ -73,7 +73,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	public CalibrationTwoPanel(SLIMController slimController, CameraDevice camera, YouScopeClient client, 
 			YouScopeServer sever, Device LCPM) {
 		slimCTRL = slimController;
-		//		channelControl = new ChannelControl(client, server);
+		
 		cam = camera;
 		//String img = camera.makeImage(channelGroupID, channelID, exposure);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -130,7 +130,8 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 			CameraDevice camera, Device reflector) {
 		JPanel graphAndOutput = new JPanel();
 		graphAndOutput.setLayout(new BoxLayout(graphAndOutput, BoxLayout.PAGE_AXIS));
-		//JPanel placeHolder = new JPanel();
+		JPanel placeHolder = new JPanel();
+
 		LCPMCal calibrationResults = new LCPMCal(client, server, camera, reflector);
 		calibrationResults.setPreferredSize(new Dimension(400,300));
 		JTextArea outputNumbers = new JTextArea("Output number: ");	
@@ -139,13 +140,14 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		outputNumbers.setForeground(Color.black);		
 
 		
-		//placeHolder.add(calibrationResults);
-		outputNumbers.append("NN, NN, NN, NN");
-		outputNumbers.setOpaque(false);
-		outputNumbers.setEditable(false);
-		outputNumbers.setEnabled(false);
+		
+//		outputNumbers.append("NN, NN, NN, NN");
+//		outputNumbers.setOpaque(false);
+//		outputNumbers.setEditable(false);
+//		outputNumbers.setEnabled(false);
+
 		graphAndOutput.add(calibrationResults);
-		//placeHolder.setAlignmentX(RIGHT_ALIGNMENT);
+
 		calibrationResults.setAlignmentX(RIGHT_ALIGNMENT);
 		graphAndOutput.add(Box.createGlue());
 		graphAndOutput.add(outputNumbers);

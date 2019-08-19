@@ -1,6 +1,11 @@
 package org.youscope.plugin.youscopeslimcontrol;
 import java.lang.Math;
 
+/**
+ * This class represents the Java translation of numpy.unwrap for unidimensional arrays.
+ * @author Elisa Garulli
+ *
+ */
 public class PhaseUnwrapping {
 	int length = 255;
 	double pi = Math.PI;
@@ -10,9 +15,13 @@ public class PhaseUnwrapping {
 	double[] ph_correct = new double[length];
 	boolean[] mask2 = new boolean[length];
 	double[] up = new double[length];
-	double[] phase_array = {2,2,3,4,5,6,7,8,9,0};
+	
 
 	public double[] unwrap(double[] p) {
+		
+
+		
+		//length = p.length;
 		up = p.clone();
 		for (int i = 0; i < length; i++ ) {		
 			dd[i] = p[i+1] - p[i];
@@ -45,6 +54,11 @@ public class PhaseUnwrapping {
 		return up;	
 	}
 
+	/**
+	 * Calculates the cumulative sum of a given double array
+	 * @param input
+	 * @return a double[] array in which the i element is the sum of the 0...i elements of the input array.
+	 */
 	public double[] makeCumulativeSum(double[] input) {
 		double[] output = new double[input.length];
 		double total = 0;
@@ -54,7 +68,12 @@ public class PhaseUnwrapping {
 		}
 		return output;
 	}
-
+	/**
+	 * Workaround to have the corresponding of the % operator for double, even if negatives.
+	 * @param x
+	 * @param y
+	 * @return the remainder
+	 */
 	double floatMod(double x, double y){
 		return (x - Math.floor(x/y) * y);
 	}

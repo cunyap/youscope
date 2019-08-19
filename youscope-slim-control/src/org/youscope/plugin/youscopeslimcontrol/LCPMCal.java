@@ -78,14 +78,7 @@ public class LCPMCal extends JPanel {
 		int[] range = IntStream.rangeClosed(0, 255).toArray();
 		
 		add(new PhaseChart(range, unwrapped));
-//		img = new ImageIcon(croppedImage);
-//		JTextArea UnwrappedNumbers = new JTextArea("unwrapped number: ");	
-//		UnwrappedNumbers.setForeground(Color.black);	
-//		for(int i = 0; i < 256; i++) {
-//			UnwrappedNumbers.append(Double.toString(unwrapped[i]) + "/");
-//		}
-		//imm = new JLabel(Double.toString(averageIntensityArray[23]));
-		//add(UnwrappedNumbers);
+
 
 	}
 
