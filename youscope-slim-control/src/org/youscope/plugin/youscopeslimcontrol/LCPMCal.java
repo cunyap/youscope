@@ -40,7 +40,6 @@ public class LCPMCal extends JPanel {
 	String channelName = configuration.getChannel();
 	String channelGroup = configuration.getChannelGroup();
 	ImageEvent<?> image;
-//	FourierTransform.Direction forward;
 	JLabel imm = new JLabel("plp");
 	ImageIcon img = null;
 

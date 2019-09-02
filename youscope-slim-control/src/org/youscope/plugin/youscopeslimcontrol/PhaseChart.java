@@ -15,6 +15,7 @@ import org.jfree.chart.entity.ChartEntity;
 import org.jfree.chart.entity.XYItemEntity;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.title.TextTitle;
 import org.jfree.chart.plot.Crosshair;
 import org.jfree.chart.plot.DefaultDrawingSupplier;
 import org.jfree.chart.plot.PlotOrientation;
@@ -65,6 +66,7 @@ public class PhaseChart extends JPanel{
 
 		ChartPanel chartPanel = new ChartPanel(xylineChart);
 		chartPanel.setPreferredSize(new Dimension(400,300));
+		xylineChart.setBackgroundPaint(Color.gray);
 		final XYPlot plot = xylineChart.getXYPlot();
 		final CrosshairOverlay crosshairOverlay = new CrosshairOverlay();
 		final Crosshair yCrosshair = new Crosshair(Double.NaN, Color.RED, new BasicStroke(2f));
@@ -112,22 +114,39 @@ public class PhaseChart extends JPanel{
 				line2.setValue(positions[1][0]);
 				line3.setValue(positions[2][0]);
 				line4.setValue(positions[3][0]);
+				if (positions[3][0] <= 255) {
 				JOptionPane.showMessageDialog(null, "Phase Shifts " + positions[0][0] +", "+
-				positions[1][0]+", "+positions[2][0] +", " + positions[3][0], "Error", JOptionPane.ERROR_MESSAGE);
+				positions[1][0]+", "+positions[2][0] +", " + positions[3][0], "Result", JOptionPane.INFORMATION_MESSAGE);
+			}
+				else {
+				JOptionPane.showMessageDialog(null, "Phase Shifts " + positions[0][0] +", "+
+						positions[1][0]+", "+positions[2][0] +", Out of range", "Result", JOptionPane.INFORMATION_MESSAGE);
+				}
 			}
 		});
 		
-//		JTextArea outputNumbers = new JTextArea("Output number: ");	
-//		Font font = new Font("Courier New",Font.BOLD, 15);
-//		outputNumbers.setFont(font);
-//		outputNumbers.setForeground(Color.black);		
-//		outputNumbers.append("Phase Shifts " + positions[0][0] +", "+
-//				positions[1][0]+", "+positions[2][0] +", " + positions[3][0]);
-//		outputNumbers.setOpaque(false);
-//		outputNumbers.setEditable(false);
-//		outputNumbers.setEnabled(false);
+
+//		if (positions[3][0] <= 255) {
+//			TextTitle chartinfo = new TextTitle("Output gray values:  " + positions[0][0] +", "+
+//					positions[1][0]+", "+positions[2][0] +", " + positions[3][0]);
+//			chartinfo.setPosition( TextTitle.DEFAULT_POSITION ); // position the title below X axis
+//			chartinfo.setHorizontalAlignment( TextTitle.DEFAULT_HORIZONTAL_ALIGNMENT ); // set the horizontal alignment
+//			xylineChart.addSubtitle( chartinfo ); // Here chart is the instance of JFreeChart
+//			
+//
+//		}
+//		else {
+//			
+//			TextTitle chartinfo = new TextTitle("Phase Shifts " + positions[0][0] +", "+
+//					positions[1][0]+", "+positions[2][0] +", out of range");
+//			chartinfo.setPosition( TextTitle.DEFAULT_POSITION ); // position the title below X axis
+//			chartinfo.setHorizontalAlignment( TextTitle.DEFAULT_HORIZONTAL_ALIGNMENT ); // set the horizontal alignment
+//			xylineChart.addSubtitle( chartinfo ); // Here chart is the instance of JFreeChart
+//
+//		}
+
 		add(chartPanel);
-		//add(outputNumbers);
+
 	}
 
 	private XYDataset createDataset(double[] radiants, int[] grayValues) {
@@ -144,11 +163,16 @@ public class PhaseChart extends JPanel{
 	 * calculates the phaseshifts values starting from the first gray value manually selected
 	 * @param dataPoints radiants
 	 * @param initialX initial X selected manually
-	 * @return an array of the x,y values corresponding to the desired 4 phase sifts.
+	 * @return an array of the x,y values corresponding to the desired 4 phase shifts.
 	 */
 	private double[][] getPhaseShift(double[] dataPoints, int initialX) {
 
 		double initialY = dataPoints[initialX];
+		double[] dataPointsPlusOne = new double[dataPoints.length + 1];
+		for (int i = 0; i < dataPoints.length; i++) {
+			dataPointsPlusOne[i] = dataPoints[i];
+		}
+		dataPointsPlusOne[dataPoints.length] = findMax(dataPoints) + 1;
 		double[] wantedPhaseShifts = {0, pi/2, pi, 3*pi/2};
 		int l = wantedPhaseShifts.length;
 
@@ -157,11 +181,15 @@ public class PhaseChart extends JPanel{
 			phaseShifts[i] = initialY + wantedPhaseShifts[i];
 		}
 
-
 		double[][] grayValues = new double[wantedPhaseShifts.length][wantedPhaseShifts.length];
 		for(int i=0; i < l;  i++) {
-			grayValues[i][1] = findClosest(phaseShifts[i], dataPoints);
+			grayValues[i][1] = findClosest(phaseShifts[i], dataPointsPlusOne);
+			if (grayValues[i][1] == dataPointsPlusOne[dataPointsPlusOne.length -1]) {
+				grayValues[i][0] = 1000;
+			}
+			else {
 			grayValues[i][0] = findIndex(grayValues[i][1], dataPoints);
+			}
 		}
 		return grayValues;
 
@@ -171,6 +199,11 @@ public class PhaseChart extends JPanel{
 		double[] dummyArray = doubleArray.clone();
 		Arrays.sort(dummyArray);
 		return dummyArray[0];
+	}
+	private double findMax(double[] doubleArray) {
+		double[] dummyArray = doubleArray.clone();
+		Arrays.sort(dummyArray);
+		return dummyArray[doubleArray.length-1];
 	}
 
 	private int findIndex(double inputPoint, double[] inputArray) {

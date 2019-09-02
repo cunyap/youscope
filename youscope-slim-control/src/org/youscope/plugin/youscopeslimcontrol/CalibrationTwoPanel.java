@@ -51,8 +51,12 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 
 	SLIMController slimCTRL = null;
 	JButton startCalibrationTwo;
-	CameraDevice cam;
-
+	LCPMCal calibrationResults;
+	JPanel graphAndOutput;
+	YouScopeClient clt;
+	YouScopeServer srv;
+	CameraDevice cam; 
+	Device reflector;
 
 	/**
 	 * Constructor.
@@ -71,18 +75,21 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		//	add(graphAndOutput);
 	}
 	public CalibrationTwoPanel(SLIMController slimController, CameraDevice camera, YouScopeClient client, 
-			YouScopeServer sever, Device LCPM) {
+			YouScopeServer server, Device LCPM) {
 		slimCTRL = slimController;
-		
+		clt = client;
 		cam = camera;
+		srv = server;
+		reflector = LCPM;
 		//String img = camera.makeImage(channelGroupID, channelID, exposure);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
 		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
-		JPanel graphAndOutput = createGraphAndOutputPanel(client, sever, camera, LCPM);
+		JPanel graphAndOutput = createGraphAndOutputPanel(camera, client, server, LCPM);
 		add(infoAndButtonPanel);
 		add(Box.createHorizontalGlue());
 		add(graphAndOutput);
+		
 
 
 
@@ -126,32 +133,18 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 * confirm button.
 	 * @return graphAndOutput a panel with the graph, the numerical parameter and the button
 	 */
-	private JPanel createGraphAndOutputPanel(YouScopeClient client, YouScopeServer server, 
-			CameraDevice camera, Device reflector) {
-		JPanel graphAndOutput = new JPanel();
-		graphAndOutput.setLayout(new BoxLayout(graphAndOutput, BoxLayout.PAGE_AXIS));
-		JPanel placeHolder = new JPanel();
+	private JPanel createGraphAndOutputPanel(CameraDevice camera, YouScopeClient client, 
+			YouScopeServer server, Device LCPM) {
+		graphAndOutput = new JPanel();
+		graphAndOutput.setPreferredSize(new Dimension(400,300));
 
-		LCPMCal calibrationResults = new LCPMCal(client, server, camera, reflector);
-		calibrationResults.setPreferredSize(new Dimension(400,300));
-		JTextArea outputNumbers = new JTextArea("Output number: ");	
-		Font font = new Font("Courier New",Font.BOLD, 15);
-		outputNumbers.setFont(font);
-		outputNumbers.setForeground(Color.black);		
+////		outputNumbers.append("NN, NN, NN, NN");
+////		outputNumbers.setOpaque(false);
+////		outputNumbers.setEditable(false);
+////		outputNumbers.setEnabled(false);
+//
+//		graphAndOutput.add(calibrationResults);
 
-		
-		
-//		outputNumbers.append("NN, NN, NN, NN");
-//		outputNumbers.setOpaque(false);
-//		outputNumbers.setEditable(false);
-//		outputNumbers.setEnabled(false);
-
-		graphAndOutput.add(calibrationResults);
-
-		calibrationResults.setAlignmentX(RIGHT_ALIGNMENT);
-		graphAndOutput.add(Box.createGlue());
-		graphAndOutput.add(outputNumbers);
-		outputNumbers.setAlignmentX(RIGHT_ALIGNMENT);
 
 		return graphAndOutput;
 	}
@@ -162,11 +155,18 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == startCalibrationTwo) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS_POS);
-			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
-			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", 
-					JOptionPane.ERROR_MESSAGE);
+//			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO_POS);
+//			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS_POS);
+//			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
+//			
+//			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", 
+//					JOptionPane.ERROR_MESSAGE);
+			calibrationResults = new LCPMCal(clt, srv, cam, reflector);
+			calibrationResults.setPreferredSize(new Dimension(400,300));
+			graphAndOutput.add(calibrationResults);
+			graphAndOutput.setVisible(true);
+			revalidate();
+			
 		}
 	}
 

@@ -19,8 +19,6 @@ public class PhaseUnwrapping {
 
 	public double[] unwrap(double[] p) {
 		
-
-		
 		//length = p.length;
 		up = p.clone();
 		for (int i = 0; i < length; i++ ) {		
