@@ -98,7 +98,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		JPanel rightPanel = new JPanel();
 		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 		rightPanel.add(new CalibrationOnePanel(slimController));
-		rightPanel.add(new CalibrationTwoPanel(slimController, cam, getClient(), getServer(), LCPM));
+		rightPanel.add(new CalibrationTwoPanel(slimController, getClient(), getServer(), LCPM));
 		rightPanel.add(new AttenuationFactorPanel(slimController));
 
 		// Adding all the elements to the content panel.

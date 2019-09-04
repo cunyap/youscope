@@ -1,20 +1,13 @@
 package org.youscope.plugin.youscopeslimcontrol;
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
-import java.io.File;
-import java.io.IOException;
 import java.rmi.RemoteException;
 import java.util.Arrays;
 import java.util.stream.IntStream;
-
-import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
-
 import org.youscope.common.configuration.ChannelConfiguration;
 import org.youscope.common.image.ImageEvent;
 import org.youscope.common.microscope.CameraDevice;
@@ -37,14 +30,17 @@ import java.lang.Math;
 public class LCPMCal extends JPanel {
 
 	ChannelConfiguration configuration = new ChannelConfiguration("ChannelsTry", "yabba");
-	String channelName = configuration.getChannel();
-	String channelGroup = configuration.getChannelGroup();
+	String channelName;
+	String channelGroup;
 	ImageEvent<?> image;
 	JLabel imm = new JLabel("plp");
 	ImageIcon img = null;
+	public PhaseChart panel;
 
-	public LCPMCal(YouScopeClient client, YouScopeServer server, CameraDevice camera, Device LCPM) {
-
+	public LCPMCal(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, String channelGroup,
+			Device LCPM) {
+		this.channelName = channelName;
+		this.channelGroup = channelGroup;
 		double[] averageIntensityArray = new double[256];
 		double[] normalizedIntensityArray = new double[256];
 		BufferedImage croppedImage = null;
@@ -60,39 +56,32 @@ public class LCPMCal extends JPanel {
 		for (int index = 0; index < 256; index++) {
 			double intensity = averageIntensityArray[index];
 			normalizedIntensityArray[index] = (intensity - minIntensity)/(maxIntensity-minIntensity);
-			
 		}
 		for (int index = 0; index < 256; index++) {
 			normalizedIntensityArray[index] = 2*(normalizedIntensityArray[index]-0.5);
 		}
 		double[] realIntensityValues = normalizedIntensityArray.clone();
 		HilbertTransform.FHT((normalizedIntensityArray), FourierTransform.Direction.Forward);
-		
-		
+
 		double[] angles = new double[256];
 		for (int y = 0; y < 256; y++) {
 			angles[y] = Math.atan2(normalizedIntensityArray[y],realIntensityValues[y]); 
 		}
 		double[] unwrapped = new PhaseUnwrapping().unwrap(angles);
 		int[] range = IntStream.rangeClosed(0, 255).toArray();
-		
-		add(new PhaseChart(range, unwrapped));
+
+		panel = new PhaseChart(range, unwrapped, client);
+		add(panel);
 
 
 	}
 
 	private BufferedImage getImage(YouScopeClient client, YouScopeServer server, CameraDevice camera) {
 		try {
-			//image = camera.makeImage(channelGroup, channelName, 50);
 			image = server.getMicroscope().getCameraDevice("ImageCamera").makeImage(channelGroup, channelName, 50);
 		} 
 		catch (Exception e) {
 			client.sendError("Could not snap image.", e);
-			JOptionPane.showMessageDialog(null, "Listen, I honestly don't know what the fuck is going on. \n" 
-					+ "I think there's a problem with snapping the image, "
-					+ "but what do I know? I'm just a poor master student surviving on coffee "
-					+ "and existential crisis'", "Life Error",
-					JOptionPane.ERROR_MESSAGE);
 			image = null;
 		}
 		BufferedImage savedImage = null;
@@ -102,11 +91,6 @@ public class LCPMCal extends JPanel {
 		catch (ImageConvertException e1) {
 			client.sendError("Could not parse image.", e1);
 		}
-		if (savedImage == null) {
-			JOptionPane.showMessageDialog(null, "Errr... something with getImage", "\\_('.')_/- Error",
-					JOptionPane.ERROR_MESSAGE);
-		
-	}
 		return savedImage;
 	}
 
@@ -117,10 +101,6 @@ public class LCPMCal extends JPanel {
 		int cropWidth = rawImage.getWidth()*3/4;
 		int cropHeight = rawImage.getHeight()*3/4;
 		croppedImage = rawImage.getSubimage(upperLeftX, upperLeftY, cropWidth, cropHeight);
-		if (croppedImage == null) {
-			JOptionPane.showMessageDialog(null, "Errr... something with cropImage(?)", "\\_('.')_/- Error",
-					JOptionPane.ERROR_MESSAGE);
-		}
 		return croppedImage;
 	}
 
@@ -138,10 +118,6 @@ public class LCPMCal extends JPanel {
 			}
 		}
 		averageIntensity = sumIntensity / (processedImage.getWidth() * processedImage.getHeight());
-		if (sumIntensity == 0) {
-			JOptionPane.showMessageDialog(null, "Errr... something with the AverageIntensity(?)", "\\_('.')_/- Error",
-					JOptionPane.ERROR_MESSAGE);
-		}
 
 		return averageIntensity;
 	}
@@ -151,22 +127,21 @@ public class LCPMCal extends JPanel {
 		try {
 
 			LCPM.getProperty("phaseShiftBackground").setValue(pixelValue);
-
-		} catch (RemoteException | MicroscopeException | MicroscopeLockedException | InterruptedException
+		} 
+		catch (RemoteException | MicroscopeException | MicroscopeLockedException | InterruptedException
 				| DeviceException e) {
-
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(null, "Could not set the Device to " + pixelValue, "Error",
 					JOptionPane.ERROR_MESSAGE);
 		}
 	}
-	
+
 	private double findMin(double[] doubleArray) {
 		double[] dummyArray = doubleArray.clone();
 		Arrays.sort(dummyArray);
 		return dummyArray[0];
 	}
-	
+
 	private double findMax(double[] doubleArray) {
 		double[] dummyArray = doubleArray.clone();
 		Arrays.sort(dummyArray);

@@ -1,40 +1,27 @@
 package org.youscope.plugin.youscopeslimcontrol;
-import javax.swing.BoxLayout;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
-
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartMouseEvent;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.annotations.XYAnnotation;
-import org.jfree.chart.annotations.XYDataImageAnnotation;
-import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.entity.ChartEntity;
-import org.jfree.chart.entity.XYItemEntity;
-import org.jfree.chart.renderer.xy.XYItemRenderer;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.chart.title.TextTitle;
 import org.jfree.chart.plot.Crosshair;
-import org.jfree.chart.plot.DefaultDrawingSupplier;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ChartMouseListener;
-import org.jfree.chart.event.RendererChangeEvent;
 import org.jfree.chart.labels.CrosshairLabelGenerator;
-import org.jfree.chart.labels.StandardXYToolTipGenerator;
 import org.jfree.chart.panel.CrosshairOverlay;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.ui.RectangleEdge;
-import org.jfree.util.PublicCloneable;
+import org.youscope.clientinterfaces.YouScopeClient;
+import org.youscope.plugin.slimjob.SlimProperties;
 
 import java.awt.BasicStroke;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.util.Arrays;
 /**
@@ -42,16 +29,16 @@ import java.util.Arrays;
  * Moreover it represents the commands needed to manually select the starting phaseshift and compute the four gray
  * values needed to conclude the LCPM Calibration.
  * 
- * ***************************************************
- * For some reason is not taking the clicked X value as the starting point to compute the phase shifts.
- * Gotta re-check the computation in particular compared to the ones already detailed by andreas on jupyter.
- * ***************************************************
  * @author Elisa Garulli
  *
  */
 
 public class PhaseChart extends JPanel{
-	
+	YouScopeClient client;
+	private final static String PHASESHIFT0_PROPERTY = "YouScope.SLIMControl.phaseShift0";
+	private final static String PHASESHIFT1_PROPERTY = "YouScope.SLIMControl.phaseShift1";
+	private final static String PHASESHIFT2_PROPERTY = "YouScope.SLIMControl.phaseShift2";
+	private final static String PHASESHIFT3_PROPERTY = "YouScope.SLIMControl.phaseShift3";
 	double[][] positions;
 	double pi = Math.PI;
 	/**
@@ -59,14 +46,17 @@ public class PhaseChart extends JPanel{
 	 * @param x grey values 0-255
 	 * @param y radiants corresponding to the grey values
 	 */
-	public PhaseChart(int[] x, double[] y) {
-		//setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+	public PhaseChart(int[] x, double[] y, YouScopeClient clt) {
+		client = clt;
+		setLayout(new BorderLayout());
 		JFreeChart xylineChart = ChartFactory.createXYLineChart("LCPM Phase", "LCPM grayscale value",
 				"Phase shift (rad)", createDataset(y,x), PlotOrientation.VERTICAL, false, true, false);
 
 		ChartPanel chartPanel = new ChartPanel(xylineChart);
 		chartPanel.setPreferredSize(new Dimension(400,300));
-		xylineChart.setBackgroundPaint(Color.gray);
+		chartPanel.setOpaque(false);
+		Color trans = new Color(0xFF, 0xFF, 0xFF, 0);
+		xylineChart.setBackgroundPaint(trans);
 		final XYPlot plot = xylineChart.getXYPlot();
 		final CrosshairOverlay crosshairOverlay = new CrosshairOverlay();
 		final Crosshair yCrosshair = new Crosshair(Double.NaN, Color.RED, new BasicStroke(2f));
@@ -93,8 +83,8 @@ public class PhaseChart extends JPanel{
 		crosshairOverlay.addDomainCrosshair(line2);
 		crosshairOverlay.addDomainCrosshair(line3);
 		crosshairOverlay.addDomainCrosshair(line4);
-
 		chartPanel.addOverlay(crosshairOverlay);
+		
 		chartPanel.addChartMouseListener(new ChartMouseListener() {
 			@Override
 			public void chartMouseMoved(final ChartMouseEvent event) {
@@ -103,7 +93,7 @@ public class PhaseChart extends JPanel{
 						RectangleEdge.BOTTOM));
 				yCrosshair.setValue(posX);
 			}
-
+			JTextArea outputNumbers = new JTextArea();
 			@Override
 			public void chartMouseClicked(final ChartMouseEvent event) {
 				final Rectangle2D dataArea = chartPanel.getScreenDataArea();
@@ -114,38 +104,33 @@ public class PhaseChart extends JPanel{
 				line2.setValue(positions[1][0]);
 				line3.setValue(positions[2][0]);
 				line4.setValue(positions[3][0]);
-				if (positions[3][0] <= 255) {
-				JOptionPane.showMessageDialog(null, "Phase Shifts " + positions[0][0] +", "+
-				positions[1][0]+", "+positions[2][0] +", " + positions[3][0], "Result", JOptionPane.INFORMATION_MESSAGE);
-			}
-				else {
-				JOptionPane.showMessageDialog(null, "Phase Shifts " + positions[0][0] +", "+
-						positions[1][0]+", "+positions[2][0] +", Out of range", "Result", JOptionPane.INFORMATION_MESSAGE);
+
+				String[] positionString = new String[positions.length];
+
+				for (int i=0 ; i < positions.length; i++) {
+					if (positions[i][0] > 255) {
+						positionString[i] = "--";
+					}
+					else {
+						positionString[i] = Double.toString(positions[i][0]);
+					}
 				}
+				
+				setPhaseShiftProperty(positionString);
+				
+				outputNumbers.setText("Phase Shifts " + positionString[0] +", "+
+						positionString[1]+", "+positionString[2] +", " + positionString[3]);
+
+				outputNumbers.setEditable(false);
+				outputNumbers.setEnabled(false);
+				outputNumbers.setOpaque(false);
+				repaint();
+				add(outputNumbers, BorderLayout.SOUTH);
+				revalidate();
 			}
 		});
-		
 
-//		if (positions[3][0] <= 255) {
-//			TextTitle chartinfo = new TextTitle("Output gray values:  " + positions[0][0] +", "+
-//					positions[1][0]+", "+positions[2][0] +", " + positions[3][0]);
-//			chartinfo.setPosition( TextTitle.DEFAULT_POSITION ); // position the title below X axis
-//			chartinfo.setHorizontalAlignment( TextTitle.DEFAULT_HORIZONTAL_ALIGNMENT ); // set the horizontal alignment
-//			xylineChart.addSubtitle( chartinfo ); // Here chart is the instance of JFreeChart
-//			
-//
-//		}
-//		else {
-//			
-//			TextTitle chartinfo = new TextTitle("Phase Shifts " + positions[0][0] +", "+
-//					positions[1][0]+", "+positions[2][0] +", out of range");
-//			chartinfo.setPosition( TextTitle.DEFAULT_POSITION ); // position the title below X axis
-//			chartinfo.setHorizontalAlignment( TextTitle.DEFAULT_HORIZONTAL_ALIGNMENT ); // set the horizontal alignment
-//			xylineChart.addSubtitle( chartinfo ); // Here chart is the instance of JFreeChart
-//
-//		}
-
-		add(chartPanel);
+		add(chartPanel, BorderLayout.NORTH);
 
 	}
 
@@ -188,18 +173,13 @@ public class PhaseChart extends JPanel{
 				grayValues[i][0] = 1000;
 			}
 			else {
-			grayValues[i][0] = findIndex(grayValues[i][1], dataPoints);
+				grayValues[i][0] = findIndex(grayValues[i][1], dataPoints);
 			}
 		}
 		return grayValues;
 
 	}
 
-	private double findMin(double[] doubleArray) {
-		double[] dummyArray = doubleArray.clone();
-		Arrays.sort(dummyArray);
-		return dummyArray[0];
-	}
 	private double findMax(double[] doubleArray) {
 		double[] dummyArray = doubleArray.clone();
 		Arrays.sort(dummyArray);
@@ -233,6 +213,14 @@ public class PhaseChart extends JPanel{
 			}
 		}
 		return closest;
+	}
+
+	public void setPhaseShiftProperty(String[] positions)
+	{
+		client.getPropertyProvider().setProperty(PHASESHIFT0_PROPERTY, positions[0]);
+		client.getPropertyProvider().setProperty(PHASESHIFT1_PROPERTY, positions[1]);
+		client.getPropertyProvider().setProperty(PHASESHIFT2_PROPERTY, positions[2]);
+		client.getPropertyProvider().setProperty(PHASESHIFT3_PROPERTY, positions[3]);
 	}
 
 }
