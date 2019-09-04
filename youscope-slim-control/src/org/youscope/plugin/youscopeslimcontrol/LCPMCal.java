@@ -23,7 +23,10 @@ import org.youscope.plugin.youscopeslimcontrol.HilbertTransform;
 import java.lang.Math;
 
 /**
- * This class represents the tools needed to perform LCPM calibration.
+ * This class represents the tools needed to prepare the gray values and unwrapepd intensity values. 
+ * The process sets the LCPM reflector to a range (0-255) of values and takes an image of it. 
+ * Then the average intensity is calculated from the central region of the image. 
+ * Finally the values tranformed using a Hilbert transform and stored.
  * @author Elisa Garulli
  *
  */
@@ -33,10 +36,17 @@ public class LCPMCal extends JPanel {
 	String channelName;
 	String channelGroup;
 	ImageEvent<?> image;
-	JLabel imm = new JLabel("plp");
-	ImageIcon img = null;
-	public PhaseChart panel;
+	private double[] unwrapped;
 
+	/**
+	 * Constructor. Calls the needed functions to compute the average intensity of each image and unwrap the values.
+	 * @param client
+	 * @param server
+	 * @param camera the camera to use to snap images of the reflector
+	 * @param channelName filter channel Name
+	 * @param channelGroup filter channel group
+	 * @param LCPM the used reflector
+	 */
 	public LCPMCal(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, String channelGroup,
 			Device LCPM) {
 		this.channelName = channelName;
@@ -67,15 +77,18 @@ public class LCPMCal extends JPanel {
 		for (int y = 0; y < 256; y++) {
 			angles[y] = Math.atan2(normalizedIntensityArray[y],realIntensityValues[y]); 
 		}
-		double[] unwrapped = new PhaseUnwrapping().unwrap(angles);
-		int[] range = IntStream.rangeClosed(0, 255).toArray();
-
-		panel = new PhaseChart(range, unwrapped, client);
-		add(panel);
-
-
+		unwrapped = new PhaseUnwrapping().unwrap(angles);
+		
+		returnRadians();
 	}
 
+	/**
+	 * Snaps an image.
+	 * @param client
+	 * @param server
+	 * @param camera
+	 * @return the image.
+	 */
 	private BufferedImage getImage(YouScopeClient client, YouScopeServer server, CameraDevice camera) {
 		try {
 			image = server.getMicroscope().getCameraDevice("ImageCamera").makeImage(channelGroup, channelName, 50);
@@ -93,7 +106,12 @@ public class LCPMCal extends JPanel {
 		}
 		return savedImage;
 	}
-
+	
+	/** 
+	 * Saves a cropped region of an image.
+	 * @param rawImage
+	 * @return the cropped Image.
+	 */
 	private BufferedImage cropImage(BufferedImage rawImage) {
 		BufferedImage croppedImage = null;
 		int upperLeftX = rawImage.getWidth()/4;
@@ -104,8 +122,11 @@ public class LCPMCal extends JPanel {
 		return croppedImage;
 	}
 
-
-
+	/** 
+	 * Computes the average intensity of a given grayscale image.
+	 * @param processedImage
+	 * @return the average intensity of the input image
+	 */
 	private int getAverageIntensity(BufferedImage processedImage) {		
 
 		int averageIntensity = 0;
@@ -122,6 +143,11 @@ public class LCPMCal extends JPanel {
 		return averageIntensity;
 	}
 
+	/**
+	 * Sets the LCPM reflector to a given gray value (0-255)
+	 * @param greyShade
+	 * @param LCPM
+	 */
 	private void setLCPMImage(int greyShade, Device LCPM) {
 		String pixelValue = Integer.toString(greyShade);
 		try {
@@ -136,17 +162,33 @@ public class LCPMCal extends JPanel {
 		}
 	}
 
+	/**
+	 * Finds the element with minimum value in a double array.
+	 * @param doubleArray
+	 * @return the minimum value.
+	 */
 	private double findMin(double[] doubleArray) {
 		double[] dummyArray = doubleArray.clone();
 		Arrays.sort(dummyArray);
 		return dummyArray[0];
 	}
 
+	/**
+	 * Finds the element with maximum value in a double array.
+	 * @param doubleArray
+	 * @return the maximum value.
+	 */
 	private double findMax(double[] doubleArray) {
 		double[] dummyArray = doubleArray.clone();
 		Arrays.sort(dummyArray);
 		return dummyArray[dummyArray.length - 1];
 	}
-
+	
+	/**
+	 * Returns the computed radians
+	 */
+	public double[] returnRadians(){
+		return unwrapped;
+	}
 
 }

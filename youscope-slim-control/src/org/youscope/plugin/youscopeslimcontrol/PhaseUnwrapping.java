@@ -9,26 +9,29 @@ import java.lang.Math;
 public class PhaseUnwrapping {
 	int length = 255;
 	double pi = Math.PI;
-	double[] dd = new double[length];
+	double[] deltasArray = new double[length];
 	double[] ddmod = new double[length];
 	boolean[] mask1 = new boolean[length]; 
-	double[] ph_correct = new double[length];
+	double[] phase_correct = new double[length];
 	boolean[] mask2 = new boolean[length];
-	double[] up = new double[length];
-	
+	double[] clonedArray = new double[length];
 
-	public double[] unwrap(double[] p) {
-		
-		//length = p.length;
-		up = p.clone();
+	/** 
+	 * Calls the functions to unwrap the data.
+	 * @param inputArray
+	 * @return
+	 */
+	public double[] unwrap(double[] inputArray) {
+
+		clonedArray = inputArray.clone();
 		for (int i = 0; i < length; i++ ) {		
-			dd[i] = p[i+1] - p[i];
+			deltasArray[i] = inputArray[i+1] - inputArray[i];
 		}
 		for (int i = 0; i < length; i++ ) {
-			ddmod[i] = (floatMod((dd[i] + pi), (2*pi))) - pi ;
+			ddmod[i] = (floatMod((deltasArray[i] + pi), (2*pi))) - pi ;
 		}
 		for (int i = 0; i < length; i++ ) {
-			mask1[i] = (ddmod[i] == -pi) && (dd[i] > 0) ;
+			mask1[i] = (ddmod[i] == -pi) && (deltasArray[i] > 0) ;
 		}
 		for (int i = 0; i < length; i++ ) {
 			if (mask1[i]) {
@@ -36,20 +39,20 @@ public class PhaseUnwrapping {
 			}
 		}
 		for (int i = 0; i < length; i++ ) {
-			ph_correct[i] = ddmod[i] - dd[i];
+			phase_correct[i] = ddmod[i] - deltasArray[i];
 		}
 		for (int i = 0; i < length; i++ ) {
-			mask2[i] = Math.abs(dd[i]) < pi ;
+			mask2[i] = Math.abs(deltasArray[i]) < pi ;
 		}
 		for (int i = 0; i < length; i++ ) {
 			if (mask2[i]) {
-				ph_correct[i] = 0;
+				phase_correct[i] = 0;
 			}
 		}
 		for (int i = 0; i < length; i++ ) {
-			up[i+1] = p[i+1] + makeCumulativeSum(ph_correct)[i];
+			clonedArray[i+1] = inputArray[i+1] + makeCumulativeSum(phase_correct)[i];
 		}
-		return up;	
+		return clonedArray;	
 	}
 
 	/**
@@ -66,6 +69,7 @@ public class PhaseUnwrapping {
 		}
 		return output;
 	}
+
 	/**
 	 * Workaround to have the corresponding of the % operator for double, even if negatives.
 	 * @param x
@@ -75,6 +79,6 @@ public class PhaseUnwrapping {
 	double floatMod(double x, double y){
 		return (x - Math.floor(x/y) * y);
 	}
-	
-	
+
+
 }
