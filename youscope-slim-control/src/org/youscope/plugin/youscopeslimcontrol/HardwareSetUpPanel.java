@@ -72,26 +72,26 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == slimModeButton) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 		if(e.getSource() == fluoModeButton) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 		if(e.getSource() == calOneModeButton) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 		if(e.getSource() == calTwoModeButton) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}

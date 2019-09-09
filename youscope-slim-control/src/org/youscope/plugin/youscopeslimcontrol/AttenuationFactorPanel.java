@@ -109,7 +109,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		graphAndOutput.add(Box.createGlue());
 		graphAndOutput.add(confirmButton);
 		confirmButton.setAlignmentX(RIGHT_ALIGNMENT);
-		
 		return graphAndOutput;
 		
 	}
@@ -120,8 +119,8 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == startProcessButton) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}

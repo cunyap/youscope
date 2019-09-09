@@ -110,7 +110,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == startCalibrationTwoButton) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS_POS);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", 
 											JOptionPane.ERROR_MESSAGE);
