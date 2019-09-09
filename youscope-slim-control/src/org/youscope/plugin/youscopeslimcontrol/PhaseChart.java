@@ -19,10 +19,7 @@ import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.common.microscope.CameraDevice;
 import org.youscope.common.microscope.Device;
 import org.youscope.plugin.slimjob.SlimJobConfiguration;
-import org.youscope.plugin.slimjob.SlimProperties;
 import org.youscope.serverinterfaces.YouScopeServer;
-import org.youscope.uielements.DoubleTextField;
-
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -31,7 +28,7 @@ import java.awt.geom.Rectangle2D;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 /**
- * This class represents the graph given as output after the computation of the radiants from the images intensity.
+ * This class represents the graph given as output after the computation of the radians from the images intensity.
  * Moreover it represents the commands needed to manually select the starting phaseshift and, once the input is given 
  * from the user, it compute the four gray values needed to conclude the LCPM Calibration. Finally it saves the values
  * in the property file.
@@ -53,17 +50,18 @@ public class PhaseChart extends JPanel{
 	private final static String PHASESHIFT2_PROPERTY = "YouScope.SLIMControl.phaseShift2";
 	private final static String PHASESHIFT3_PROPERTY = "YouScope.SLIMControl.phaseShift3";
 	double[][] positions;
+	double[] y;
 	double pi = Math.PI;
+
 	
 	/**
 	 * Constructor. Sets the crosshairs and the graphs. Moreover adds the listener for the mouse movement and click.
 	 * Calls the calibration process to generate the dataset.
 	 * @param x grey values 0-255
-	 * @param y radiants corresponding to the grey values
+	 * @param y radians corresponding to the grey values
 	 */
 	public PhaseChart(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, 
 			String channelGroup, Device LCPM) {
-		new DataCalibrationLCPM(9,9.0,positions);
 		this.client = client;
 		this.server = server;
 		this.camera = camera;
@@ -71,7 +69,7 @@ public class PhaseChart extends JPanel{
 		this.LCPM = LCPM;
 		LCPMCal calibration = new LCPMCal(client, server, camera, channelName, channelGroup, LCPM);
 		int[] x = IntStream.rangeClosed(0, 255).toArray();
-		double[] y = calibration.returnRadians();
+		y = calibration.returnRadians();
 		setLayout(new BorderLayout());
 		JFreeChart xylineChart = ChartFactory.createXYLineChart("LCPM Phase", "LCPM grayscale value",
 				"Phase shift (rad)", createDataset(y,x), PlotOrientation.VERTICAL, false, true, false);
@@ -159,14 +157,14 @@ public class PhaseChart extends JPanel{
 	
 	/**
 	 * Generates a dataset compatible with a JFreeChart.
-	 * @param radiants i.e. the unwrapped intensity values.
+	 * @param radians i.e. the unwrapped intensity values.
 	 * @param grayValues 0-255.
 	 * @return the dataset.
 	 */
-	private XYDataset createDataset(double[] radiants, int[] grayValues) {
+	private XYDataset createDataset(double[] radians, int[] grayValues) {
 		final XYSeries LCPMPhaseSeries = new XYSeries("LCPMPhase");
-		for (int i=0; i<radiants.length; i++) {
-			LCPMPhaseSeries.add(grayValues[i], radiants[i]);
+		for (int i=0; i<radians.length; i++) {
+			LCPMPhaseSeries.add(grayValues[i], radians[i]);
 		}
 		final XYSeriesCollection dataset = new XYSeriesCollection();
 		dataset.addSeries(LCPMPhaseSeries);
@@ -174,8 +172,8 @@ public class PhaseChart extends JPanel{
 	}
 
 	/**
-	 * calculates the phase shifts values starting from the first gray value manually selected
-	 * @param dataPoints radiants i.e. the unwrapped intensity values.
+	 * Calculates the phase shifts values starting from the first gray value manually selected
+	 * @param dataPoints radians i.e. the unwrapped intensity values.
 	 * @param initialX initial x selected manually
 	 * @return an array of the x, y values corresponding to the desired 4 phase shifts.
 	 */
@@ -267,4 +265,11 @@ public class PhaseChart extends JPanel{
 		client.getPropertyProvider().setProperty(PHASESHIFT3_PROPERTY, positions[3]);
 	}
 
+	/**
+	 * Returns the radians
+	 * @return radians values
+	 */
+	public double[] returnCalibrationData(){
+		return y;
+	}
 }

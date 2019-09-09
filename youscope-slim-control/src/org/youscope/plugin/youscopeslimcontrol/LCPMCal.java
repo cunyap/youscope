@@ -123,7 +123,7 @@ public class LCPMCal extends JPanel {
 	}
 
 	/** 
-	 * Computes the average intensity of a given grayscale image.
+	 * Computes the average intensity of a given gray-scale image.
 	 * @param processedImage
 	 * @return the average intensity of the input image
 	 */
