@@ -71,7 +71,7 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	private int phaseShiftOutside = 0;
 	
 	@XStreamAlias("phase-shifts-mask")
-	private final int[] phaseShiftsMask = {0,64,128,192};
+	private static int[] phaseShiftsMask = {0,64,128,192};
 	
 	@XStreamAlias("slim-delay-ms")
 	private int slimDelayMS = 60;
@@ -85,6 +85,7 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	@XStreamAlias("num-slim-images")
 	private int numSLIMImages = 1;
 	
+
 	/**
 	 * Returns the attenuation factor with which the SLIM image is calculated.
 	 * @return Attenuation factor.
@@ -99,6 +100,14 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	 */
 	public void setAttenuationFactor(double attenuationFactor) {
 		this.attenuationFactor = attenuationFactor;
+	}
+	
+	/**
+	 * Sets the phase shifts with which the SLIM image is calculated.
+	 * @param phase shifts.
+	 */
+	public void phaseShiftsMask(int[] phaseShiftMask) {
+		this.phaseShiftsMask = phaseShiftMask;
 	}
 	/**
 	 * The channel where the images should be made. Set to an empty string if
@@ -361,7 +370,7 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	 * @param phaseShift the phase shift. Must be >=0 and < 256.
 	 * @param maskID the phase shift. Must be >=0 and < 4.
 	 */
-	public void setPhaseShiftMask(int maskID, int phaseShift)
+	public static void setPhaseShiftMask(int maskID, int phaseShift)
 	{
 		if(maskID < 0 || maskID >= NUM_PHASE_SHIFT_MASK)
 			throw new IndexOutOfBoundsException("The pattern ID must be >= 0 and < " + Integer.toString(phaseShiftsMask.length) +".");

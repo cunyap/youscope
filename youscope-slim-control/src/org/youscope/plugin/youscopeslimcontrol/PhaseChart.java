@@ -18,8 +18,10 @@ import org.jfree.ui.RectangleEdge;
 import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.common.microscope.CameraDevice;
 import org.youscope.common.microscope.Device;
+import org.youscope.plugin.slimjob.SlimJobConfiguration;
 import org.youscope.plugin.slimjob.SlimProperties;
 import org.youscope.serverinterfaces.YouScopeServer;
+import org.youscope.uielements.DoubleTextField;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -61,7 +63,7 @@ public class PhaseChart extends JPanel{
 	 */
 	public PhaseChart(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, 
 			String channelGroup, Device LCPM) {
-		
+		new DataCalibrationLCPM(9,9.0,positions);
 		this.client = client;
 		this.server = server;
 		this.camera = camera;
@@ -143,6 +145,11 @@ public class PhaseChart extends JPanel{
 				add(outputNumbers, BorderLayout.SOUTH);
 				revalidate();
 				setPhaseShiftProperty(positionString);
+
+				SlimJobConfiguration.setPhaseShiftMask(0, (int)Math.round(positions[0][0]));
+				SlimJobConfiguration.setPhaseShiftMask(1,(int)Math.round(positions[1][0]));
+				SlimJobConfiguration.setPhaseShiftMask(2,(int)Math.round(positions[2][0]));
+				SlimJobConfiguration.setPhaseShiftMask(3,(int)Math.round(positions[3][0]));
 			}
 		});
 

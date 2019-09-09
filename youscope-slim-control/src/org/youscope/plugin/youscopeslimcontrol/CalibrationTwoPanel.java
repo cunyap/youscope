@@ -2,12 +2,17 @@ package org.youscope.plugin.youscopeslimcontrol;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.rmi.RemoteException;
 import java.awt.event.ActionEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -17,12 +22,14 @@ import javax.swing.border.TitledBorder;
 import org.youscope.common.microscope.Device;
 import org.youscope.common.microscope.DeviceException;
 import org.youscope.common.microscope.Microscope;
+import org.youscope.common.util.ImageConvertException;
+import org.youscope.common.util.ImageTools;
+import org.youscope.common.image.ImageEvent;
 import org.youscope.common.microscope.CameraDevice;
 import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.CameraField;
 import org.youscope.uielements.ChannelField;
 import org.youscope.uielements.DoubleTextField;
-import org.youscope.uielements.DynamicPanel;
 import org.youscope.clientinterfaces.StandardProperty;
 import org.youscope.clientinterfaces.YouScopeClient;
 /**
@@ -32,8 +39,9 @@ import org.youscope.clientinterfaces.YouScopeClient;
  */
 public class CalibrationTwoPanel extends JPanel implements ActionListener{
 
-	SLIMController slimCTRL = null;
+	SLIMController slimController = null;
 	JButton startCalibrationTwo;
+	JButton snapTestImage;
 	PhaseChart calibrationResults;
 	JPanel graphAndOutput;
 	YouScopeClient client;
@@ -41,10 +49,15 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	CameraField cameraField;
 	ChannelField channelField;
 	CameraDevice camera; 
+	DoubleTextField exposureField;
 	Device reflector;
 	String channel;
 	String channelGroup;
-	JPanel infoAndButtonPanel;
+	Font fontTitle = new Font(null, 1, 12);
+	Font fontText = new Font(null, 0, 12);
+	ImageEvent<?> testImage = null;
+	JLabel testImageLabel;
+	JLabel labelExposure;
 
 	/**
 	 * Constructor.
@@ -53,15 +66,17 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 */
 	public CalibrationTwoPanel(SLIMController slimController, YouScopeClient client, 
 			YouScopeServer server, Device LCPM) {
-		slimCTRL = slimController;
+		this.slimController = slimController;
 		this.client = client;
 		this.server = server;
 		reflector = LCPM;
+		exposureField = new DoubleTextField();
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
-		infoAndButtonPanel = createInfoAndButtonPanel();
-		graphAndOutput = createGraphAndOutputPanel();
+		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
+		graphAndOutput = setGraphAndOutputPanel();
 		add(infoAndButtonPanel);
+		add(Box.createRigidArea(new Dimension(10,0)));
 		add(Box.createHorizontalGlue());
 		add(graphAndOutput);
 	}
@@ -73,6 +88,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		TitledBorder titlePanel = new TitledBorder("Calibration Two");
 		titlePanel.setTitleJustification(TitledBorder.LEFT);
 		titlePanel.setTitlePosition(TitledBorder.TOP);
+		titlePanel.setTitleFont(new Font(null, 1, 15));
 		setBorder(titlePanel);
 	}
 
@@ -83,31 +99,29 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 */
 	private JPanel createInfoAndButtonPanel() {
 		JPanel infoAndButtonPanel = new JPanel();
-		Dimension minSize = new Dimension(100,5);
-		Dimension prefSize = new Dimension(100,5);
-		Dimension maxSize = new Dimension(100,50);
 		infoAndButtonPanel.setLayout(new BoxLayout(infoAndButtonPanel, BoxLayout.Y_AXIS));
 		JTextArea descriptionText = new JTextArea("Calibrate the phase modulation \n"
 				+ "values.");
 		descriptionText.setEditable(false);
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
-		startCalibrationTwo = new JButton("Start Calibration Two");
+		descriptionText.setFont(fontText);
+		startCalibrationTwo = new JButton("Start Calibration Two");		
 		startCalibrationTwo.addActionListener(this);
 		JPanel channelCameraControl = ChannelControl();
-		infoAndButtonPanel.add(descriptionText);
-		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
-		infoAndButtonPanel.add(startCalibrationTwo);
-		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
-		infoAndButtonPanel.add(channelCameraControl);
-		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,200)));
-
-
+		JPanel exposureIntensityControl = setExposureAndIntensityPanel();
 		descriptionText.setAlignmentX(LEFT_ALIGNMENT);
 		startCalibrationTwo.setAlignmentX(LEFT_ALIGNMENT);
 		channelCameraControl.setAlignmentX(LEFT_ALIGNMENT);
-		
-
+		exposureIntensityControl.setAlignmentX(LEFT_ALIGNMENT);
+		infoAndButtonPanel.add(descriptionText);
+		//infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
+		infoAndButtonPanel.add(channelCameraControl);
+		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
+		infoAndButtonPanel.add(exposureIntensityControl);
+		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
+		infoAndButtonPanel.add(startCalibrationTwo);
+		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,20)));
 		return infoAndButtonPanel;
 	}
 
@@ -115,10 +129,11 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 * Creates the panel that contains the grayscale vs radiants graph.
 	 * @return graphAndOutput an empty panel that contains the graph once the Calibration is called.
 	 */
-	private JPanel createGraphAndOutputPanel() {
+	private JPanel setGraphAndOutputPanel() {
 		graphAndOutput = new JPanel();
 		graphAndOutput.setPreferredSize(new Dimension(450,350));
 		graphAndOutput.setBorder(BorderFactory.createLineBorder(Color.black));
+
 		return graphAndOutput; 
 	}
 
@@ -141,6 +156,43 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 			graphAndOutput.repaint();
 
 		}
+			if(e.getSource() == snapTestImage) {
+				graphAndOutput.removeAll();
+				BufferedImage testImage = getImage();
+				testImage = resize(testImage, 300, 300);
+				testImageLabel = new JLabel(new ImageIcon(testImage));
+				graphAndOutput.add(testImageLabel);
+				graphAndOutput.revalidate();
+				graphAndOutput.repaint();
+				graphAndOutput.setVisible(true);
+			}
+		}
+	
+	private JPanel setExposureAndIntensityPanel() {
+		JPanel exposureIntensityPanel = new JPanel();
+		exposureIntensityPanel.setLayout(new BoxLayout(exposureIntensityPanel, BoxLayout.PAGE_AXIS));
+		exposureIntensityPanel.setBorder(BorderFactory.createTitledBorder(null, "Exposure and Intensity Settings", 0, 0, fontTitle));
+		snapTestImage = new JButton("Snap Test Image");		
+		snapTestImage.addActionListener(this);
+		labelExposure = new JLabel("Exposure (ms):");
+		labelExposure.setForeground(Color.black);
+		exposureField.setMaximumSize(new Dimension(50, 30));
+		String intensityValue = new CameraIntensityValue(server, "ImageCamera", "Exposure").returnIntensity();
+		JTextArea intensityCurrent = new JTextArea("Current Intensity: " + intensityValue);
+		intensityCurrent.setFont(fontText);
+		intensityCurrent.setEditable(false);
+		intensityCurrent.setEnabled(false);
+		intensityCurrent.setOpaque(false);
+		labelExposure.setAlignmentX(LEFT_ALIGNMENT);
+		exposureField.setAlignmentX(LEFT_ALIGNMENT);
+		snapTestImage.setAlignmentX(LEFT_ALIGNMENT);
+		intensityCurrent.setAlignmentX(LEFT_ALIGNMENT);
+		exposureIntensityPanel.add(labelExposure);
+		exposureIntensityPanel.add(exposureField);
+		exposureIntensityPanel.add(Box.createRigidArea(new Dimension(0,10)));
+		exposureIntensityPanel.add(intensityCurrent);
+		exposureIntensityPanel.add(snapTestImage);
+		return exposureIntensityPanel; 
 	}
 
 	/**
@@ -151,11 +203,14 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		JPanel controlPanel = new JPanel();
 		JLabel labelCamera;
 		JLabel labelChannel;
-		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		controlPanel.setBorder(BorderFactory.createTitledBorder("Camera and Channel Settings"));
+
+		controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.PAGE_AXIS));
+		controlPanel.setBorder(BorderFactory.createTitledBorder(null, "Camera and Channel Settings", 0, 0, fontTitle));
 		cameraField = new CameraField(client, server);
 		channelField = new ChannelField(client, server);
+		exposureField.setMinimalValue(0);
 		if((boolean) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_USE_DEFAULT_SETTINGS)){
+			exposureField.setValue(client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_EXPOSURE));
 			cameraField.setCamera((String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CAMERA));
 			channelField.setChannel((String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CHANNEL_GROUP), 
 					(String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CHANNEL));
@@ -165,6 +220,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 			channelGroup = channelField.getChannelGroup();
 		}
 		else {
+			exposureField.setValue(client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_EXPOSURE));
 			cameraField.setCamera((String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CAMERA));
 			channelField.setChannel((String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL_GROUP), 
 					(String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL));
@@ -174,14 +230,17 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		}
 		labelCamera = new JLabel("Camera:");
 		labelCamera.setForeground(Color.black);
+		labelCamera.setAlignmentX(LEFT_ALIGNMENT);
+		cameraField.setAlignmentX(LEFT_ALIGNMENT);
 		controlPanel.add(labelCamera);
 		controlPanel.add(cameraField);
-		labelCamera.setAlignmentX(LEFT_ALIGNMENT);
 		labelChannel = new JLabel("Channel:");
 		labelChannel.setForeground(Color.black);
+		labelChannel.setAlignmentX(LEFT_ALIGNMENT);
+		channelField.setAlignmentX(LEFT_ALIGNMENT);
 		controlPanel.add(labelChannel);
 		controlPanel.add(channelField);
-		labelChannel.setAlignmentX(LEFT_ALIGNMENT);
+
 		return controlPanel;
 	}
 
@@ -205,8 +264,42 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		return cameraDevice;
 	}
 
-	
-	
+	private BufferedImage getImage() {
+		try {
+			testImage = server.getMicroscope().getCameraDevice(cameraField.getCameraDevice()).makeImage(channelGroup, channel, exposureField.getValue());
+		} 
+		catch (Exception e) {
+			client.sendError("Could not snap image.", e);
+			testImage = null;
+		}
+		BufferedImage savedImage = null;
+		try {
+			savedImage = ImageTools.getMicroscopeImage(testImage);
+		} 
+		catch (ImageConvertException e1) {
+			client.sendError("Could not parse image.", e1);
+		}
+		return savedImage;
+	}
+
+	/**
+	 * https://stackoverflow.com/questions/9417356/bufferedimage-resize
+	 * @param img
+	 * @param newW
+	 * @param newH
+	 * @return
+	 */
+	public static BufferedImage resize(BufferedImage img, int newW, int newH) { 
+	    Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+	    BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
+
+	    Graphics2D g2d = dimg.createGraphics();
+	    g2d.drawImage(tmp, 0, 0, null);
+	    g2d.dispose();
+
+	    return dimg;
+	}  
+
 }
 
 

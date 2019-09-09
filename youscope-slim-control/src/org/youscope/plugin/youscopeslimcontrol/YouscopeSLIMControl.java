@@ -73,7 +73,6 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	public java.awt.Component createUI()
 	{
 		SLIMController slimController = setSLIMController("NextGenArduino");
-		CameraDevice cam = getCameraDevice("ImageCamera");
 		Device LCPM = getLCPMDevice("Reflector");
 
 		// General Settings regarding the main frame.
