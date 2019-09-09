@@ -45,7 +45,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		setBorder(BorderFactory.createTitledBorder(null, "Attenuation Factor", 0, 0, fontTitle));
 		JPanel infoAndButtonPanel = createInfoAndStartPanel();
 		add(infoAndButtonPanel);
-		infoAndButtonPanel.setAlignmentX(LEFT_ALIGNMENT);
 		add(Box.createHorizontalGlue());
 		actualizeValues();
 		
@@ -59,6 +58,7 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	private JPanel createInfoAndStartPanel() {
 		JPanel infoAndButtonPanel = new JPanel();
 		infoAndButtonPanel.setLayout(new BoxLayout(infoAndButtonPanel, BoxLayout.PAGE_AXIS));
+		infoAndButtonPanel.setAlignmentX(LEFT_ALIGNMENT);
 		JTextArea descriptionText = new JTextArea("Calculate the Attenuation Factor. Mark the Manual Confirmation \n"
 				+ "if you want to have a visual confirmation of the computation.");
 		descriptionText.setFont(fontText);
