@@ -148,6 +148,7 @@ public class PhaseChart extends JPanel{
 				SlimJobConfiguration.setPhaseShiftMask(1,(int)Math.round(positions[1][0]));
 				SlimJobConfiguration.setPhaseShiftMask(2,(int)Math.round(positions[2][0]));
 				SlimJobConfiguration.setPhaseShiftMask(3,(int)Math.round(positions[3][0]));
+				SlimJobConfiguration.setPhaseShiftOutside((int)Math.round(positions[0][0]));
 			}
 		});
 

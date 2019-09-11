@@ -68,10 +68,10 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	private int outerRadius = 300;
 	
 	@XStreamAlias("phase-shift-outside")
-	private int phaseShiftOutside = 0;
+	private static int phaseShiftOutside = 0;
 	
 	@XStreamAlias("phase-shifts-mask")
-	private static int[] phaseShiftsMask = {0,64,128,192};
+	private static int[] phaseShiftsMask = {0,0,0,0};
 	
 	@XStreamAlias("slim-delay-ms")
 	private int slimDelayMS = 60;
@@ -339,9 +339,9 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	 * Sets the phase shift outside of the mask (background of donut).
 	 * @param phaseShiftOutside the outer phase shift. Must be >=0 and < 256.
 	 */
-	public void setPhaseShiftOutside(int phaseShiftOutside)
+	public static void setPhaseShiftOutside(int phaseShiftOutside)
 	{
-		this.phaseShiftOutside = phaseShiftOutside;
+		SlimJobConfiguration.phaseShiftOutside = phaseShiftOutside;
 	}
 
 	/**
