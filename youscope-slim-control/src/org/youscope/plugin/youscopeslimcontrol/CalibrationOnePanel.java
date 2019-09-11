@@ -10,13 +10,13 @@ import javax.swing.JTextArea;
 import javax.swing.border.TitledBorder;
 
 /**
- *  This class deals with the creation of the panel for the Calibration One.
- * @author localadmin
+ *  This class represents the panel for the Calibration One.
+ * @author Elisa Garulli
  *
  */
 public class CalibrationOnePanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
-	JButton startCalibrationOne;
+	JButton startCalibrationOneButton;
 
 	/**
 	 * Constructor.
@@ -28,10 +28,10 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
 		JPanel textPanel = createInfoBox();
-		startCalibrationOne = new JButton("Start Calibration One");
-		add(startCalibrationOne);
-		startCalibrationOne.setAlignmentX(LEFT_ALIGNMENT);
-		startCalibrationOne.addActionListener(this);
+		startCalibrationOneButton = new JButton("Start Calibration One");
+		add(startCalibrationOneButton);
+		startCalibrationOneButton.setAlignmentX(LEFT_ALIGNMENT);
+		startCalibrationOneButton.addActionListener(this);
 		add(Box.createHorizontalGlue());
 		add(textPanel);
 		textPanel.setAlignmentX(RIGHT_ALIGNMENT);
@@ -67,9 +67,9 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 	 * GUI.
 	 */
 	public void actionPerformed(ActionEvent e){
-		if(e.getSource() == startCalibrationOne) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY_POS);
+		if(e.getSource() == startCalibrationOneButton) {
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}

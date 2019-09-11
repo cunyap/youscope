@@ -16,14 +16,14 @@ import javax.swing.border.TitledBorder;
 
 
 /**
- * This class deals with the creation of the panel for the Attenuation Factor computing.
- * @author localadmin
+ * This represents the panel for the Attenuation Factor computing.
+ * @author Elisa Garulli
  *
  */
 public class AttenuationFactorPanel extends JPanel implements ActionListener{
 
 	SLIMController slimCTRL = null;
-	JButton startProcess;
+	JButton startProcessButton;
 	JRadioButton manualConfirmationButton;
 	JButton confirmButton;
 	
@@ -37,7 +37,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		setTitle();
 		JPanel infoAndButtonPanel = createInfoAndStartPanel();
-		
 		add(infoAndButtonPanel);
 		infoAndButtonPanel.setAlignmentX(LEFT_ALIGNMENT);
 		add(Box.createHorizontalGlue());
@@ -70,11 +69,11 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		descriptionText.setEditable(false);
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
-		startProcess = new JButton("Calculate Attenuation Factor");
-		startProcess.addActionListener(this);
+		startProcessButton = new JButton("Calculate Attenuation Factor");
+		startProcessButton.addActionListener(this);
 		manualConfirmationButton = new JRadioButton("Manual Confirmation");
-		infoAndButtonPanel.add(startProcess);
-		startProcess.setAlignmentX(LEFT_ALIGNMENT);
+		infoAndButtonPanel.add(startProcessButton);
+		startProcessButton.setAlignmentX(LEFT_ALIGNMENT);
 		infoAndButtonPanel.add(Box.createGlue());
 		infoAndButtonPanel.add(descriptionText);
 		descriptionText.setAlignmentX(LEFT_ALIGNMENT);
@@ -104,7 +103,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		outputNumbers.setEditable(false);
 		outputNumbers.setEnabled(false);
 		confirmButton = new JButton("Confirm");
-		
 		graphAndOutput.add(placeHolder);
 		graphAndOutput.add(Box.createGlue());
 		placeHolder.setAlignmentX(RIGHT_ALIGNMENT);
@@ -113,7 +111,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		graphAndOutput.add(Box.createGlue());
 		graphAndOutput.add(confirmButton);
 		confirmButton.setAlignmentX(RIGHT_ALIGNMENT);
-		
 		return graphAndOutput;
 		
 	}
@@ -123,9 +120,9 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	 * GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
-		if(e.getSource() == startProcess) {
-			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
+		if(e.getSource() == startProcessButton) {
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
 			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
 			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
 		}

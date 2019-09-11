@@ -33,7 +33,7 @@ import org.youscope.uielements.DynamicPanel;
 
 /**
  * A plug-in to automate the calibration process in the SLIM system. 
- * @author localadmin
+ * @author Elisa Garulli
  *
  */
 public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeFrameListener

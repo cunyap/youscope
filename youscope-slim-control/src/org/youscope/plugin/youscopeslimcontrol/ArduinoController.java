@@ -6,8 +6,8 @@ import org.youscope.common.microscope.MicroscopeException;
 import org.youscope.common.microscope.MicroscopeLockedException;
 
 /**
- * This class deals with the direct communication with the Arduino device.
- * @author localadmin
+ * This class represents the direct communication with the Arduino device.
+ * @author Elisa Garulli
  *
  */
 public class ArduinoController {
@@ -22,10 +22,9 @@ public class ArduinoController {
 	}
 	
 	/**
-	 * Sets the given pinNumber to the given pinValue.
-	 * @param pinNumber is the pin on the Arduino board that controls an actuator.
-	 * @param pinValue is the state of the pin one desires to set it to (e.g. Value n corresponds to
-	 *  position x of the actuator).
+	 * Sets the given pin to the given pinValue.
+	 * @param pinNumber is the pin on the Arduino board that controls a device.
+	 * @param pinValue is the state of the pin one desires to set it to.
 	 */
 	public void setPinValue(int pinNumber, int pinValue) {
 		  try { 
