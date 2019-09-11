@@ -26,7 +26,7 @@ import org.youscope.uielements.DynamicPanel;
 import org.youscope.clientinterfaces.StandardProperty;
 import org.youscope.clientinterfaces.YouScopeClient;
 /**
- * This class deals with the creation of the panel for the Calibration Two process.
+ * This class represents the panel for the Calibration Two process.
  * @author Elisa Garulli
  *
  */

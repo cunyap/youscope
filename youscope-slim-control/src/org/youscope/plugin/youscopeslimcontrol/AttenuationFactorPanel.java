@@ -18,7 +18,7 @@ import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.DoubleTextField;
 
 /**
- * This class deals with the creation of the panel for the Attenuation Factor computing.
+ * This represents the panel for the Attenuation Factor computing.
  * @author Elisa Garulli
  *
  */

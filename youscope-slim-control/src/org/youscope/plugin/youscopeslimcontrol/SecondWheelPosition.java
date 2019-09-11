@@ -2,11 +2,11 @@ package org.youscope.plugin.youscopeslimcontrol;
 
 /**
  * Enum with the possible positions of the Second Wheel.
- * @author localadmin
+ * @author Elisa Garulli
  *
  */
 public enum SecondWheelPosition {
-	POLARIZER_POS,
-	EMPTY_POS,
-	LENS_POS
+	POLARIZER,
+	EMPTY,
+	LENS
 }
