@@ -69,8 +69,7 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent e){
 		if(e.getSource() == startCalibrationOneButton) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
-			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS);
 		}
 	}
 }

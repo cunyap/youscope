@@ -8,7 +8,7 @@ package org.youscope.plugin.youscopeslimcontrol;
 public class SLIMController {
 	
 	ArduinoController arduino;
-	final int PolarizerMotorPin = 53;
+	final int PolarizerMotorPin = 52;
 	final int SecondMotorPin = 53;
 	final int LensMotorPin = 13;
 	/**
@@ -26,11 +26,11 @@ public class SLIMController {
 	public void setPolarizerWheelPosition(PolarizerWheelPosition wheelPosition) {
 		switch (wheelPosition) {
 		case POLARIZER_ONE:	
-				arduino.setPinValue(PolarizerMotorPin, 0);
+				arduino.setPinValue(PolarizerMotorPin, 1);
 			break;
 			
 		case EMPTY:
-				arduino.setPinValue(PolarizerMotorPin, 1);
+				arduino.setPinValue(PolarizerMotorPin, 0);
 			break;
 		
 		case POLARIZER_TWO:
@@ -47,11 +47,11 @@ public class SLIMController {
 		switch (wheelPosition) {
 		
 		case POLARIZER:	
-				arduino.setPinValue(SecondMotorPin, 0);
+				arduino.setPinValue(SecondMotorPin, 1);
 			break;
 			
 		case EMPTY:
-				arduino.setPinValue(SecondMotorPin, 1);
+				arduino.setPinValue(SecondMotorPin, 0);
 			break;
 		
 		case LENS:

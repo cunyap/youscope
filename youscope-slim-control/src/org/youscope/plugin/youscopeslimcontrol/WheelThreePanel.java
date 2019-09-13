@@ -50,11 +50,11 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 		for (JRadioButton button : buttonsArray) {
 			buttonGroup.add(button);
 		}
-		
+
 		for (JRadioButton button : buttonsArray) {
 			buttonPanel.add(button);
 		}
-		
+
 		for (JRadioButton button : buttonsArray) {
 			button.addActionListener(this);;
 		}
@@ -66,25 +66,24 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
-		JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
-		//		if(e.getSource() == LensOneButton) {
-		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE);
-		//		}
-		//		if(e.getSource() == LensTwoButton) {
-		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO);
-		//		}
-		//		if(e.getSource() == LensThreeButton) {
-		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE);
-		//		}
-		//		if(e.getSource() == LensFourButton) {
-		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FOUR);
-		//		}
-		//		if(e.getSource() == LensFiveButton) {
-		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FIVE);
-		//		}
-		//		if(e.getSource() == LensSixButton) {
-		//		slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_SIX);
-		//		}
+		if(e.getSource() == LensOneButton) {
+			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE);
+		}
+		if(e.getSource() == LensTwoButton) {
+			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO);
+		}
+		if(e.getSource() == LensThreeButton) {
+			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE);
+		}
+		if(e.getSource() == LensFourButton) {
+			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FOUR);
+		}
+		if(e.getSource() == LensFiveButton) {
+			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FIVE);
+		}
+		if(e.getSource() == LensSixButton) {
+			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_SIX);
+		}
 	}
 }
 

@@ -38,7 +38,7 @@ import org.youscope.clientinterfaces.YouScopeClient;
  */
 public class CalibrationTwoPanel extends JPanel implements ActionListener{
 
-	SLIMController slimController = null;
+	SLIMController slimCTRL = null;
 	JButton startCalibrationTwo;
 	JButton snapTestImage;
 	PhaseChart calibrationResults;
@@ -67,7 +67,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	public CalibrationTwoPanel(SLIMController slimController, YouScopeClient client, 
 			YouScopeServer server, Device reflector) {
 		intensityValue = new CameraIntensityValue(server, "TIDiaLamp").returnIntensity();
-		this.slimController = slimController;
+		slimCTRL= slimController;
 		this.client = client;
 		this.server = server;
 		this.reflector = reflector;
@@ -146,11 +146,8 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 			new Thread (new Runnable() {
 				@Override
 				public void run() {
-				//			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_TWO_POS);
-				//			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS_POS);
-				//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO_POS);
-				//			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", 
-				//											JOptionPane.ERROR_MESSAGE);
+				slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
+				slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
 				graphAndOutput.removeAll();
 				calibrationResults = new PhaseChart(client, server, camera, channel, channelGroup, reflector);
 				graphAndOutput.add(calibrationResults);
