@@ -70,6 +70,8 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		if(e.getSource() == startCalibrationOneButton) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS);
+				
+			}
 		}
 	}
-}
+

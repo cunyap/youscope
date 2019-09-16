@@ -7,22 +7,22 @@ import java.lang.Math;
  *
  */
 public class PhaseUnwrapping {
-	int length = 255;
-	double pi = Math.PI;
-	double[] deltasArray = new double[length];
-	double[] ddmod = new double[length];
-	boolean[] mask1 = new boolean[length]; 
-	double[] phase_correct = new double[length];
-	boolean[] mask2 = new boolean[length];
-	double[] clonedArray = new double[length];
-
 	/** 
-	 * Calls the functions to unwrap the data.
+	 * Calls the functions to unwrap the data. The computation is based on numpy unwrap function 
+	 * (Reference: https://github.com/numpy/numpy/blob/v1.17.0/numpy/lib/function_base.py#L1471-L1525)
 	 * @param inputArray
 	 * @return
 	 */
-	public double[] unwrap(double[] inputArray) {
-
+	public static double[] unwrap(double[] inputArray) {
+		double pi = Math.PI;
+		int length = 255;
+		double[] clonedArray = new double[length];
+		double[] deltasArray = new double[length];
+		double[] ddmod = new double[length];
+		boolean[] mask1 = new boolean[length]; 
+		double[] phase_correct = new double[length];
+		boolean[] mask2 = new boolean[length];
+		
 		clonedArray = inputArray.clone();
 		for (int i = 0; i < length; i++ ) {		
 			deltasArray[i] = inputArray[i+1] - inputArray[i];
@@ -60,7 +60,7 @@ public class PhaseUnwrapping {
 	 * @param input
 	 * @return a double[] array in which the i element is the sum of the 0...i elements of the input array.
 	 */
-	public double[] makeCumulativeSum(double[] input) {
+	private static double[] makeCumulativeSum(double[] input) {
 		double[] output = new double[input.length];
 		double total = 0;
 		for (int i = 0; i < input.length; i++) {
@@ -76,7 +76,7 @@ public class PhaseUnwrapping {
 	 * @param y
 	 * @return the remainder
 	 */
-	double floatMod(double x, double y){
+	private static double floatMod(double x, double y){
 		return (x - Math.floor(x/y) * y);
 	}
 

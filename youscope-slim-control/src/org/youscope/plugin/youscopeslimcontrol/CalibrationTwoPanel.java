@@ -146,15 +146,15 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 			new Thread (new Runnable() {
 				@Override
 				public void run() {
-				slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
-				slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
-				graphAndOutput.removeAll();
-				calibrationResults = new PhaseChart(client, server, camera, channel, channelGroup, reflector);
-				graphAndOutput.add(calibrationResults);
-				graphAndOutput.setVisible(true);
-				graphAndOutput.revalidate();
-				graphAndOutput.repaint();
-				new DataCalibrationLCPM(intensityValue, exposureField.getValue(), calibrationResults.returnCalibrationData());
+					slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
+					slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
+					graphAndOutput.removeAll();
+					calibrationResults = new PhaseChart(client, server, camera, channel, channelGroup, reflector);
+					graphAndOutput.add(calibrationResults);
+					graphAndOutput.setVisible(true);
+					graphAndOutput.revalidate();
+					graphAndOutput.repaint();
+					new DataCalibrationLCPM(intensityValue, exposureField.getValue(), calibrationResults.returnCalibrationData());
 				}
 			}).start();
 		}
@@ -280,7 +280,8 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	 */
 	private BufferedImage getImage() {
 		try {
-			testImage = server.getMicroscope().getCameraDevice(cameraField.getCameraDevice()).makeImage(channelGroup, channel, exposureField.getValue());
+			testImage = server.getMicroscope().getCameraDevice(cameraField.getCameraDevice()).makeImage(channelGroup, 
+					channel, exposureField.getValue());
 		} 
 		catch (Exception e) {
 			client.sendError("Could not snap image.", e);

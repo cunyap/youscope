@@ -15,6 +15,7 @@ import org.youscope.common.microscope.Device;
 import org.youscope.common.microscope.DeviceException;
 import org.youscope.common.microscope.MicroscopeException;
 import org.youscope.common.microscope.MicroscopeLockedException;
+import org.youscope.common.microscope.SettingException;
 import org.youscope.common.util.ImageConvertException;
 import org.youscope.common.util.ImageTools;
 import org.youscope.clientinterfaces.YouScopeClient;
@@ -23,23 +24,25 @@ import org.youscope.plugin.youscopeslimcontrol.HilbertTransform;
 import java.lang.Math;
 
 /**
- * This class represents the tools needed to prepare the gray values and unwrapepd intensity values. 
+ * This class represents the tools needed to prepare the gray values and unwrapped intensity values. 
  * The process sets the LCPM reflector to a range (0-255) of values and takes an image of it. 
  * Then the average intensity is calculated from the central region of the image. 
- * Finally the values tranformed using a Hilbert transform and stored.
+ * Finally the values transformed using a Hilbert transform and stored.
  * @author Elisa Garulli
  *
  */
-public class LCPMCal extends JPanel {
+public class LCPMCalibrator extends JPanel {
 
-	ChannelConfiguration configuration = new ChannelConfiguration("ChannelsTry", "yabba");
 	String channelName;
 	String channelGroup;
 	ImageEvent<?> image;
-	private double[] unwrapped;
+	YouScopeClient client;
+	YouScopeServer server;
+	CameraDevice camera;
+	Device LCPM;
 
 	/**
-	 * Constructor. Calls the needed functions to compute the average intensity of each image and unwrap the values.
+	 * Constructor. 
 	 * @param client
 	 * @param server
 	 * @param camera the camera to use to snap images of the reflector
@@ -47,22 +50,34 @@ public class LCPMCal extends JPanel {
 	 * @param channelGroup filter channel group
 	 * @param LCPM the used reflector
 	 */
-	public LCPMCal(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, String channelGroup,
+	public LCPMCalibrator(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, String channelGroup,
 			Device LCPM) {
 		this.channelName = channelName;
 		this.channelGroup = channelGroup;
+		this.client = client;
+		this.server = server;
+		this.camera = camera;
+		this.LCPM = LCPM;
+	}
+	
+	/**
+	 * Calls the needed functions to compute the average intensity of each image and unwrap the values.
+	 * @return the unwrapped values.
+	 */
+	public double[] runCalibration(){
+		// 1. Extract the average intensity from a selection of each image.
 		double[] averageIntensityArray = new double[256];
 		double[] normalizedIntensityArray = new double[256];
-		BufferedImage croppedImage = null;
 		for (int grayValue = 0; grayValue < 256; grayValue++) {
 			setLCPMImage(grayValue, LCPM);
 			BufferedImage rawImage = getImage(client, server, camera);
-			croppedImage = cropImage(rawImage);
+			BufferedImage croppedImage = cropImage(rawImage);
 			double averageIntensity = getAverageIntensity(croppedImage);
 			averageIntensityArray[grayValue] = averageIntensity;
 		}
-		double minIntensity = findMin(averageIntensityArray);
-		double maxIntensity = findMax(averageIntensityArray);
+		// 2. Normalize the values on the max and min values.
+		double minIntensity = Utility.findMin(averageIntensityArray);
+		double maxIntensity = Utility.findMax(averageIntensityArray);
 		for (int index = 0; index < 256; index++) {
 			double intensity = averageIntensityArray[index];
 			normalizedIntensityArray[index] = (intensity - minIntensity)/(maxIntensity-minIntensity);
@@ -70,20 +85,20 @@ public class LCPMCal extends JPanel {
 		for (int index = 0; index < 256; index++) {
 			normalizedIntensityArray[index] = 2*(normalizedIntensityArray[index]-0.5);
 		}
+		// 3. Perform Hilbert transform
 		double[] realIntensityValues = normalizedIntensityArray.clone();
 		HilbertTransform.FHT((normalizedIntensityArray), FourierTransform.Direction.Forward);
-
+		// 4. Perform phase unwrapping
 		double[] angles = new double[256];
 		for (int y = 0; y < 256; y++) {
 			angles[y] = Math.atan2(normalizedIntensityArray[y],realIntensityValues[y]); 
 		}
-		unwrapped = new PhaseUnwrapping().unwrap(angles);
-		
-		returnRadians();
+		double[] unwrapped = PhaseUnwrapping.unwrap(angles);
+		return unwrapped;
 	}
 
 	/**
-	 * Snaps an image.
+	 * Retrieves the loaded camera image and tries to snap an image. I it can not it returns an error.
 	 * @param client
 	 * @param server
 	 * @param camera
@@ -93,7 +108,8 @@ public class LCPMCal extends JPanel {
 		try {
 			image = server.getMicroscope().getCameraDevice("ImageCamera").makeImage(channelGroup, channelName, 50);
 		} 
-		catch (Exception e) {
+		catch (MicroscopeException | DeviceException | InterruptedException | RemoteException | SettingException |
+				MicroscopeLockedException e) {
 			client.sendError("Could not snap image.", e);
 			image = null;
 		}
@@ -127,19 +143,15 @@ public class LCPMCal extends JPanel {
 	 * @param processedImage
 	 * @return the average intensity of the input image
 	 */
-	private int getAverageIntensity(BufferedImage processedImage) {		
-
-		int averageIntensity = 0;
-
-		int sumIntensity = 0;
+	private double getAverageIntensity(BufferedImage processedImage) {		
+		double sumIntensity = 0;
 		Raster raster = processedImage.getData();
 		for (int i = 0; i < processedImage.getWidth(); i++) {
 			for (int j = 0; j < processedImage.getHeight(); j++) {
-				sumIntensity += raster.getSample(i, j, 0);
+				sumIntensity += (double)raster.getSample(i, j, 0);
 			}
 		}
-		averageIntensity = sumIntensity / (processedImage.getWidth() * processedImage.getHeight());
-
+		double averageIntensity = sumIntensity / (double)(processedImage.getWidth() * processedImage.getHeight());
 		return averageIntensity;
 	}
 
@@ -161,34 +173,6 @@ public class LCPMCal extends JPanel {
 					JOptionPane.ERROR_MESSAGE);
 		}
 	}
-
-	/**
-	 * Finds the element with minimum value in a double array.
-	 * @param doubleArray
-	 * @return the minimum value.
-	 */
-	private double findMin(double[] doubleArray) {
-		double[] dummyArray = doubleArray.clone();
-		Arrays.sort(dummyArray);
-		return dummyArray[0];
-	}
-
-	/**
-	 * Finds the element with maximum value in a double array.
-	 * @param doubleArray
-	 * @return the maximum value.
-	 */
-	private double findMax(double[] doubleArray) {
-		double[] dummyArray = doubleArray.clone();
-		Arrays.sort(dummyArray);
-		return dummyArray[dummyArray.length - 1];
-	}
 	
-	/**
-	 * Returns the computed radians
-	 */
-	public double[] returnRadians(){
-		return unwrapped;
-	}
 
 }
