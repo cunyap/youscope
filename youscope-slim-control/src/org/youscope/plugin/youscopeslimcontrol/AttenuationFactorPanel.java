@@ -27,7 +27,7 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
 	YouScopeServer server;
 	YouScopeClient client;
-	JButton wizzardButton;
+	JButton wizardButton;
 	private final DoubleTextField attenuationFactorField = new DoubleTextField(); 
 	Font fontTitle = new Font(null, 1, 12);
 	Font fontText = new Font (null, 0, 12);
@@ -37,7 +37,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	 * @param slimController an instance of SLIMController which allows to control the loaded device.
 	 */
 	public AttenuationFactorPanel(SLIMController slimController, YouScopeClient client, YouScopeServer server) {
-		
 		this.server = server;
 		this.client = client;
 		slimCTRL = slimController;
@@ -47,7 +46,6 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		add(infoAndButtonPanel);
 		add(Box.createHorizontalGlue());
 		actualizeValues();
-		
 	}
 	
 	/**
@@ -59,27 +57,17 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		JPanel infoAndButtonPanel = new JPanel();
 		infoAndButtonPanel.setLayout(new BoxLayout(infoAndButtonPanel, BoxLayout.PAGE_AXIS));
 		infoAndButtonPanel.setAlignmentX(LEFT_ALIGNMENT);
-		JTextArea descriptionText = new JTextArea("Calculate the Attenuation Factor. Mark the Manual Confirmation \n"
-				+ "if you want to have a visual confirmation of the computation.");
+		JTextArea descriptionText = new JTextArea("Calculate the Attenuation Factor.");
 		descriptionText.setFont(fontText);
 		descriptionText.setEditable(false);
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
-		wizzardButton = new JButton("Attenuation Factor Wizard");
-		wizzardButton.addActionListener(this);
-		wizzardButton.addActionListener(new ActionListener() {
+		wizardButton = new JButton("Attenuation Factor Wizard");
+		wizardButton.addActionListener(this);
+		wizardButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				AttenuationFactorWizard wizard = new AttenuationFactorWizard(client, server);
-				wizard.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) 
-					{
-						actualizeValues();
-					}
-				});
-				YouScopeFrame frame = wizard.toFrame();
-				frame.setVisible(true);
+				showAttenuationFactorWizard();
 			}
 		});
 		infoAndButtonPanel.add(Box.createGlue());
@@ -91,7 +79,7 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		attenuationFactorField.setAlignmentX(LEFT_ALIGNMENT);
 		infoAndButtonPanel.add(attenuationFactorField);
 		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
-		infoAndButtonPanel.add(wizzardButton);
+		infoAndButtonPanel.add(wizardButton);
 		return infoAndButtonPanel;
 	}
 	
@@ -101,20 +89,35 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	 * GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
-		if(e.getSource() == wizzardButton) {
-//			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-//			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
-			//slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE_POS);
-			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
+		if(e.getSource() == wizardButton) {
+			//slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
+			//slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
 		}
 	}
 
 	/**
-	 * Sets the value in the properties for a SLIM job
+	 * Sets the Attenuation Factor value in the properties for a SLIM job
 	 */
 	private void actualizeValues()
 	{
 		SlimProperties properties = new SlimProperties(client);
 		attenuationFactorField.setValue(properties.getAttenuationFactor());
+	}
+	
+	/**
+	 * Displays the Attenuation Factor Wizard and calls the function to set the attenuation factor value in 
+	 * a SLIM job.
+	 */
+	private void showAttenuationFactorWizard() {
+		AttenuationFactorWizard wizard = new AttenuationFactorWizard(client, server);
+		wizard.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) 
+			{
+				actualizeValues();
+			}
+		});
+		YouScopeFrame frame = wizard.toFrame();
+		frame.setVisible(true);
 	}
 }
