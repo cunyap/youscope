@@ -11,8 +11,9 @@ public class Utility {
 	public static double findMin(double[] doubleArray) {
 		double minValue = Double.POSITIVE_INFINITY;
 		for (int i=0; i < doubleArray.length; i++) {
-			if (doubleArray[i] < minValue);
+			if (doubleArray[i] < minValue) {
 			minValue = doubleArray[i];
+		}
 		}
 		return minValue;
 	}
@@ -23,11 +24,15 @@ public class Utility {
 	 * @return the maximum value.
 	 */
 	public static double findMax(double[] doubleArray) {
-		double[] dummyArray = doubleArray.clone();
-		Arrays.sort(dummyArray);
-		return dummyArray[dummyArray.length - 1];
+		double maxValue = Double.NEGATIVE_INFINITY;
+		for (int i=0; i < doubleArray.length; i++) {
+			if (doubleArray[i] > maxValue) {
+			maxValue = doubleArray[i];
+		}
+		}
+		return maxValue;
 	}
-	
+
 	/**
 	 * Finds the closest value to the given one, in a provided array.
 	 * @param inputPoint
@@ -46,7 +51,7 @@ public class Utility {
 		}
 		return closest;
 	}
-	
+
 	/**
 	 * Finds the index of a given double value in a given double array.
 	 * @param inputPoint values of which one wants to find the index of.
@@ -54,7 +59,7 @@ public class Utility {
 	 * @return the index.
 	 */
 	public static int findIndex(double inputPoint, double[] inputArray) {
-		int result = -1;
+		int result = Integer.MAX_VALUE;
 		for (int i=0; i < inputArray.length;  i++) {
 			if (inputPoint == inputArray[i]) {
 				result = i;
