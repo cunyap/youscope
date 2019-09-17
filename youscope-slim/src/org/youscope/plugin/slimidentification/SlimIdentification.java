@@ -80,7 +80,6 @@ class SlimIdentification extends ToolAddonUIAdapter
 			}
 		});
 		contentPane.add(wizzardButton);
-		actualizeValues();
 		return contentPane;
 	}
 	

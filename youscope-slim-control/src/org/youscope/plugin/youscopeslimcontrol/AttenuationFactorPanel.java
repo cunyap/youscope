@@ -1,19 +1,21 @@
 package org.youscope.plugin.youscopeslimcontrol;
-import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.JTextArea;
-import javax.swing.border.TitledBorder;
-
-
-
+import org.youscope.clientinterfaces.YouScopeClient;
+import org.youscope.clientinterfaces.YouScopeFrame;
+import org.youscope.plugin.slimidentification.AttenuationFactorWizard;
+import org.youscope.plugin.slimjob.SlimProperties;
+import org.youscope.serverinterfaces.YouScopeServer;
+import org.youscope.uielements.DoubleTextField;
 
 /**
  * This represents the panel for the Attenuation Factor computing.
@@ -23,37 +25,27 @@ import javax.swing.border.TitledBorder;
 public class AttenuationFactorPanel extends JPanel implements ActionListener{
 
 	SLIMController slimCTRL = null;
-	JButton startProcessButton;
-	JRadioButton manualConfirmationButton;
-	JButton confirmButton;
+	YouScopeServer server;
+	YouScopeClient client;
+	JButton wizardButton;
+	private final DoubleTextField attenuationFactorField = new DoubleTextField(); 
+	Font fontTitle = new Font(null, 1, 12);
+	Font fontText = new Font (null, 0, 12);
 	
 	/**
-	 * Constructor.
-	 * Adds all the elements created to a JPanel.
+	 * Constructor. Adds all the elements created to a JPanel.
 	 * @param slimController an instance of SLIMController which allows to control the loaded device.
 	 */
-	public AttenuationFactorPanel(SLIMController slimController) {
+	public AttenuationFactorPanel(SLIMController slimController, YouScopeClient client, YouScopeServer server) {
+		this.server = server;
+		this.client = client;
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		setTitle();
+		setBorder(BorderFactory.createTitledBorder(null, "Attenuation Factor", 0, 0, fontTitle));
 		JPanel infoAndButtonPanel = createInfoAndStartPanel();
 		add(infoAndButtonPanel);
-		infoAndButtonPanel.setAlignmentX(LEFT_ALIGNMENT);
 		add(Box.createHorizontalGlue());
-		JPanel graphAndOutputPanel = createGraphAndOutputPanel();
-		add(graphAndOutputPanel);
-		graphAndOutputPanel.setAlignmentX(RIGHT_ALIGNMENT);
-		
-	}
-	
-	/**
-	 * Set the title and the border of the panel
-	 */
-	private void setTitle() {
-		TitledBorder titlePanel = new TitledBorder("Attenuation Factor");
-		titlePanel.setTitleJustification(TitledBorder.LEFT);
-		titlePanel.setTitlePosition(TitledBorder.TOP);
-		setBorder(titlePanel);
+		actualizeValues();
 	}
 	
 	/**
@@ -64,57 +56,34 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	private JPanel createInfoAndStartPanel() {
 		JPanel infoAndButtonPanel = new JPanel();
 		infoAndButtonPanel.setLayout(new BoxLayout(infoAndButtonPanel, BoxLayout.PAGE_AXIS));
-		JTextArea descriptionText = new JTextArea("Calculate the Attenuation Factor.\n Mark the Manual Confirmation \n"
-				+ "if you want to have a visual \n confirmation of the computation.");
+		infoAndButtonPanel.setAlignmentX(LEFT_ALIGNMENT);
+		JTextArea descriptionText = new JTextArea("Calculate the Attenuation Factor.");
+		descriptionText.setFont(fontText);
 		descriptionText.setEditable(false);
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
-		startProcessButton = new JButton("Calculate Attenuation Factor");
-		startProcessButton.addActionListener(this);
-		manualConfirmationButton = new JRadioButton("Manual Confirmation");
-		infoAndButtonPanel.add(startProcessButton);
-		startProcessButton.setAlignmentX(LEFT_ALIGNMENT);
+		wizardButton = new JButton("Attenuation Factor Wizard");
+		wizardButton.addActionListener(this);
+		wizardButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				showAttenuationFactorWizard();
+			}
+		});
 		infoAndButtonPanel.add(Box.createGlue());
 		infoAndButtonPanel.add(descriptionText);
 		descriptionText.setAlignmentX(LEFT_ALIGNMENT);
+		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
 		infoAndButtonPanel.add(Box.createGlue());
-		infoAndButtonPanel.add(manualConfirmationButton);
-		manualConfirmationButton.setAlignmentX(LEFT_ALIGNMENT);
-		
+		attenuationFactorField.setMaximumSize(new Dimension(100, 30));
+		attenuationFactorField.setAlignmentX(LEFT_ALIGNMENT);
+		infoAndButtonPanel.add(attenuationFactorField);
+		infoAndButtonPanel.add(Box.createRigidArea(new Dimension(0,10)));
+		infoAndButtonPanel.add(wizardButton);
 		return infoAndButtonPanel;
 	}
 	
-	/**
-	 * Creates the panel that contains the graph for visual confirmation, the computed Attenuation Factor and the 
-	 * confirm button.
-	 * @return graphAndOutput a panel with the graph, the numerical parameter and the button
-	 */
-	private JPanel createGraphAndOutputPanel() {
-		JPanel graphAndOutput = new JPanel();
-		graphAndOutput.setLayout(new BoxLayout(graphAndOutput, BoxLayout.PAGE_AXIS));
-		JPanel placeHolder = new JPanel();
-		placeHolder.setBackground(Color.pink);
-		JTextArea outputNumbers = new JTextArea("Attenuation Factor: ");
-		Font font = new Font("Courier New",Font.BOLD, 15);
-		outputNumbers.setFont(font);
-		outputNumbers.setForeground(Color.black);
-		outputNumbers.append("NN");
-		outputNumbers.setOpaque(false);
-		outputNumbers.setEditable(false);
-		outputNumbers.setEnabled(false);
-		confirmButton = new JButton("Confirm");
-		graphAndOutput.add(placeHolder);
-		graphAndOutput.add(Box.createGlue());
-		placeHolder.setAlignmentX(RIGHT_ALIGNMENT);
-		graphAndOutput.add(outputNumbers);
-		outputNumbers.setAlignmentX(RIGHT_ALIGNMENT);
-		graphAndOutput.add(Box.createGlue());
-		graphAndOutput.add(confirmButton);
-		confirmButton.setAlignmentX(RIGHT_ALIGNMENT);
-		return graphAndOutput;
-		
-	}
-	
+
 	/**
 	 * Programs the listeners to the buttons, allowing the starting of the process and the control of the motors from the 
 	 * GUI.
@@ -124,5 +93,31 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
 		}
+	}
+
+	/**
+	 * Sets the Attenuation Factor value in the properties for a SLIM job
+	 */
+	private void actualizeValues()
+	{
+		SlimProperties properties = new SlimProperties(client);
+		attenuationFactorField.setValue(properties.getAttenuationFactor());
+	}
+	
+	/**
+	 * Displays the Attenuation Factor Wizard and calls the function to set the attenuation factor value in 
+	 * a SLIM job.
+	 */
+	private void showAttenuationFactorWizard() {
+		AttenuationFactorWizard wizard = new AttenuationFactorWizard(client, server);
+		wizard.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) 
+			{
+				actualizeValues();
+			}
+		});
+		YouScopeFrame frame = wizard.toFrame();
+		frame.setVisible(true);
 	}
 }

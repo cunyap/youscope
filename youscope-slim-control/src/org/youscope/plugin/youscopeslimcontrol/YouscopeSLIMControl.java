@@ -27,6 +27,7 @@ import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.clientinterfaces.YouScopeFrameListener;
 import org.youscope.common.microscope.DeviceException;
 import org.youscope.common.microscope.Microscope;
+import org.youscope.plugin.slimjob.SlimProperties;
 import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.DynamicPanel;
 
@@ -74,7 +75,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	{
 		SLIMController slimController = setSLIMController("NextGenArduino", getClient());
 		Device LCPM = getLCPMDevice("Reflector");
-
+		new SlimProperties(getClient()).setAttenuationFactor(0.0);
 		// General Settings regarding the main frame.
 		setMaximizable(false);
 		setResizable(true);
@@ -98,7 +99,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 		rightPanel.add(new CalibrationOnePanel(slimController));
 		rightPanel.add(new CalibrationTwoPanel(slimController, getClient(), getServer(), LCPM));
-		rightPanel.add(new AttenuationFactorPanel(slimController));
+		rightPanel.add(new AttenuationFactorPanel(slimController, getClient(), getServer()));
 
 		// Adding all the elements to the content panel.
 		JSplitPane horizontalSplitPanel = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
