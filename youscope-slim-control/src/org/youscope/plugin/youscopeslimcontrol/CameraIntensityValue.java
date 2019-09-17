@@ -17,7 +17,7 @@ public class CameraIntensityValue {
 	Microscope microscope;
 	Device cameraLight;
 	String intensity;
-	
+
 	/**
 	 * Constructor, calls the camera and retrieves the property "Intensity"
 	 * @param server
@@ -28,7 +28,7 @@ public class CameraIntensityValue {
 		this.server = server;
 		getIntensity(deviceName, "Intensity");
 	}
-	
+
 	/**
 	 * Retrieves the property "Intensity"
 	 * @param deviceName
@@ -39,25 +39,25 @@ public class CameraIntensityValue {
 		try {
 			Microscope microscope = server.getMicroscope();
 			cameraLight = microscope.getDevice(deviceName);
-			}
-			catch(RemoteException | DeviceException e) { 
-				e.printStackTrace();
-				JOptionPane.showMessageDialog(null, "No Device connected", "Device Error",
-												JOptionPane.ERROR_MESSAGE);
-				return intensity = "--";
-			}
-			
-			try {
-				return intensity = Integer.toString((int)Math.round(Double.parseDouble(cameraLight.getProperty(property).getValue())));
-			}
-			catch(RemoteException | MicroscopeException | InterruptedException | DeviceException e) {
-				e.printStackTrace();
-				JOptionPane.showMessageDialog(null, "Could not find Intensity property", "Property Error",
-												JOptionPane.ERROR_MESSAGE);
-				return intensity = "--";
-			}
+		}
+		catch(RemoteException | DeviceException e) { 
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "No Device connected", "Device Error",
+					JOptionPane.ERROR_MESSAGE);
+			return intensity = "--";
+		}
+
+		try {
+			return intensity = Integer.toString((int)Math.round(Double.parseDouble(cameraLight.getProperty(property).getValue())));
+		}
+		catch(RemoteException | MicroscopeException | InterruptedException | DeviceException e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "Could not find Intensity property", "Property Error",
+					JOptionPane.ERROR_MESSAGE);
+			return intensity = "--";
+		}
 	}
-	
+
 	/**
 	 * Returns a string with the value of intensity
 	 * @return a string with the value of intensity
@@ -65,5 +65,5 @@ public class CameraIntensityValue {
 	public String returnIntensity() {
 		return intensity;
 	}
-	
+
 }
