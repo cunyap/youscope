@@ -89,9 +89,9 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	 * GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
-		if(e.getSource() == wizardButton) {
-			//slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY_POS);
-			//slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER_POS);
+		if(e.getSource() == startProcessButton) {
+			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
 		}
 	}
 

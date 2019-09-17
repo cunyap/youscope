@@ -21,6 +21,10 @@ public class SlimProperties
 {
 	private final YouScopeClient client;
 	private final static String ATTENUATION_FACTOR_PROPERTY = "YouScope.SLIM.attenuationFactor";
+	private final static String PHASESHIFT0_PROPERTY = "YouScope.SLIMControl.phaseShift0";
+	private final static String PHASESHIFT1_PROPERTY = "YouScope.SLIMControl.phaseShift1";
+	private final static String PHASESHIFT2_PROPERTY = "YouScope.SLIMControl.phaseShift2";
+	private final static String PHASESHIFT3_PROPERTY = "YouScope.SLIMControl.phaseShift3";
 	/**
 	 * Constructor.
 	 * @param client YouScope client.
@@ -44,5 +48,21 @@ public class SlimProperties
 	public void setAttenuationFactor(double attenuationFactor)
 	{
 		client.getPropertyProvider().setProperty(ATTENUATION_FACTOR_PROPERTY, attenuationFactor);
+	}
+	
+	public void setPhaseShiftMask(int maskID, int phaseShift)
+	{
+		if (maskID == 0) {
+		client.getPropertyProvider().setProperty(PHASESHIFT0_PROPERTY, phaseShift);
+		}
+		if (maskID == 1) {
+		client.getPropertyProvider().setProperty(PHASESHIFT1_PROPERTY, phaseShift);
+		}
+		if (maskID == 2) {
+		client.getPropertyProvider().setProperty(PHASESHIFT2_PROPERTY, phaseShift);
+		}
+		if (maskID == 3) {
+		client.getPropertyProvider().setProperty(PHASESHIFT3_PROPERTY, phaseShift);
+		}
 	}
 }

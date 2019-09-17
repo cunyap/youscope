@@ -18,9 +18,8 @@ import org.jfree.ui.RectangleEdge;
 import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.common.microscope.CameraDevice;
 import org.youscope.common.microscope.Device;
-import org.youscope.plugin.slimjob.SlimProperties;
+import org.youscope.plugin.slimjob.SlimJobConfiguration;
 import org.youscope.serverinterfaces.YouScopeServer;
-
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -29,7 +28,7 @@ import java.awt.geom.Rectangle2D;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 /**
- * This class represents the graph given as output after the computation of the radiants from the images intensity.
+ * This class represents the graph given as output after the computation of the radians from the images intensity.
  * Moreover it represents the commands needed to manually select the starting phaseshift and, once the input is given 
  * from the user, it compute the four gray values needed to conclude the LCPM Calibration. Finally it saves the values
  * in the property file.
@@ -51,45 +50,70 @@ public class PhaseChart extends JPanel{
 	private final static String PHASESHIFT2_PROPERTY = "YouScope.SLIMControl.phaseShift2";
 	private final static String PHASESHIFT3_PROPERTY = "YouScope.SLIMControl.phaseShift3";
 	double[][] positions;
+	double[] y;
+	int[] x;
 	double pi = Math.PI;
+	JFreeChart xylineChart;
+	ChartPanel chartPanel;
+	Crosshair line1;
+	Crosshair line2;
+	Crosshair line3;
+	Crosshair line4;
+	Crosshair yCrosshair;
+	String[] positionString;
+	JTextArea outputText = new JTextArea();
 	
 	/**
 	 * Constructor. Sets the crosshairs and the graphs. Moreover adds the listener for the mouse movement and click.
 	 * Calls the calibration process to generate the dataset.
 	 * @param x grey values 0-255
-	 * @param y radiants corresponding to the grey values
+	 * @param y radians corresponding to the grey values
 	 */
 	public PhaseChart(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, 
 			String channelGroup, Device LCPM) {
-		
 		this.client = client;
 		this.server = server;
 		this.camera = camera;
 		this.channelName = channelName;
 		this.LCPM = LCPM;
-		LCPMCal calibration = new LCPMCal(client, server, camera, channelName, channelGroup, LCPM);
-		int[] x = IntStream.rangeClosed(0, 255).toArray();
-		double[] y = calibration.returnRadians();
+		LCPMCalibrator calibration = new LCPMCalibrator(client, server, camera, channelName, channelGroup, LCPM);
 		setLayout(new BorderLayout());
-		JFreeChart xylineChart = ChartFactory.createXYLineChart("LCPM Phase", "LCPM grayscale value",
-				"Phase shift (rad)", createDataset(y,x), PlotOrientation.VERTICAL, false, true, false);
+		createChart(calibration);
+		setCrosshair();
+		crosshairController();
+		add(chartPanel, BorderLayout.NORTH);
 
-		ChartPanel chartPanel = new ChartPanel(xylineChart);
+	}
+	/**
+	 * Creates the charts and sets the graphical settings, given a calibration object.
+	 */
+	private void createChart(LCPMCalibrator calibration) {
+		x = IntStream.rangeClosed(0, 255).toArray();
+		y = calibration.runCalibration();
+		xylineChart = ChartFactory.createXYLineChart("LCPM Phase", "LCPM grayscale value",
+				"Phase shift (rad)", createDataset(y,x), PlotOrientation.VERTICAL, false, true, false);
+		chartPanel = new ChartPanel(xylineChart);
 		chartPanel.setPreferredSize(new Dimension(400,300));
 		chartPanel.setOpaque(false);
 		Color trans = new Color(0xFF, 0xFF, 0xFF, 0);
 		xylineChart.setBackgroundPaint(trans);
-		final XYPlot plot = xylineChart.getXYPlot();
+
+	}
+	
+	/**
+	 * Creates the crosshair and sets their graphical appearance
+	 */
+	private void setCrosshair() {
 		final CrosshairOverlay crosshairOverlay = new CrosshairOverlay();
-		final Crosshair yCrosshair = new Crosshair(Double.NaN, Color.RED, new BasicStroke(2f));
+		yCrosshair = new Crosshair(Double.NaN, Color.RED, new BasicStroke(2f));
 		yCrosshair.setLabelBackgroundPaint(new Color(1f, 1f, 1f, 0f));
-		final Crosshair line1 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
+		line1 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
 		line1.setLabelBackgroundPaint(new Color(1f, 1f, 1f, 0f));
-		final Crosshair line2 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
+		line2 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
 		line2.setLabelBackgroundPaint(new Color(1f, 1f, 1f, 0f));
-		final Crosshair line3 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
+		line3 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
 		line3.setLabelBackgroundPaint(new Color(1f, 1f, 1f, 0f));
-		final Crosshair line4 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
+		line4 = new Crosshair(Double.NaN, Color.DARK_GRAY, new BasicStroke(0f));
 		line4.setLabelBackgroundPaint(new Color(1f, 1f, 1f, 0f));
 		yCrosshair.setLabelOutlineVisible(false);
 		yCrosshair.setLabelVisible(true);
@@ -105,7 +129,14 @@ public class PhaseChart extends JPanel{
 		crosshairOverlay.addDomainCrosshair(line3);
 		crosshairOverlay.addDomainCrosshair(line4);
 		chartPanel.addOverlay(crosshairOverlay);
-		
+	}
+	
+	/**
+	 * Controls the position of the crosshair in the graphs by setting listeners for the movement and for the click 
+	 * of the mouse in the graph area.
+	 */
+	private void crosshairController() {
+		final XYPlot plot = xylineChart.getXYPlot();
 		chartPanel.addChartMouseListener(new ChartMouseListener() {
 			@Override
 			public void chartMouseMoved(final ChartMouseEvent event) {
@@ -114,7 +145,6 @@ public class PhaseChart extends JPanel{
 						RectangleEdge.BOTTOM));
 				yCrosshair.setValue(posX);
 			}
-			JTextArea outputNumbers = new JTextArea();
 			@Override
 			public void chartMouseClicked(final ChartMouseEvent event) {
 				final Rectangle2D dataArea = chartPanel.getScreenDataArea();
@@ -125,41 +155,58 @@ public class PhaseChart extends JPanel{
 				line2.setValue(positions[1][0]);
 				line3.setValue(positions[2][0]);
 				line4.setValue(positions[3][0]);
-				String[] positionString = new String[positions.length];
-				for (int i=0 ; i < positions.length; i++) {
-					if (positions[i][0] > 255) {
-						positionString[i] = "--";
-					}
-					else {
-						positionString[i] = Integer.toString((int)Math.round(positions[i][0]));
-					}
-				}
-				outputNumbers.setText("Phase Shifts " + positionString[0] +", "+
-						positionString[1]+", "+positionString[2] +", " + positionString[3]);
-				outputNumbers.setEditable(false);
-				outputNumbers.setEnabled(false);
-				outputNumbers.setOpaque(false);
-				repaint();
-				add(outputNumbers, BorderLayout.SOUTH);
-				revalidate();
+				outputText.repaint();
+				writeResults();
+				add(outputText, BorderLayout.SOUTH);
+				outputText.revalidate();
 				setPhaseShiftProperty(positionString);
+				setSLIMProperties();
 			}
 		});
-
-		add(chartPanel, BorderLayout.NORTH);
-
 	}
 	
 	/**
+	 * Sets the corresponding properties in a SLIM job to the computed phase shifts.
+	 */
+	public void setSLIMProperties() {
+		SlimJobConfiguration.setPhaseShiftMask(0, (int)Math.round(positions[0][0]));
+		SlimJobConfiguration.setPhaseShiftMask(1,(int)Math.round(positions[1][0]));
+		SlimJobConfiguration.setPhaseShiftMask(2,(int)Math.round(positions[2][0]));
+		SlimJobConfiguration.setPhaseShiftMask(3,(int)Math.round(positions[3][0]));
+		SlimJobConfiguration.setPhaseShiftOutside((int)Math.round(positions[0][0]));
+	}
+	
+	/**
+	 * Creates a user-friendly string with the results and sets it in the output text area.
+	 */
+	public void writeResults() {
+		positionString = new String[positions.length];
+		outputText.setEditable(false);
+		outputText.setEnabled(false);
+		outputText.setOpaque(false);
+		for (int i=0 ; i < positions.length; i++) {
+			if (positions[i][0] > 255 | positions[i][0] < 0) {
+				positionString[i] = "--";
+			}
+			else {
+				positionString[i] = Integer.toString((int)Math.round(positions[i][0]));
+			}
+		}
+		outputText.setText("Phase Shifts " + positionString[0] +", "+
+				positionString[1]+", "+positionString[2] +", " + positionString[3]);
+	}
+	
+	/**
+	/**
 	 * Generates a dataset compatible with a JFreeChart.
-	 * @param radiants i.e. the unwrapped intensity values.
+	 * @param radians i.e. the unwrapped intensity values.
 	 * @param grayValues 0-255.
 	 * @return the dataset.
 	 */
-	private XYDataset createDataset(double[] radiants, int[] grayValues) {
+	private XYDataset createDataset(double[] radians, int[] grayValues) {
 		final XYSeries LCPMPhaseSeries = new XYSeries("LCPMPhase");
-		for (int i=0; i<radiants.length; i++) {
-			LCPMPhaseSeries.add(grayValues[i], radiants[i]);
+		for (int i=0; i<radians.length; i++) {
+			LCPMPhaseSeries.add(grayValues[i], radians[i]);
 		}
 		final XYSeriesCollection dataset = new XYSeriesCollection();
 		dataset.addSeries(LCPMPhaseSeries);
@@ -167,19 +214,24 @@ public class PhaseChart extends JPanel{
 	}
 
 	/**
-	 * calculates the phase shifts values starting from the first gray value manually selected
-	 * @param dataPoints radiants i.e. the unwrapped intensity values.
+	 * Calculates the phase shifts values starting from the first gray value manually selected
+	 * @param dataPoints radians i.e. the unwrapped intensity values.
 	 * @param initialX initial x selected manually
 	 * @return an array of the x, y values corresponding to the desired 4 phase shifts.
 	 */
 	private double[][] getPhaseShift(double[] dataPoints, int initialX) {
-
-		double initialY = dataPoints[initialX];
+		double initialY = Double.NEGATIVE_INFINITY;
+		try{
+			initialY = dataPoints[initialX];
+		}
+		catch(Exception e) {
+			client.sendError("The value must be less than or equal to 255");
+		}
 		double[] dataPointsPlusOne = new double[dataPoints.length + 1];
 		for (int i = 0; i < dataPoints.length; i++) {
 			dataPointsPlusOne[i] = dataPoints[i];
 		}
-		dataPointsPlusOne[dataPoints.length] = findMax(dataPoints) + 1;
+		dataPointsPlusOne[dataPoints.length] = Utility.findMax(dataPoints) + 1;
 		double[] wantedPhaseShifts = {0, pi/2, pi, 3*pi/2};
 		int l = wantedPhaseShifts.length;
 
@@ -190,62 +242,16 @@ public class PhaseChart extends JPanel{
 
 		double[][] grayValues = new double[wantedPhaseShifts.length][wantedPhaseShifts.length];
 		for(int i=0; i < l;  i++) {
-			grayValues[i][1] = findClosest(phaseShifts[i], dataPointsPlusOne);
+			grayValues[i][1] = Utility.findClosest(phaseShifts[i], dataPointsPlusOne);
 			if (grayValues[i][1] == dataPointsPlusOne[dataPointsPlusOne.length -1]) {
 				grayValues[i][0] = 1000;
 			}
 			else {
-				grayValues[i][0] = findIndex(grayValues[i][1], dataPoints);
+				grayValues[i][0] = Utility.findIndex(grayValues[i][1], dataPoints);
 			}
 		}
 		return grayValues;
 
-	}
-	
-	/**
-	 * Finds highest value of a double array.
-	 * @param doubleArray
-	 * @return the highest value.
-	 */
-	private double findMax(double[] doubleArray) {
-		double[] dummyArray = doubleArray.clone();
-		Arrays.sort(dummyArray);
-		return dummyArray[doubleArray.length-1];
-	}
-
-	/**
-	 * Finds the index of a given double value in a given double array.
-	 * @param inputPoint values of which one wants to find the index of.
-	 * @param inputArray
-	 * @return the index.
-	 */
-	private int findIndex(double inputPoint, double[] inputArray) {
-		int result = -1;
-		for (int i=0; i < inputArray.length;  i++) {
-			if (inputPoint == inputArray[i]) {
-				result = i;
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Finds the closest value to the given one, in a provided array.
-	 * @param inputPoint
-	 * @param inputArray
-	 * @return the closest element of the array
-	 */
-	private double findClosest(double inputPoint, double[] inputArray) {
-		double closest = -20;
-		double difference = 100;
-		for (int i=0; i<inputArray.length; i++) {
-			double currentDifference = Math.abs(inputArray[i] - inputPoint);
-			if(currentDifference < difference) {
-				difference = currentDifference;
-				closest = inputArray[i];
-			}
-		}
-		return closest;
 	}
 
 	/**
@@ -260,4 +266,11 @@ public class PhaseChart extends JPanel{
 		client.getPropertyProvider().setProperty(PHASESHIFT3_PROPERTY, positions[3]);
 	}
 
+	/**
+	 * Returns the radians
+	 * @return radians values
+	 */
+	public double[] returnCalibrationData(){
+		return y;
+	}
 }
