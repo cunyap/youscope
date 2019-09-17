@@ -144,13 +144,14 @@ public class LCPMCalibrator extends JPanel {
 	 * @return the average intensity of the input image
 	 */
 	private double getAverageIntensity(BufferedImage processedImage) {		
-		double sumIntensity = 0;
+		int sumIntensity = 0;
 		Raster raster = processedImage.getData();
 		for (int i = 0; i < processedImage.getWidth(); i++) {
 			for (int j = 0; j < processedImage.getHeight(); j++) {
-				sumIntensity += (double)raster.getSample(i, j, 0);
+				sumIntensity += raster.getSample(i, j, 0);
 			}
 		}
+		//double averageIntensity = sumIntensity / (double)(processedImage.getWidth() * processedImage.getHeight());
 		double averageIntensity = sumIntensity / (double)(processedImage.getWidth() * processedImage.getHeight());
 		return averageIntensity;
 	}
