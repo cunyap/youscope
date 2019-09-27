@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 import java.rmi.RemoteException;
 
 import javax.swing.JOptionPane;

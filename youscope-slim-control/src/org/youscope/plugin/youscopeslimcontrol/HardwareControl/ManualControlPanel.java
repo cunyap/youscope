@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.border.TitledBorder;

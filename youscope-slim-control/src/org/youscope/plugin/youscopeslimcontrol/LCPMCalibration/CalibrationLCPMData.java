@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,7 +14,7 @@ import javax.swing.JOptionPane;
  * @author Elisa Garulli
  *
  */
-public class DataCalibrationLCPM {
+public class CalibrationLCPMData {
 	String path = "./CalibrationData/calibrationData_" + currentDateTime() + ".txt";
 
 	/**
@@ -23,7 +23,7 @@ public class DataCalibrationLCPM {
 	 * @param exposure
 	 * @param lcpmCalibrationData
 	 */
-	public DataCalibrationLCPM(String intensity, double exposure, double[] lcpmCalibrationData) {
+	public CalibrationLCPMData(String intensity, String exposure, double[] lcpmCalibrationData) {
 		File file = new File(path);
 		if (!file.getParentFile().exists()) {
 			file.getParentFile().mkdirs();
@@ -40,14 +40,15 @@ public class DataCalibrationLCPM {
 		}
 		try (BufferedWriter writer = new BufferedWriter (new FileWriter(path))){
 			writer.write("##IntensityValue: " + intensity);
-			writer.newLine();
+			//writer.newLine();
 			writer.write("##ExposureValue: " + exposure);
-			writer.newLine();
+			//writer.newLine();
 			writer.write("##CalibrationData: ");
-			writer.newLine();
+			//writer.newLine();
+			writer.write("Grayscale Value, Mean Intensitie [radians]");
 			for(int i=0; i < lcpmCalibrationData.length; i++) {
 				writer.write("# " + i + "," + Double.toString(lcpmCalibrationData[i]) + "\n");
-				writer.newLine();
+			//	writer.newLine();
 			}
 		}
 

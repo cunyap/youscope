@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;

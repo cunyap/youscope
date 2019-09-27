@@ -214,4 +214,8 @@ class MinimalFrameImpl extends JFrame implements YouScopeFrame {
 		// do nothing, yet.
 	}
 
+	@Override
+	public void close() {
+		dispose();
+	}
 }

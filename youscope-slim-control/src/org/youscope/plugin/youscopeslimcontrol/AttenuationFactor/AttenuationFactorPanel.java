@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.AttenuationFactor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionListener;
@@ -14,6 +14,9 @@ import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.clientinterfaces.YouScopeFrame;
 import org.youscope.plugin.slimidentification.AttenuationFactorWizard;
 import org.youscope.plugin.slimjob.SlimProperties;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.PolarizerWheelPosition;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SLIMController;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SecondWheelPosition;
 import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.DoubleTextField;
 
@@ -89,7 +92,7 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	 * GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
-		if(e.getSource() == startProcessButton) {
+		if(e.getSource() == wizardButton) {
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.EMPTY);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
 		}
@@ -106,7 +109,7 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	
 	/**
 	 * Displays the Attenuation Factor Wizard and calls the function to set the attenuation factor value in 
-	 * a SLIM job.
+	 * the main panel.
 	 */
 	private void showAttenuationFactorWizard() {
 		AttenuationFactorWizard wizard = new AttenuationFactorWizard(client, server);

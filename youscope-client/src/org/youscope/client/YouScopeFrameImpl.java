@@ -947,6 +947,28 @@ final class YouScopeFrameImpl extends JInternalFrame
 			}
 			requestFocusInWindow();
 		}
+		
+		// Thread save
+        @Override
+        public void close()
+        {
+        	class ThreadSaveRunner implements Runnable
+            {
+                @Override
+                public void run()
+                {
+                	YouScopeFrameImpl.this.dispose();
+                }
+            }
+
+            if (SwingUtilities.isEventDispatchThread())
+            {
+                (new ThreadSaveRunner()).run();
+            } else
+            {
+                SwingUtilities.invokeLater(new ThreadSaveRunner());
+            }
+        }
     };
     
     /**
@@ -1147,6 +1169,11 @@ final class YouScopeFrameImpl extends JInternalFrame
 		public void toFront() 
 		{
 			parentFrame.toFront();
+		}
+		
+		@Override
+		public void close() {
+			parentFrame.close();
 		}
     }
 

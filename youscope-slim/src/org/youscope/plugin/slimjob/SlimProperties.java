@@ -65,4 +65,14 @@ public class SlimProperties
 		client.getPropertyProvider().setProperty(PHASESHIFT3_PROPERTY, phaseShift);
 		}
 	}
-}
+	
+	public double[] getPhaseShiftMask() {
+		 double firstValue = client.getPropertyProvider().getProperty(PHASESHIFT0_PROPERTY, 0.0);
+		 double secondValue = client.getPropertyProvider().getProperty(PHASESHIFT1_PROPERTY, 0.0);
+		 double thirdValue = client.getPropertyProvider().getProperty(PHASESHIFT2_PROPERTY, 0.0);
+		 double forthValue = client.getPropertyProvider().getProperty(PHASESHIFT3_PROPERTY, 0.0);
+		 double[] phaseShifts = {firstValue, secondValue, thirdValue, forthValue};
+		 return phaseShifts;
+		 }
+	}
+

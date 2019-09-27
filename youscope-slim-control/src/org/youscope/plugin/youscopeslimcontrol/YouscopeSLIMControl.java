@@ -28,6 +28,12 @@ import org.youscope.clientinterfaces.YouScopeFrameListener;
 import org.youscope.common.microscope.DeviceException;
 import org.youscope.common.microscope.Microscope;
 import org.youscope.plugin.slimjob.SlimProperties;
+import org.youscope.plugin.youscopeslimcontrol.AttenuationFactor.AttenuationFactorPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.ArduinoController;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.HardwareSetUpPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.ManualControlPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SLIMController;
+import org.youscope.plugin.youscopeslimcontrol.LCPMCalibration.CalibrationTwoPanel;
 import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.DynamicPanel;
 

@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 
 import org.youscope.clientinterfaces.YouScopeClient;
 

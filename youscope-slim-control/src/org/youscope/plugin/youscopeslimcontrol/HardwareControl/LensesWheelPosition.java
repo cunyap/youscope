@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 
 /**
  * Enum with the possible positions of the Lens Wheel.

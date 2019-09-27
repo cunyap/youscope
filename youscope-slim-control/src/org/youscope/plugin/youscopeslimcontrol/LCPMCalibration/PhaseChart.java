@@ -1,4 +1,5 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import org.jfree.chart.ChartFactory;
@@ -19,6 +20,7 @@ import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.common.microscope.CameraDevice;
 import org.youscope.common.microscope.Device;
 import org.youscope.plugin.slimjob.SlimJobConfiguration;
+import org.youscope.plugin.youscopeslimcontrol.Utility;
 import org.youscope.serverinterfaces.YouScopeServer;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -44,6 +46,7 @@ public class PhaseChart extends JPanel{
 	CameraDevice camera;
 	String channelName;
 	String channelGroup;
+	String exposure;
 	Device LCPM;
 	private final static String PHASESHIFT0_PROPERTY = "YouScope.SLIMControl.phaseShift0";
 	private final static String PHASESHIFT1_PROPERTY = "YouScope.SLIMControl.phaseShift1";
@@ -69,14 +72,15 @@ public class PhaseChart extends JPanel{
 	 * @param x grey values 0-255
 	 * @param y radians corresponding to the grey values
 	 */
-	public PhaseChart(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, 
+	public PhaseChart(YouScopeClient client, YouScopeServer server, CameraDevice camera, String exposure,  String channelName, 
 			String channelGroup, Device LCPM) {
 		this.client = client;
 		this.server = server;
 		this.camera = camera;
 		this.channelName = channelName;
 		this.LCPM = LCPM;
-		LCPMCalibrator calibration = new LCPMCalibrator(client, server, camera, channelName, channelGroup, LCPM);
+		this.exposure = exposure;
+		LCPMCalibrator calibration = new LCPMCalibrator(client, server, camera, exposure, channelName, channelGroup, LCPM);
 		setLayout(new BorderLayout());
 		createChart(calibration);
 		setCrosshair();
@@ -214,7 +218,8 @@ public class PhaseChart extends JPanel{
 	}
 
 	/**
-	 * Calculates the phase shifts values starting from the first gray value manually selected
+	 * Calculates the phase shifts values starting from the first gray value manually selected.
+	 * The computation refers to doi: 10.1364/OE.19.001016 
 	 * @param dataPoints radians i.e. the unwrapped intensity values.
 	 * @param initialX initial x selected manually
 	 * @return an array of the x, y values corresponding to the desired 4 phase shifts.
@@ -239,7 +244,6 @@ public class PhaseChart extends JPanel{
 		for(int i=0; i < l;  i++) {
 			phaseShifts[i] = initialY + wantedPhaseShifts[i];
 		}
-
 		double[][] grayValues = new double[wantedPhaseShifts.length][wantedPhaseShifts.length];
 		for(int i=0; i < l;  i++) {
 			grayValues[i][1] = Utility.findClosest(phaseShifts[i], dataPointsPlusOne);

@@ -1,13 +1,18 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.rmi.RemoteException;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 import javax.swing.ImageIcon;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.UIManager;
+
 import org.youscope.common.configuration.ChannelConfiguration;
 import org.youscope.common.image.ImageEvent;
 import org.youscope.common.microscope.CameraDevice;
@@ -19,8 +24,17 @@ import org.youscope.common.microscope.SettingException;
 import org.youscope.common.util.ImageConvertException;
 import org.youscope.common.util.ImageTools;
 import org.youscope.clientinterfaces.YouScopeClient;
+import org.youscope.clientinterfaces.YouScopeFrame;
 import org.youscope.serverinterfaces.YouScopeServer;
-import org.youscope.plugin.youscopeslimcontrol.HilbertTransform;
+
+import com.sun.glass.events.WindowEvent;
+
+import org.youscope.plugin.youscopeslimcontrol.BasePopUpPanel;
+import org.youscope.plugin.youscopeslimcontrol.LoadingBar;
+import org.youscope.plugin.youscopeslimcontrol.Utility;
+import org.youscope.plugin.youscopeslimcontrol.External.FourierTransform;
+import org.youscope.plugin.youscopeslimcontrol.External.HilbertTransform;
+
 import java.lang.Math;
 
 /**
@@ -36,6 +50,7 @@ public class LCPMCalibrator extends JPanel {
 	String channelName;
 	String channelGroup;
 	ImageEvent<?> image;
+	Double exposure;
 	YouScopeClient client;
 	YouScopeServer server;
 	CameraDevice camera;
@@ -50,21 +65,28 @@ public class LCPMCalibrator extends JPanel {
 	 * @param channelGroup filter channel group
 	 * @param LCPM the used reflector
 	 */
-	public LCPMCalibrator(YouScopeClient client, YouScopeServer server, CameraDevice camera, String channelName, String channelGroup,
-			Device LCPM) {
+	public LCPMCalibrator(YouScopeClient client, YouScopeServer server, CameraDevice camera, String exposure,
+			String channelName, String channelGroup, Device LCPM) {
 		this.channelName = channelName;
 		this.channelGroup = channelGroup;
 		this.client = client;
 		this.server = server;
 		this.camera = camera;
 		this.LCPM = LCPM;
+		this.exposure = Double.valueOf(exposure);
 	}
 	
 	/**
 	 * Calls the needed functions to compute the average intensity of each image and unwrap the values.
+	 * The computation refers to doi: 10.1364/OE.19.001016 
 	 * @return the unwrapped values.
 	 */
 	public double[] runCalibration(){
+		
+		LoadingBar loadingBar = new LoadingBar(client,"Calibration Progress");
+		YouScopeFrame frame = loadingBar.toFrame();
+		frame.setVisible(true);
+		Color color = new Color(255,0,0);
 		// 1. Extract the average intensity from a selection of each image.
 		double[] averageIntensityArray = new double[256];
 		double[] normalizedIntensityArray = new double[256];
@@ -74,7 +96,18 @@ public class LCPMCalibrator extends JPanel {
 			BufferedImage croppedImage = cropImage(rawImage);
 			double averageIntensity = getAverageIntensity(croppedImage);
 			averageIntensityArray[grayValue] = averageIntensity;
+			if (grayValue < 125) {
+				int colorChange = 4*grayValue*100/255;
+				color = new Color(0,255-colorChange,colorChange);
+			}
+			else {
+			int colorChange = 2*grayValue*100/255;
+			color = new Color(colorChange,0,255-colorChange);
+			}
+			loadingBar.setForegroundBar(color);
+			loadingBar.setValue(grayValue*100/250);
 		}
+		loadingBar.close();
 		// 2. Normalize the values on the max and min values.
 		double minIntensity = Utility.findMin(averageIntensityArray);
 		double maxIntensity = Utility.findMax(averageIntensityArray);
@@ -94,6 +127,7 @@ public class LCPMCalibrator extends JPanel {
 			angles[y] = Math.atan2(normalizedIntensityArray[y],realIntensityValues[y]); 
 		}
 		double[] unwrapped = PhaseUnwrapping.unwrap(angles);
+
 		return unwrapped;
 	}
 
@@ -106,7 +140,7 @@ public class LCPMCalibrator extends JPanel {
 	 */
 	private BufferedImage getImage(YouScopeClient client, YouScopeServer server, CameraDevice camera) {
 		try {
-			image = server.getMicroscope().getCameraDevice("ImageCamera").makeImage(channelGroup, channelName, 50);
+			image = server.getMicroscope().getCameraDevice("ImageCamera").makeImage(channelGroup, channelName, exposure );
 		} 
 		catch (MicroscopeException | DeviceException | InterruptedException | RemoteException | SettingException |
 				MicroscopeLockedException e) {

@@ -9,6 +9,13 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.TitledBorder;
 
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.HardwareSetUpPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.PolarizerWheelPosition;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SLIMController;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SecondWheelPosition;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.WheelOnePanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.WheelTwoPanel;
+
 /**
  *  This class represents the panel for the Calibration One.
  * @author Elisa Garulli
@@ -68,9 +75,11 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 	 */
 	public void actionPerformed(ActionEvent e){
 		if(e.getSource() == startCalibrationOneButton) {
+			HardwareSetUpPanel.buttonGroupHardwareSetUp.setSelected(HardwareSetUpPanel.calOneModeButton.getModel(), true);
+			WheelOnePanel.buttonGroupWheelOne.setSelected(WheelOnePanel.polarizerOneButton.getModel(), true);
+			WheelTwoPanel.buttonGroupWheelTwo.setSelected(WheelTwoPanel.lensButton.getModel(), true);
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS);
-				
 			}
 		}
 	}

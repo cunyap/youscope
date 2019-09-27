@@ -5,7 +5,10 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/youscope-addon"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/youscope-common"/>
 	<classpathentry kind="src" path="/youscope-slim"/>
-	<classpathentry kind="lib" path="C:/Users/localadmin/Documents/youscope/youscope-all/lib/jfreechart-1.0.14.jar"/>
-	<classpathentry kind="lib" path="C:/Users/localadmin/Documents/youscope/youscope-all/lib/jcommon-1.0.17.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/youscope-client"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/youscope-livestream"/>
+	<classpathentry kind="lib" path="/youscope-all/lib/jfreechart-1.0.14.jar"/>
+	<classpathentry kind="lib" path="/youscope-all/lib/jcommon-1.0.17.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

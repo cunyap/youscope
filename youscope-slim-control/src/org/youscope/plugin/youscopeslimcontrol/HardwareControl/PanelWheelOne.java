@@ -1,4 +1,4 @@
-package org.youscope.plugin.youscopeslimcontrol;
+package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
@@ -22,14 +22,14 @@ import javafx.scene.layout.Border;
 
 import javax.swing.JRadioButton;
 
-public class PanelsManualWheels {
+public class PanelWheelOne {
 
 	public JPanel wheelsPanelCreator(String[] namesOfButtons, String label, ButtonGroup buttons, boolean VerticalButtons) {
 		JPanel panel = new JPanel();
 		JLabel wheelName = new JLabel(label);
 		panel.setLayout(new BorderLayout());
 		panel.add(wheelName, BorderLayout.NORTH);
-		PanelsManualWheels createButtons = new PanelsManualWheels();
+		PanelWheelOne createButtons = new PanelWheelOne();
 		if (VerticalButtons == false) {
 		createButtons.radioButtonsHorizontalCreator(namesOfButtons, panel, buttons);
 		}

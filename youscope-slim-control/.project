@@ -3,6 +3,7 @@
 	<name>youscope-slim-control</name>
 	<comment></comment>
 	<projects>
+		<project>youscope-livestream</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
