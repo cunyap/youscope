@@ -1,16 +1,22 @@
 package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+
+import jdk.internal.org.objectweb.asm.tree.IntInsnNode;
 
 /**
  *  This class represents the panel for the control of the second Wheel.
@@ -24,13 +30,15 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 	public static JRadioButton emptyButton = new JRadioButton("Empty");
 	public static JRadioButton polarizerButton = new JRadioButton("Polarizer");
 	static String currentPositionServoTwo = "";
-	static Image servoTwoLensToPolarizer = Toolkit.getDefaultToolkit().createImage("./Icons/servoTwoLP.png");
-	static Image servoTwoEmtyToPolarizer = Toolkit.getDefaultToolkit().createImage("./Icons/servoTwoEP.png");
-	static Image servoTwoPolarizerToEmpty = Toolkit.getDefaultToolkit().createImage("./Icons/servoTwoPE.png");
-	static Image servoTwoPolarizerToLens = Toolkit.getDefaultToolkit().createImage("./Icons/servoTwoEL.png");
-	static Image servoTwoEmptyToLens = Toolkit.getDefaultToolkit().createImage("./Icons/servoTwoEL.png");
-	static Image servoTwoLensToEmpty = Toolkit.getDefaultToolkit().createImage("./Icons/servoTwoLE.png");
-	static JButton animationServoTwo = new JButton(new ImageIcon(servoTwoEmtyToPolarizer));
+	boolean firstCall = true;
+	static Image initialPos = Toolkit.getDefaultToolkit().createImage("Icons/LensPolInit.png");
+	static Image servoTwoLensToPolarizer = Toolkit.getDefaultToolkit().createImage("Icons/servoTwoLPx.gif");
+	static Image servoTwoEmtyToPolarizer = Toolkit.getDefaultToolkit().createImage("Icons/servoTwoEPx.gif");
+	static Image servoTwoPolarizerToEmpty = Toolkit.getDefaultToolkit().createImage("Icons/servoTwoPEx.gif");
+	static Image servoTwoPolarizerToLens = Toolkit.getDefaultToolkit().createImage("Icons/servoTwoPLx.gif");
+	static Image servoTwoEmptyToLens = Toolkit.getDefaultToolkit().createImage("Icons/servoTwoELx.gif");
+	static Image servoTwoLensToEmpty = Toolkit.getDefaultToolkit().createImage("Icons/servoTwoLEx.gif");
+	static JButton animationServoTwo = new JButton(new ImageIcon(initialPos));
 
 	public static ButtonGroup buttonGroupWheelTwo;
 	/**
@@ -44,7 +52,9 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 		JLabel wheelName = new JLabel("Second wheel");
 		add(wheelName, BorderLayout.NORTH);
 		JPanel buttonPanel = createRadioButton();
+		JPanel animationPanel = animationPanel();
 		add(buttonPanel, BorderLayout.WEST);
+		add(animationPanel, BorderLayout.EAST);
 	}
 
 	/**
@@ -52,6 +62,7 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 	 */
 	private JPanel createRadioButton() {
 		JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.PAGE_AXIS));
 		buttonGroupWheelTwo = new ButtonGroup();
 
 		animationServoTwo.setOpaque(false);
@@ -74,6 +85,20 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 
 		return buttonPanel;
 	}
+	
+	private JPanel animationPanel() {
+		JPanel animationPanel = new JPanel();
+		animationPanel.setLayout(new BoxLayout(animationPanel, BoxLayout.PAGE_AXIS));
+
+		animationServoTwo.setOpaque(false);
+		animationServoTwo.setContentAreaFilled(false);
+		animationServoTwo.setBorderPainted(true);
+		animationServoTwo.setFocusPainted(false);
+		
+		animationPanel.add(animationServoTwo);
+
+		return animationPanel;
+	}
 
 	/**
 	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
@@ -81,7 +106,7 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == polarizerButton) {
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.POLARIZER);
-			if (currentPositionServoTwo == "lens") {
+			if (currentPositionServoTwo == "lens" | firstCall) {
 				animationServoTwo.setIcon(new ImageIcon(servoTwoLensToPolarizer));
 				servoTwoLensToPolarizer.flush();
 			}
@@ -91,10 +116,11 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 			}
 
 			currentPositionServoTwo = "polarizer";
+			firstCall = false;
 		}
 		if(e.getSource() == emptyButton) {
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
-			if (currentPositionServoTwo == "lens") {
+			if (currentPositionServoTwo == "lens" | firstCall) {
 				animationServoTwo.setIcon(new ImageIcon(servoTwoLensToEmpty));
 				servoTwoLensToEmpty.flush();
 			}
@@ -102,12 +128,12 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 				animationServoTwo.setIcon(new ImageIcon(servoTwoPolarizerToEmpty));
 				servoTwoPolarizerToEmpty.flush();
 			}
-
 			currentPositionServoTwo = "empty";
+			firstCall = false;
 		}
 		if(e.getSource() == lensButton) {
 			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS);
-			if (currentPositionServoTwo == "polarizer") {
+			if (currentPositionServoTwo == "polarizer" | firstCall) {
 				animationServoTwo.setIcon(new ImageIcon(servoTwoPolarizerToLens));
 				servoTwoPolarizerToLens.flush();
 			}
@@ -116,6 +142,7 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 				servoTwoEmptyToLens.flush();
 			}
 			currentPositionServoTwo = "lens";
+			firstCall = false;
 		}
 	}
 

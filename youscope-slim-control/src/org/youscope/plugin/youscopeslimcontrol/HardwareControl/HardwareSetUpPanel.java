@@ -1,6 +1,9 @@
 package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 import java.awt.event.ActionListener;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
+
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
@@ -23,6 +26,7 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 	public static JRadioButton calOneModeButton = new JRadioButton("Calibration One");
 	public static JRadioButton calTwoModeButton = new JRadioButton("Calibration Two");
 	public static  ButtonGroup buttonGroupHardwareSetUp;
+	Font fontTitle = new Font(null, 1, 12);
 	/**
 	 * Constructor.
 	 * Adds all the elements created to a JPanel.
@@ -31,7 +35,7 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 	public HardwareSetUpPanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS)); 
-		setTitle();
+		setBorder(BorderFactory.createTitledBorder(null, "Hardware setup",0, 0, fontTitle));
 		createRadioButton();
 		add(Box.createGlue());
 	}

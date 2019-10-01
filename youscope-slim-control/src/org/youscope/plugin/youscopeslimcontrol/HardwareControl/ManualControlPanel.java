@@ -1,4 +1,7 @@
 package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
+import java.awt.Font;
+
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.border.TitledBorder;
@@ -11,6 +14,8 @@ import javax.swing.border.TitledBorder;
  */
 public class ManualControlPanel extends JPanel {
 	
+	Font fontTitle = new Font(null, 1, 12);
+
 	/**
 	 * Constructor.
 	 * Adds all the elements created by the classes Wheel-N-Panel to a JPanel.
@@ -18,19 +23,10 @@ public class ManualControlPanel extends JPanel {
 	 */
 	public ManualControlPanel(SLIMController slimController) {
 		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS)); 
-		setTitle();
+		setBorder(BorderFactory.createTitledBorder(null, "Calibration Two", 0, 0, fontTitle));
 		add(new WheelOnePanel(slimController));
 		add(new WheelTwoPanel(slimController));
 		add(new WheelThreePanel(slimController));
 	}
 	
-	/**
-	 * Set the title and the border of the panel
-	 */
-	private void setTitle() {
-		TitledBorder titlePanel = new TitledBorder("Manual Control");
-		titlePanel.setTitleJustification(TitledBorder.LEFT);
-		titlePanel.setTitlePosition(TitledBorder.TOP);
-		setBorder(titlePanel);
-	}
 }

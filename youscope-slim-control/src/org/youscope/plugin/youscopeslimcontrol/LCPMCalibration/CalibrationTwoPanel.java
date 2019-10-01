@@ -78,23 +78,12 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		this.server = server;
 		this.reflector = reflector;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		setTitle();
+		setBorder(BorderFactory.createTitledBorder(null, "Calibration Two", 0, 0, fontTitle));
 		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
 		add(infoAndButtonPanel);
 		add(Box.createRigidArea(new Dimension(10,0)));
 		add(Box.createHorizontalGlue());
 		
-	}
-
-	/**
-	 * Set the title and the border of the panel
-	 */
-	private void setTitle() {
-		TitledBorder titlePanel = new TitledBorder("Calibration Two");
-		titlePanel.setTitleJustification(TitledBorder.LEFT);
-		titlePanel.setTitlePosition(TitledBorder.TOP);
-		titlePanel.setTitleFont(new Font(null, 1, 15));
-		setBorder(titlePanel);
 	}
 
 	/**

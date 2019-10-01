@@ -1,8 +1,15 @@
 package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -16,6 +23,14 @@ import javax.swing.JRadioButton;
  */
 public class WheelThreePanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
+	static Image wheelPos1 = Toolkit.getDefaultToolkit().createImage("Icons/try1.gif");
+//	static Image wheelPos2 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel2x.gif");
+//	static Image wheelPos3 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel3x.gif");
+//	static Image wheelPos4 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel4x.gif");
+//	static Image wheelPos5 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel5x.gif");
+//	static Image wheelPos6 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel6x.gif");
+	static Image initialPos = Toolkit.getDefaultToolkit().createImage("Icons/LensWheelInit.png");
+	static JLabel animationLensWheel = new JLabel(new ImageIcon(initialPos));
 	JRadioButton LensOneButton = new JRadioButton("Lens One");
 	JRadioButton LensTwoButton = new JRadioButton("Lens Two");
 	JRadioButton LensThreeButton = new JRadioButton("Lens Three");
@@ -37,7 +52,9 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 		JLabel wheelName = new JLabel("Lens wheel");
 		add(wheelName, BorderLayout.NORTH);
 		JPanel buttonPanel = createRadioButton();
+		JPanel animationPanel = animationPanel();
 		add(buttonPanel, BorderLayout.WEST);
+		add(animationPanel, BorderLayout.EAST);
 	}
 
 	/**
@@ -45,6 +62,7 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 	 */
 	private JPanel createRadioButton() {
 		JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.PAGE_AXIS));
 		ButtonGroup buttonGroup = new ButtonGroup();
 
 		for (JRadioButton button : buttonsArray) {
@@ -58,8 +76,19 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 		for (JRadioButton button : buttonsArray) {
 			button.addActionListener(this);;
 		}
-
+		
+		buttonPanel.add(animationLensWheel);
 		return buttonPanel;
+	}
+	
+	private JPanel animationPanel() {
+		JPanel animationPanel = new JPanel();
+		animationPanel.setLayout(new BoxLayout(animationPanel, BoxLayout.PAGE_AXIS));
+		animationPanel.setSize(new Dimension(100,100));
+		animationLensWheel.setSize(new Dimension(100,100));
+		animationPanel.add(animationLensWheel);
+
+		return animationPanel;
 	}
 
 	/**
@@ -68,21 +97,33 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == LensOneButton) {
 			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_ONE);
+			animationLensWheel.setIcon(new ImageIcon(wheelPos1));
+			wheelPos1.flush();
 		}
 		if(e.getSource() == LensTwoButton) {
 			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_TWO);
+			animationLensWheel.setIcon(new ImageIcon(wheelPos1));
+			wheelPos1.flush();
 		}
 		if(e.getSource() == LensThreeButton) {
 			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_THREE);
+			animationLensWheel.setIcon(new ImageIcon(wheelPos1));
+			wheelPos1.flush();
 		}
 		if(e.getSource() == LensFourButton) {
 			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FOUR);
+			animationLensWheel.setIcon(new ImageIcon(wheelPos1));
+			wheelPos1.flush();
 		}
 		if(e.getSource() == LensFiveButton) {
 			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_FIVE);
+			animationLensWheel.setIcon(new ImageIcon(wheelPos1));
+			wheelPos1.flush();
 		}
 		if(e.getSource() == LensSixButton) {
 			slimCTRL.setLensesWheelPosition(LensesWheelPosition.LENS_SIX);
+			animationLensWheel.setIcon(new ImageIcon(wheelPos1));
+			wheelPos1.flush();
 		}
 	}
 }

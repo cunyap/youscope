@@ -24,28 +24,27 @@ public class LoadingBar extends BasePopUpPanel {
 		setLoadingBar();
 
 		super.add(backgroundPanel);
-		}
+	}
 	public void setLook(String title) {
 		setSize(100,50);
 		setTitle(title);
-		JLabel label = new JLabel(new ImageIcon("./Icons/progressBarIcon3.png"));
+		JLabel label = new JLabel(new ImageIcon("Icons/progressBarIcon3.png"));
 		backgroundPanel.add(label, LEFT_ALIGNMENT);
 	}
-	
+
 	private void setLoadingBar() {
 		progressBar = new JProgressBar(0,100);
-		//backgroundPanel.add(Box.createRigidArea(new Dimension(100,0)));
 		backgroundPanel.add(progressBar);
-		}
-	
+	}
+
 	public void setValue(int n) {
 		progressBar.setValue(n);
 	}
-	
+
 	public void setForegroundBar(Color color) {
 		progressBar.setStringPainted(true);
 		progressBar.setForeground(color);
 		progressBar.setString("");
-		
+
 	}
 }
