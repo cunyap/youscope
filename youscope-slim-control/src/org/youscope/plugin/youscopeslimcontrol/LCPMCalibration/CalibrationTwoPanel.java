@@ -61,10 +61,6 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	Font fontTitle = new Font(null, 1, 12);
 	Font fontText = new Font(null, 0, 12);
 	JPanel infoAndButtonPanel;
-//	private final DoubleTextField phaseshift0 = new DoubleTextField(); 
-//	private final DoubleTextField phaseshift1 = new DoubleTextField(); 
-//	private final DoubleTextField phaseshift2 = new DoubleTextField(); 
-//	private final DoubleTextField phaseshift3 = new DoubleTextField();
 	
 	/**
 	 * Constructor.
@@ -123,28 +119,6 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		}
 	}
 	
-	/**
-	 * Retrieves the phasehift values in the properties for a SLIM job
-	 */
-//	private void actualizeValues()
-//	{
-//		SlimProperties properties = new SlimProperties(client);
-//		double[] phaseShift = properties.getPhaseShiftMask();
-//		phaseshift0.setValue(phaseShift[0]);
-//		phaseshift1.setValue(phaseShift[1]);
-//		phaseshift2.setValue(phaseShift[2]);
-//		phaseshift3.setValue(phaseShift[3]);
-//	}
-//	
-//	public JPanel resultsPanel() {
-//		JPanel results = new JPanel();
-//		results.add(phaseshift0);
-//		results.add(phaseshift1);
-//		results.add(phaseshift2);
-//		results.add(phaseshift3);
-//		return results;
-//	}
-
 }
 
 

@@ -17,7 +17,7 @@ import javax.swing.JRadioButton;
 
 /**
  *  This class represents the panel for the control of the Polarizers Wheel.
- * @author Elisa Garullistatic Image initialPos = Toolkit.getDefaultToolkit().createImage("Icons/LensPolInit.png");
+ * @author Elisa Garulli
  *
  */
 public class WheelOnePanel extends JPanel implements ActionListener{
@@ -72,7 +72,6 @@ public class WheelOnePanel extends JPanel implements ActionListener{
 		buttonGroupWheelOne.add(emptyButton); 
 		buttonGroupWheelOne.add(polarizerTwoButton); 
 		
-		//buttonPanel.add(Box.createRigidArea(new Dimension(0,30)));
 		buttonPanel.add(polarizerOneButton);
 		buttonPanel.add(emptyButton);
 		buttonPanel.add(polarizerTwoButton);
@@ -84,23 +83,25 @@ public class WheelOnePanel extends JPanel implements ActionListener{
 
 		return buttonPanel;
 	}
-	
+	/**
+	 * Sets the panel where the animation gets displayed.
+	 * @return the animation panel.
+	 */
 	private JPanel animationPanel() {
 		JPanel animationPanel = new JPanel();
 		animationPanel.setLayout(new BoxLayout(animationPanel, BoxLayout.PAGE_AXIS));
-
 		animationServoOne.setOpaque(false);
 		animationServoOne.setContentAreaFilled(false);
 		animationServoOne.setBorderPainted(true);
 		animationServoOne.setFocusPainted(false);
-		
 		animationPanel.add(animationServoOne);
 
 		return animationPanel;
 	}
 
 	/**
-	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
+	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI and the displaying of the 
+	 * corresponding animation.
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == polarizerOneButton) {

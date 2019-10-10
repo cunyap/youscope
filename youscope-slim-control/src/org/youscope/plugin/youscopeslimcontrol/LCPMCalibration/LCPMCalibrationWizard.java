@@ -7,19 +7,12 @@ import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.CameraField;
 import org.youscope.uielements.ChannelField;
 import org.youscope.uielements.LiveStreamPanel;
-
-import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.rmi.RemoteException;
-
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
-import org.youscope.clientinterfaces.StandardProperty;
 import org.youscope.common.microscope.CameraDevice;
 import org.youscope.common.microscope.Device;
 import org.youscope.common.microscope.DeviceException;
@@ -32,12 +25,14 @@ import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SecondWheelPositi
 import org.youscope.plugin.youscopeslimcontrol.HardwareControl.WheelOnePanel;
 import org.youscope.plugin.youscopeslimcontrol.HardwareControl.WheelTwoPanel;
 
-
+/**
+ * This class represent the wizard panel dedicated to the LCPM calibration. It allows to set camera, channels, exposure
+ * etc. from a live stream panel, and then to call the calibration process that will be performed with those settings.
+ * @author Elisa Garulli
+ *
+ */
 public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListener
 {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 7022131022437265022L;
 	Device reflector;
 	String channel;
@@ -53,7 +48,15 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 	JButton startCalibrationTwo;
 	CameraField cameraField;
 	ChannelField channelField;
+	LiveStreamPanel liveStream;
 	
+	/**
+	 * Constructor.
+	 * @param slimCTRL the SLIM Controller, which is the interface with the hardware.
+	 * @param client
+	 * @param server
+	 * @param reflector the LCPM device.
+	 */
 	public LCPMCalibrationWizard (SLIMController slimCTRL, YouScopeClient client, YouScopeServer server, Device reflector) {
 		super(client);
 		this.client = client;
@@ -61,12 +64,17 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 		this.reflector = reflector;
 		this.slimCTRL = slimCTRL;
 		setLCPMCalibrationWizard();
+		
 	}
+	
+	/**
+	 * Sets the graphical appearance of the wizard.
+	 */
 	public void setLCPMCalibrationWizard() {
 		setTitle("LCPM Calibration");
-		ChannelControl();
 		setGraphAndOutputPanel();
-		LiveStreamPanel liveStream = new LiveStreamPanel(client, server);
+		liveStream = new LiveStreamPanel(client, server);
+		liveStream.setAutoStartStream(true);
 		JSplitPane horizontalSplitPanel = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, liveStream, graphAndOutput);
 		setPreferredSize(new Dimension(1275, 600));
 		setMaximumSize(new Dimension(1275, 600));
@@ -75,11 +83,12 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 		horizontalSplitPanel.setResizeWeight(0.5);
 		horizontalSplitPanel.setVisible(true);
 		super.add(horizontalSplitPanel);
+		
 	}
 	
 	/**
 	 * Creates the panel that contains the test image or the gray-scale vs radians graph.
-	 * @return graphAndOutput an empty panel that contains the graph once the Calibration is called.
+	 * @return graphAndOutput an empty panel that will contain the graph, once the Calibration is called.
 	 */
 	private void setGraphAndOutputPanel() {
 		graphAndOutput = new JPanel();
@@ -90,6 +99,11 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 		graphAndOutput.add(startCalibrationTwo);
 	}
 	
+	/**
+	 * Programs the listeners to the buttons, allowing  the movement of the hardware in the corresponding position, the
+	 * use of the settings chose by the user (camera, channel, channelGroup, exposure, intensity), the start of the
+	 * calibration process and the display of the results.
+	 */
 	public void actionPerformed(ActionEvent e) {
 		if (e.getSource() == startCalibrationTwo) {
 			new Thread (new Runnable() {
@@ -115,16 +129,13 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 			}).start();
 		}
 	}
-	
+	/**
+	 * Sets the channel, channelGroup and camera as the user selects in the liveStream.
+	 */
 	public void ChannelControl(){
-		cameraField = new CameraField(client, server);
-		channelField = new ChannelField(client, server);
-			cameraField.setCamera((String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CAMERA));
-			channelField.setChannel((String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL_GROUP), 
-					(String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL));
-			this.camera = getCameraDevice(cameraField.getCameraDevice());
-			channel = channelField.getChannel();
-			channelGroup = channelField.getChannelGroup();
+		channel = liveStream.getChannelInfo();
+		channelGroup = liveStream.getChannelGroupInfo();
+		camera = getCameraDevice(liveStream.getCameraInfo());
 }
 	/**
 	 * Gets the camera device, given the device name.

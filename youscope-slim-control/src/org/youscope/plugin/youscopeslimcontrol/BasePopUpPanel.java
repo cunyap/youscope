@@ -4,7 +4,11 @@ import java.awt.Dimension;
 import javax.swing.JPanel;
 import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.clientinterfaces.YouScopeFrame;
-
+/**
+ * This class represents a basic, empty, pop-up panel.
+ * @author Elisa Garulli
+ *
+ */
 public class BasePopUpPanel extends JPanel
 {   
 	private static final long serialVersionUID = -7327196260576315134L;
@@ -19,11 +23,10 @@ public class BasePopUpPanel extends JPanel
 	public BasePopUpPanel(YouScopeClient client) {
 		setOpaque(true);
 		this.client = client;
-
     }
 	
 	/**
-	 * Convenient method to show this panel in a frame. The frame is not made visible and has a default title.
+	 * Shows this panel in a frame. The frame is not made visible and has a default title.
 	 * @return The frame containing this panel.
 	 */
 	public YouScopeFrame toFrame()
@@ -42,7 +45,7 @@ public class BasePopUpPanel extends JPanel
 	}
 	
 	/**
-	 * Sets the title of the frame, which is opened by {@link #toFrame()}. Has no effect when using this panel directly.
+	 * Sets the title of the frame. Has no effect when using this panel directly.
 	 * @param title Title of the frame.
 	 */
 	public void setTitle(String title)

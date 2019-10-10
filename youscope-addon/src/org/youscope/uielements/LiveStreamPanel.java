@@ -724,6 +724,9 @@ public class LiveStreamPanel extends ImagePanel {
 	    	String camera = channelControl.getCamera();
 	    	String channelGroup = channelControl.getChannelGroup();
 	    	String channel = channelControl.getChannel();
+	    	setChannelInfo(channel);
+	    	setChannelGroupInfo(channelGroup);
+	    	setCameraInfo(camera);
 	    	double exposure = channelControl.getExposure();
 	    	int imagingPeriod = channelControl.getImagingPeriod();
 	    	
@@ -761,5 +764,28 @@ public class LiveStreamPanel extends ImagePanel {
 	        }
     	}
     	startStopControl.updateButtons();
+
     }
+    
+    static String channel;
+    public static void setChannelInfo(String channelName) {
+    	channel = channelName;
+    }
+	public String getChannelInfo() {
+		return channel;
+	}
+    static String channelGroup;
+    public static void setChannelGroupInfo(String channelGroupName) {
+    	channelGroup = channelGroupName;
+    }
+	public String getChannelGroupInfo() {
+		return channel;
+	}
+    static String camera;
+    public static void setCameraInfo(String cameraName) {
+    	camera = cameraName;
+    }
+	public String getCameraInfo() {
+		return camera;
+	}
 }

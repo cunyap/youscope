@@ -24,11 +24,6 @@ import javax.swing.JRadioButton;
 public class WheelThreePanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
 	static Image wheelPos1 = Toolkit.getDefaultToolkit().createImage("Icons/try1.gif");
-//	static Image wheelPos2 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel2x.gif");
-//	static Image wheelPos3 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel3x.gif");
-//	static Image wheelPos4 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel4x.gif");
-//	static Image wheelPos5 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel5x.gif");
-//	static Image wheelPos6 = Toolkit.getDefaultToolkit().createImage("./Icons/wheel6x.gif");
 	static Image initialPos = Toolkit.getDefaultToolkit().createImage("Icons/LensWheelInit.png");
 	static JLabel animationLensWheel = new JLabel(new ImageIcon(initialPos));
 	JRadioButton LensOneButton = new JRadioButton("Lens One");
@@ -81,6 +76,10 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 		return buttonPanel;
 	}
 	
+	/**
+	 * Sets the panel where the animation gets displayed.
+	 * @return the animation panel.
+	 */
 	private JPanel animationPanel() {
 		JPanel animationPanel = new JPanel();
 		animationPanel.setLayout(new BoxLayout(animationPanel, BoxLayout.PAGE_AXIS));
@@ -92,7 +91,7 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 	}
 
 	/**
-	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
+	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI and display the animation.
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == LensOneButton) {

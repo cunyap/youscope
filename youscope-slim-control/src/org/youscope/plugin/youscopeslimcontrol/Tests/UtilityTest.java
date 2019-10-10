@@ -17,8 +17,9 @@ import jdk.nashorn.internal.objects.annotations.Setter;
 import junit.framework.AssertionFailedError;
 
 /**
- * @author localadmin
- *
+ * Tests normal and edge cases for the basic functions findMin, findMax, findClosest, findIndex, floatMod 
+ * and makeCumulativeSum
+ * @author Elisa Garulli
  */
 public class UtilityTest {
 	double[] commonArray;

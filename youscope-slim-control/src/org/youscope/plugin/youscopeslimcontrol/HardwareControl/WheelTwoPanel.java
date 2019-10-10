@@ -86,6 +86,10 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 		return buttonPanel;
 	}
 	
+	/**
+	 * Sets the panel where the animation gets displayed.
+	 * @return the animation panel.
+	 */
 	private JPanel animationPanel() {
 		JPanel animationPanel = new JPanel();
 		animationPanel.setLayout(new BoxLayout(animationPanel, BoxLayout.PAGE_AXIS));
@@ -101,7 +105,8 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 	}
 
 	/**
-	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
+	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI and the displaying of the 
+	 * corresponding animation.
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == polarizerButton) {

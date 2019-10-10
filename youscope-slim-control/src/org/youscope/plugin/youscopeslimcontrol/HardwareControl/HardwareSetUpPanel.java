@@ -74,6 +74,7 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 
 	/**
 	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI.
+	 * Moreover it displays the corresponding animation.
 	 */
 	public void actionPerformed(ActionEvent e) {
 		if(e.getSource() == slimModeButton) {
@@ -101,7 +102,11 @@ public class HardwareSetUpPanel extends JPanel implements ActionListener{
 			changeIcon("wheelTwo", "polarizer");
 		}
 	}
-
+	/**
+	 * Takes 
+	 * @param wheel
+	 * @param newPosition
+	 */
 	private void changeIcon(String wheel, String newPosition) {
 		if (wheel == "wheelOne") {
 			if(newPosition == "polarizerOne") {

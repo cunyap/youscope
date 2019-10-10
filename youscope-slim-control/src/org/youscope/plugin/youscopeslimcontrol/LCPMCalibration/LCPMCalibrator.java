@@ -140,7 +140,7 @@ public class LCPMCalibrator extends JPanel {
 	 */
 	private BufferedImage getImage(YouScopeClient client, YouScopeServer server, CameraDevice camera) {
 		try {
-			image = server.getMicroscope().getCameraDevice("ImageCamera").makeImage(channelGroup, channelName, exposure );
+			image = server.getMicroscope().getCameraDevice().makeImage(channelGroup, channelName, exposure );
 		} 
 		catch (MicroscopeException | DeviceException | InterruptedException | RemoteException | SettingException |
 				MicroscopeLockedException e) {
@@ -185,7 +185,6 @@ public class LCPMCalibrator extends JPanel {
 				sumIntensity += raster.getSample(i, j, 0);
 			}
 		}
-		//double averageIntensity = sumIntensity / (double)(processedImage.getWidth() * processedImage.getHeight());
 		double averageIntensity = sumIntensity / (double)(processedImage.getWidth() * processedImage.getHeight());
 		return averageIntensity;
 	}

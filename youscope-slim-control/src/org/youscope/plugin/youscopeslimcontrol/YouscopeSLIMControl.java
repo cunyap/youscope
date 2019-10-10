@@ -62,7 +62,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	}
 
 	/**
-	 * 
+	 * Represent the graphic interface of the plugin to control the SLIM calibration.
 	 * @param client Interface to the YouScope client, e.g. allowing to open or close new windows, or permanently save settings.
 	 * @param server Interface to the YouScope server, e.g. allowing access to the microscope.
 	 * @throws AddonException 
@@ -82,6 +82,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		SLIMController slimController = setSLIMController("NextGenArduino", getClient());
 		Device LCPM = getLCPMDevice("Reflector");
 		new SlimProperties(getClient()).setAttenuationFactor(0.0);
+		
 		// General Settings regarding the main frame.
 		setMaximizable(false);
 		setResizable(true);
@@ -119,7 +120,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	}
 
 	/**
-	 * 
+	 * Retrieves the Arduino device.
 	 * @param deviceName Name of the device to be loaded. In this case an Arduino.
 	 * @return	nextGenArduino, a device which is properly set up.
 	 * @throws RemoteException
@@ -131,22 +132,12 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		Device nextGenArduino = microscope.getDevice(deviceName);
 		return nextGenArduino;
 	}
-
-	private CameraDevice getCameraDevice(String deviceName) {
-		CameraDevice cameraDevice = null;
-		try {
-			YouScopeServer server = getServer();
-			Microscope microscope = server.getMicroscope();
-			cameraDevice = microscope.getCameraDevice(deviceName);
-		}
-		catch(RemoteException | DeviceException e) { 
-			e.printStackTrace();
-			JOptionPane.showMessageDialog(null, "No Camera Device connected", "Camera Error",
-					JOptionPane.ERROR_MESSAGE);
-		}
-		return cameraDevice;
-	}
-
+	
+/**
+ * Retrieves the reflectors device.
+ * @param deviceName the Youscope name of the LCPM
+ * @return LCPMDevice, an LCPM device.
+ */
 	private Device getLCPMDevice(String deviceName) {
 		Device LCPMDevice = null;
 		try {
@@ -163,7 +154,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	}
 
 	/**
-	 * 
+	 * Sets the SLIM controller to the given Arduino device.
 	 * @param deviceName Name of the device to be loaded. In this case an Arduino.
 	 * @return slimController an instance of SLIMController which allows to control the loaded device.
 	 */

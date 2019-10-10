@@ -40,15 +40,11 @@ public class CalibrationLCPMData {
 		}
 		try (BufferedWriter writer = new BufferedWriter (new FileWriter(path))){
 			writer.write("##IntensityValue: " + intensity);
-			//writer.newLine();
 			writer.write("##ExposureValue: " + exposure);
-			//writer.newLine();
 			writer.write("##CalibrationData: ");
-			//writer.newLine();
 			writer.write("Grayscale Value, Mean Intensitie [radians]");
 			for(int i=0; i < lcpmCalibrationData.length; i++) {
 				writer.write("# " + i + "," + Double.toString(lcpmCalibrationData[i]) + "\n");
-			//	writer.newLine();
 			}
 		}
 

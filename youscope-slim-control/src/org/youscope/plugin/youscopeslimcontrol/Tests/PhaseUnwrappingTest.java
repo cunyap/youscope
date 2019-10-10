@@ -10,8 +10,8 @@ import org.junit.Test;
 import org.youscope.plugin.youscopeslimcontrol.LCPMCalibration.PhaseUnwrapping;
 
 /**
- * @author localadmin
- *
+ * Compares the results from PhaseUnwrapping to the ones of numpy unwrap.
+ * @author Elisa Garulli
  */
 public class PhaseUnwrappingTest {
 
