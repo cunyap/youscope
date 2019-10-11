@@ -26,9 +26,9 @@ import jdk.internal.org.objectweb.asm.tree.IntInsnNode;
 public class WheelTwoPanel extends JPanel implements ActionListener{
 
 	SLIMController slimCTRL = null;
-	public static JRadioButton lensButton = new JRadioButton("Lens");
+	public static JRadioButton lensButton = new JRadioButton("Lens Arm");
 	public static JRadioButton emptyButton = new JRadioButton("Empty");
-	public static JRadioButton polarizerButton = new JRadioButton("Polarizer");
+	public static JRadioButton polarizerButton = new JRadioButton("Polarizer Arm");
 	static String currentPositionServoTwo = "";
 	boolean firstCall = true;
 	static Image initialPos = Toolkit.getDefaultToolkit().createImage("Icons/LensPolInit.png");
@@ -49,7 +49,7 @@ public class WheelTwoPanel extends JPanel implements ActionListener{
 	public WheelTwoPanel(SLIMController slimController) {
 		slimCTRL = slimController;	
 		setLayout(new BorderLayout());
-		JLabel wheelName = new JLabel("Second wheel");
+		JLabel wheelName = new JLabel("Optical Elements Arm");
 		add(wheelName, BorderLayout.NORTH);
 		JPanel buttonPanel = createRadioButton();
 		JPanel animationPanel = animationPanel();

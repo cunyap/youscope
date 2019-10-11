@@ -23,9 +23,9 @@ import javax.swing.JRadioButton;
 public class WheelOnePanel extends JPanel implements ActionListener{
 
 	SLIMController slimCTRL = null;
-	public static JRadioButton polarizerOneButton = new JRadioButton("Polarizer One");
+	public static JRadioButton polarizerOneButton = new JRadioButton("Polarizer Arm One");
 	public static JRadioButton emptyButton = new JRadioButton("Empty");
-	public static JRadioButton polarizerTwoButton = new JRadioButton("Polarizer Two");
+	public static JRadioButton polarizerTwoButton = new JRadioButton("Polarizer Arm Two");
 	public static ButtonGroup buttonGroupWheelOne;
 	boolean firstCall = true;
 	static String currentPositionServoOne = "empty";
@@ -47,7 +47,7 @@ public class WheelOnePanel extends JPanel implements ActionListener{
 	public WheelOnePanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BorderLayout());
-		JLabel wheelName = new JLabel("Polarizers wheel");
+		JLabel wheelName = new JLabel("Polarizers Arm");
 		add(wheelName, BorderLayout.NORTH);
 		JPanel buttonPanel = createRadioButton();
 		JPanel animationPanel = animationPanel();

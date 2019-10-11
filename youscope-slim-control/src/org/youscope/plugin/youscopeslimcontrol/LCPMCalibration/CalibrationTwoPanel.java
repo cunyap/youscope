@@ -74,12 +74,11 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		this.server = server;
 		this.reflector = reflector;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		setBorder(BorderFactory.createTitledBorder(null, "Calibration Two", 0, 0, fontTitle));
+		setBorder(BorderFactory.createTitledBorder(null, "LCPM Calibration", 0, 0, fontTitle));
 		JPanel infoAndButtonPanel = createInfoAndButtonPanel();
 		add(infoAndButtonPanel);
 		add(Box.createRigidArea(new Dimension(10,0)));
 		add(Box.createHorizontalGlue());
-		
 	}
 
 	/**

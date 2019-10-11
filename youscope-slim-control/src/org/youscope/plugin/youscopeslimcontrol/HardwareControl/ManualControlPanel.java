@@ -23,7 +23,7 @@ public class ManualControlPanel extends JPanel {
 	 */
 	public ManualControlPanel(SLIMController slimController) {
 		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS)); 
-		setBorder(BorderFactory.createTitledBorder(null, "Calibration Two", 0, 0, fontTitle));
+		setBorder(BorderFactory.createTitledBorder(null, "Optical Elements Manual Setup", 0, 0, fontTitle));
 		add(new WheelOnePanel(slimController));
 		add(new WheelTwoPanel(slimController));
 		add(new WheelThreePanel(slimController));

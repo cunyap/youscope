@@ -1,14 +1,14 @@
 package org.youscope.plugin.youscopeslimcontrol;
 import java.awt.event.ActionListener;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
+
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
-import javax.swing.border.TitledBorder;
-
 import org.youscope.plugin.youscopeslimcontrol.HardwareControl.HardwareSetUpPanel;
 import org.youscope.plugin.youscopeslimcontrol.HardwareControl.PolarizerWheelPosition;
 import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SLIMController;
@@ -24,6 +24,8 @@ import org.youscope.plugin.youscopeslimcontrol.HardwareControl.WheelTwoPanel;
 public class CalibrationOnePanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
 	JButton startCalibrationOneButton;
+	Font fontTitle = new Font(null, 1, 12);
+	Font fontText = new Font(null, 0, 12);
 
 	/**
 	 * Constructor.
@@ -33,9 +35,10 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 	public CalibrationOnePanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		setTitle();
+		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS)); 
+		setBorder(BorderFactory.createTitledBorder(null, "Ring Calibration", 0, 0, fontTitle));
 		JPanel textPanel = createInfoBox();
-		startCalibrationOneButton = new JButton("Start Calibration One");
+		startCalibrationOneButton = new JButton("Start Ring Calibration");
 		add(startCalibrationOneButton);
 		startCalibrationOneButton.setAlignmentX(LEFT_ALIGNMENT);
 		startCalibrationOneButton.addActionListener(this);
@@ -44,15 +47,6 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		textPanel.setAlignmentX(RIGHT_ALIGNMENT);
 	}
 
-	/**
-	 * Set the title and the border of the panel
-	 */
-	private void setTitle() {
-		TitledBorder titlePanel = new TitledBorder("Calibration One");
-		titlePanel.setTitleJustification(TitledBorder.LEFT);
-		titlePanel.setTitlePosition(TitledBorder.TOP);
-		setBorder(titlePanel);
-	}
 	
 	/**
 	 * Creates the panel that contains the description of the computation
@@ -65,6 +59,7 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		descriptionText.setEditable(false);
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
+		descriptionText.setFont(fontText);
 		textPanel.add(descriptionText);
 		return textPanel;	
 	}
