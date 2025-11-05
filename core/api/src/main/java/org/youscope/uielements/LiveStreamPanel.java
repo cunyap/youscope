@@ -680,7 +680,6 @@ public class LiveStreamPanel extends ImagePanel {
 	public void paintComponent(Graphics g)
 	{
 	    super.paintComponent(g);  
-		Graphics2D g2d = (Graphics2D) g;
 
 		// Draw Crosshair if enabled
 	    if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
@@ -693,9 +692,10 @@ public class LiveStreamPanel extends ImagePanel {
 
 		// Draw Maks if enabled
 		if (overlayEnableCheckbox != null && overlayEnableCheckbox.isSelected()) {
+				Graphics2D g2d = (Graphics2D) g;
 				Composite originalComposite = g2d.getComposite();
 				g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
-				g2d.setColor(Color.BLACK);
+				g2d.setColor(CROSSHAIR_COLOR);
 
 				int panelWidth = getWidth();
 				int panelHeight = getHeight();
