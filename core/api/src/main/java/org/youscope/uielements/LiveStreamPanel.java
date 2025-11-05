@@ -693,8 +693,8 @@ public class LiveStreamPanel extends ImagePanel {
 
 		// Draw Mask if enabled
 		if (overlayEnableCheckbox != null && overlayEnableCheckbox.isSelected()) {
-			Composite originalComposite = g2d.getComposite();
-			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+			// Composite originalComposite = g2d.getComposite();
+			// g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f));
 			g2d.setColor(CROSSHAIR_COLOR);
 
 			int panelWidth = getWidth();
@@ -704,7 +704,7 @@ public class LiveStreamPanel extends ImagePanel {
 			int rectY = (panelHeight - rectSize) / 2;
 			g2d.fillRect(rectX, rectY, rectSize, rectSize);
 
-			g2d.setComposite(originalComposite);
+			// g2d.setComposite(originalComposite);
 
 			if (circleCutoutCheckbox != null && circleCutoutCheckbox.isSelected() && circleRadiusField != null) {
 				int radius = 50;
