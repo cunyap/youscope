@@ -80,6 +80,11 @@ public class LiveStreamPanel extends ImagePanel {
 	private int crosshairY = -1;
 	private static final Color CROSSHAIR_COLOR = new Color(0, 181, 255);
 	private boolean isMaskDisplayed = false;
+	private boolean isCircMask = false;
+	private boolean isRectMask = false;
+	private int maskCircRadius = -1;
+	private int maskRectWidth = -1;
+	private int maskRectHeight = -1;
 	private JCheckBox overlayEnableCheckbox;
 	private JCheckBox circleCutoutCheckbox;
 	private JTextField circleRadiusField;
@@ -200,11 +205,16 @@ public class LiveStreamPanel extends ImagePanel {
 		circleCutoutCheckbox.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				circleRadiusField.setEnabled(circleCutoutCheckbox.isSelected());
-				if(circleCutoutCheckbox.isSelected()) {
+				boolean selected = circleCutoutCheckbox.isSelected();
+				isCircMask = selected;
+
+				if(isCircMask) {
+					circleRadiusField.setEnabled(true);
 					rectCutoutCheckbox.setSelected(false);
 					rectWidthField.setEnabled(false);
 					rectHeightField.setEnabled(false);
+
+					maskCircRadius = Integer.parseInt(circleRadiusField.getText());	
 				}
 				repaint();
 			}
@@ -213,11 +223,17 @@ public class LiveStreamPanel extends ImagePanel {
 		rectCutoutCheckbox.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				rectWidthField.setEnabled(rectCutoutCheckbox.isSelected());
-				rectHeightField.setEnabled(rectCutoutCheckbox.isSelected());
-				if(rectCutoutCheckbox.isSelected()) {
+				boolean selected = rectCutoutCheckbox.isSelected();
+				isRectMask = selected;
+
+				if(isRectMask) {
+					rectWidthField.setEnabled(true);
+				    rectHeightField.setEnabled(true);
 					circleCutoutCheckbox.setSelected(false);
 					circleRadiusField.setEnabled(false);
+					
+					maskRectWidth = Integer.parseInt(rectWidthField.getText());
+					maskRectHeight = Integer.parseInt(rectHeightField.getText());
 				}
 				repaint();
 			}
@@ -696,44 +712,36 @@ public class LiveStreamPanel extends ImagePanel {
 
 		// Draw Mask if enabled
 		if (isMaskDisplayed) {
-			g2d.setColor(CROSSHAIR_COLOR);
-			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
-		}
-		System.out.println("trying masks");
-		if (isMaskDisplayed) {
-			// Composite originalComposite = g2d.getComposite();
-			// g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f));
+			Composite originalComposite = g2d.getComposite();
+			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
 			System.out.println("Draw maks");
 			g2d.setColor(CROSSHAIR_COLOR);
-			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
 
 			int panelWidth = getWidth();
 			int panelHeight = getHeight();
-			int rectSize = Math.min(panelWidth, panelHeight) - 20;
+			int rectSize = Math.min(panelWidth, panelHeight);
 			int rectX = (panelWidth - rectSize) / 2;
 			int rectY = (panelHeight - rectSize) / 2;
 			System.out.println("Base rectanlge=" + rectX + rectY + rectSize + rectSize);
 			g2d.fillRect(rectX, rectY, rectSize, rectSize);
+			g2d.setComposite(originalComposite);
 
-			// g2d.setComposite(originalComposite);
-
-			if (circleCutoutCheckbox != null && circleCutoutCheckbox.isSelected() && circleRadiusField != null) {
+			if (isCircMask && maskCircRadius >= 0) {
 				int radius = 50;
 				try {
-					radius = Integer.parseInt(circleRadiusField.getText());
+					radius = maskCircRadius;
 				} catch (NumberFormatException ex) {}
 				Shape circle = new java.awt.geom.Ellipse2D.Double(
 					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
 				g2d.setColor(Color.RED);
 				g2d.fill(circle);
 				System.out.println("Base cicle hole=" + radius);
-			} else if (rectCutoutCheckbox != null && rectCutoutCheckbox.isSelected() &&
-					rectWidthField != null && rectHeightField != null) {
+			} else if (isRectMask && maskRectWidth >= 0 && maskRectHeight >= 0) {
 				int rectW = 80;
 				int rectH = 60;
 				try {
-					rectW = Integer.parseInt(rectWidthField.getText());
-					rectH = Integer.parseInt(rectHeightField.getText());
+					rectW = maskRectWidth;
+					rectH = maskRectHeight;
 				} catch (NumberFormatException ex) {}
 				int cutoutX = rectX + (rectSize - rectW) / 2;
 				int cutoutY = rectY + (rectSize - rectH) / 2;
