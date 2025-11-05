@@ -21,6 +21,11 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.rmi.RemoteException;
+import java.awt.AlphaComposite;
+import java.awt.Composite;
+import java.awt.Shape;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Rectangle2D;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
@@ -30,6 +35,7 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.JCheckBox;
@@ -73,6 +79,12 @@ public class LiveStreamPanel extends ImagePanel {
 	private int crosshairX = -1;
 	private int crosshairY = -1;
 	private static final Color CROSSHAIR_COLOR = new Color(0, 181, 255);
+	private JCheckBox overlayEnableCheckbox;
+	private JCheckBox circleCutoutCheckbox;
+	private JTextField circleRadiusField;
+	private JCheckBox rectCutoutCheckbox;
+	private JTextField rectWidthField;
+	private JTextField rectHeightField;
 	
 	private final Object fullScreenLock = new Object();
 	private JFrame fullScreenFrame = null;
@@ -108,6 +120,7 @@ public class LiveStreamPanel extends ImagePanel {
 		insertControl("Imaging", channelControl, 0);
 		addControl("Control", startStopControl);
 		
+		// Overlay Crosshair options
 		JPanel crosshairPanel = new JPanel();
 		crosshairPanel.setLayout(new BoxLayout(crosshairPanel, BoxLayout.Y_AXIS));
 
@@ -156,6 +169,72 @@ public class LiveStreamPanel extends ImagePanel {
 		        }
 		    }
 		});
+
+		// Overlay Mask options panel 
+		JPanel overlayPanel = new JPanel();
+		overlayPanel.setLayout(new BoxLayout(overlayPanel, BoxLayout.Y_AXIS));
+
+		final JCheckBox overlayEnableCheckbox = new JCheckBox("Show Overlay", false);
+		overlayPanel.add(overlayEnableCheckbox);
+
+		// Circle negative mask checkbox and radius field
+		final JCheckBox circleCutoutCheckbox = new JCheckBox("Circular mask");
+		final JTextField circleRadiusField = new JTextField("50", 5);
+		circleRadiusField.setEnabled(false);
+		overlayPanel.add(circleCutoutCheckbox);
+		overlayPanel.add(circleRadiusField);
+
+		// Rectangle negative checkbox and width/height fields
+		final JCheckBox rectCutoutCheckbox = new JCheckBox("Rectangular mask");
+		final JTextField rectWidthField = new JTextField("100", 5);
+		final JTextField rectHeightField = new JTextField("80", 5);
+		rectWidthField.setEnabled(false);
+		rectHeightField.setEnabled(false);
+		overlayPanel.add(rectCutoutCheckbox);
+		overlayPanel.add(new JLabel("Width:"));
+		overlayPanel.add(rectWidthField);
+		overlayPanel.add(new JLabel("Height:"));
+		overlayPanel.add(rectHeightField);
+
+		circleCutoutCheckbox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				circleRadiusField.setEnabled(circleCutoutCheckbox.isSelected());
+				if(circleCutoutCheckbox.isSelected()) {
+					rectCutoutCheckbox.setSelected(false);
+					rectWidthField.setEnabled(false);
+					rectHeightField.setEnabled(false);
+				}
+				repaint();
+			}
+		});
+
+		rectCutoutCheckbox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				rectWidthField.setEnabled(rectCutoutCheckbox.isSelected());
+				rectHeightField.setEnabled(rectCutoutCheckbox.isSelected());
+				if(rectCutoutCheckbox.isSelected()) {
+					circleCutoutCheckbox.setSelected(false);
+					circleRadiusField.setEnabled(false);
+				}
+				repaint();
+			}
+		});
+
+		overlayEnableCheckbox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				boolean enabled = overlayEnableCheckbox.isSelected();
+				circleCutoutCheckbox.setEnabled(enabled);
+				rectCutoutCheckbox.setEnabled(enabled);
+				circleRadiusField.setEnabled(enabled && circleCutoutCheckbox.isSelected());
+				rectWidthField.setEnabled(enabled && rectCutoutCheckbox.isSelected());
+				rectHeightField.setEnabled(enabled && rectCutoutCheckbox.isSelected());
+				repaint();
+			}
+		});
+		addControl("Overlay Options", overlayPanel);
 
 		loadSettings(client.getPropertyProvider());
 
@@ -600,14 +679,58 @@ public class LiveStreamPanel extends ImagePanel {
 	@Override
 	public void paintComponent(Graphics g)
 	{
-	    super.paintComponent(g);  // ensure default painting occurs
+	    super.paintComponent(g);  
+		Graphics2D g2d = (Graphics2D) g;
+
+		// Draw Crosshair if enabled
 	    if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
 	    {
 	        Graphics2D g2 = (Graphics2D) g;
-	        g2.setColor(CROSSHAIR_COLOR); // e.g., light blue
+	        g2.setColor(CROSSHAIR_COLOR); 
 	        g2.drawLine(crosshairX, 0, crosshairX, getHeight());
 	        g2.drawLine(0, crosshairY, getWidth(), crosshairY);
 	    }
+
+		// Draw Maks if enabled
+		if (overlayEnableCheckbox.isSelected()) {
+			// Set semi-transparent fill
+			Composite originalComposite = g2d.getComposite();
+			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+			g2d.setColor(Color.BLACK);
+
+			// Draw rectangle centered on displayed image bounds
+			int panelWidth = getWidth();
+			int panelHeight = getHeight();
+			int rectSize = Math.min(panelWidth, panelHeight) - 20;
+			int rectX = (panelWidth - rectSize) / 2;
+			int rectY = (panelHeight - rectSize) / 2;
+			g2d.fillRect(rectX, rectY, rectSize, rectSize);
+
+			g2d.setComposite(originalComposite);
+
+			// Cutout circle or rectangle accordingly
+			if (circleCutoutCheckbox.isSelected()) {
+				int radius = 50; 
+				try {
+					radius = Integer.parseInt(circleRadiusField.getText());
+				} catch (NumberFormatException ex) {}
+				Shape circle = new java.awt.geom.Ellipse2D.Double(
+					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
+				// Create hole by setting clipping or painting background over circle
+				g2d.setColor(getBackground());
+				g2d.fill(circle);
+			} else if (rectCutoutCheckbox.isSelected()) {
+				int rectW = 80, rectH = 60;
+				try {
+					rectW = Integer.parseInt(rectWidthField.getText());
+					rectH = Integer.parseInt(rectHeightField.getText());
+				} catch (NumberFormatException ex) {}
+				int cutoutX = rectX + (rectSize - rectW) / 2;
+				int cutoutY = rectY + (rectSize - rectH) / 2;
+				g2d.setColor(getBackground());
+				g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
+			}
+		}
 	}
 
 	@Override
