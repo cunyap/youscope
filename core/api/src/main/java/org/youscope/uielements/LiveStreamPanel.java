@@ -24,10 +24,12 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
+import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.JCheckBox;
@@ -106,28 +108,30 @@ public class LiveStreamPanel extends ImagePanel {
 		insertControl("Imaging", channelControl, 0);
 		addControl("Control", startStopControl);
 		
-		final JCheckBox crosshairCheckbox = new JCheckBox("Display Crosshair");
-	    crosshairCheckbox.addActionListener(new ActionListener() {
-	        @Override
-	        public void actionPerformed(ActionEvent e) {
-	            isCrosshairDisplayed = crosshairCheckbox.isSelected();
-	            repaint();
-	        }
-	    });
-	    addControl("Crosshair", crosshairCheckbox);
+		JPanel crosshairPanel = new JPanel();
+		crosshairPanel.setLayout(new BoxLayout(crosshairPanel, BoxLayout.Y_AXIS));
 
-		addMouseListener(new java.awt.event.MouseAdapter() {
-		    @Override
-		    public void mouseClicked(java.awt.event.MouseEvent e) {
-		        if (isCrosshairDisplayed) {
-		            crosshairX = e.getX();
-		            crosshairY = e.getY();
-		            repaint();
-		        }
-		    }
+		final JCheckBox crosshairCheckbox = new JCheckBox("Display Crosshair", false); 
+		crosshairPanel.add(crosshairCheckbox);
+		final JCheckBox crosshairCenteredCheckbox = new JCheckBox("Center Crosshair", true); 
+		crosshairPanel.add(crosshairCenteredCheckbox);
+
+		crosshairCheckbox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				boolean selected = crosshairCheckbox.isSelected();
+				isCrosshairDisplayed = selected;
+				crosshairCenteredCheckbox.setEnabled(selected);
+				if (!selected) {
+					crosshairCenteredCheckbox.setSelected(false);
+					isCrosshairCentered = false;
+				} else {
+					isCrosshairCentered = crosshairCenteredCheckbox.isSelected();
+				}
+				repaint();
+			}
 		});
 
-		final JCheckBox crosshairCenteredCheckbox = new JCheckBox("Center Crosshair");
 		crosshairCenteredCheckbox.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -139,7 +143,7 @@ public class LiveStreamPanel extends ImagePanel {
 				repaint();
 			}
 		});
-		addControl("Centered Crosshair", crosshairCenteredCheckbox);
+		addControl("Crosshair", crosshairPanel);
 
 		loadSettings(client.getPropertyProvider());
 
