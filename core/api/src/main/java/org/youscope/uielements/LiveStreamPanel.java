@@ -143,7 +143,19 @@ public class LiveStreamPanel extends ImagePanel {
 				repaint();
 			}
 		});
+
 		addControl("Crosshair", crosshairPanel);
+
+		addMouseListener(new java.awt.event.MouseAdapter() {
+		    @Override
+		    public void mouseClicked(java.awt.event.MouseEvent e) {
+		        if (isCrosshairDisplayed) {
+		            crosshairX = e.getX();
+		            crosshairY = e.getY();
+		            repaint();
+		        }
+		    }
+		});
 
 		loadSettings(client.getPropertyProvider());
 
