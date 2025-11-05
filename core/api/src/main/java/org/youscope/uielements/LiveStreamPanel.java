@@ -699,6 +699,7 @@ public class LiveStreamPanel extends ImagePanel {
 			// g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f));
 			System.out.println("Draw maks");
 			g2d.setColor(CROSSHAIR_COLOR);
+			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
 
 			int panelWidth = getWidth();
 			int panelHeight = getHeight();
