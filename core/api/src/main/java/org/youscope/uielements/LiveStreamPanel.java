@@ -693,6 +693,10 @@ public class LiveStreamPanel extends ImagePanel {
 		}
 
 		// Draw Mask if enabled
+		if (overlayEnableCheckbox.isSelected()) {
+			g2d.setColor(CROSSHAIR_COLOR);
+			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
+		}
 		System.out.println("trying masks");
 		if (overlayEnableCheckbox != null && overlayEnableCheckbox.isSelected()) {
 			// Composite originalComposite = g2d.getComposite();
