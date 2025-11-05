@@ -24,8 +24,8 @@ import java.rmi.RemoteException;
 import java.awt.AlphaComposite;
 import java.awt.Composite;
 import java.awt.Shape;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
+// import java.awt.geom.Ellipse2D;
+// import java.awt.geom.Rectangle2D;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
@@ -85,12 +85,12 @@ public class LiveStreamPanel extends ImagePanel {
 	private int maskCircRadius = -1;
 	private int maskRectWidth = -1;
 	private int maskRectHeight = -1;
-	private JCheckBox overlayEnableCheckbox;
-	private JCheckBox circleCutoutCheckbox;
-	private JTextField circleRadiusField;
-	private JCheckBox rectCutoutCheckbox;
-	private JTextField rectWidthField;
-	private JTextField rectHeightField;
+	// private JCheckBox overlayEnableCheckbox;
+	// private JCheckBox circleCutoutCheckbox;
+	// private JTextField circleRadiusField;
+	// private JCheckBox rectCutoutCheckbox;
+	// private JTextField rectWidthField;
+	// private JTextField rectHeightField;
 	
 	private final Object fullScreenLock = new Object();
 	private JFrame fullScreenFrame = null;
@@ -704,7 +704,6 @@ public class LiveStreamPanel extends ImagePanel {
 		// Draw Crosshair if enabled
 		if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
 		{
-			System.out.println("Crosshair displayed");
 			g2d.setColor(CROSSHAIR_COLOR); 
 			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
 			g2d.drawLine(0, crosshairY, getWidth(), crosshairY);
@@ -714,7 +713,6 @@ public class LiveStreamPanel extends ImagePanel {
 		if (isMaskDisplayed) {
 			Composite originalComposite = g2d.getComposite();
 			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
-			System.out.println("Draw maks");
 			g2d.setColor(CROSSHAIR_COLOR);
 
 			int panelWidth = getWidth();
@@ -722,33 +720,27 @@ public class LiveStreamPanel extends ImagePanel {
 			int rectSize = Math.min(panelWidth, panelHeight);
 			int rectX = (panelWidth - rectSize) / 2;
 			int rectY = (panelHeight - rectSize) / 2;
-			System.out.println("Base rectanlge=" + rectX + rectY + rectSize + rectSize);
 			g2d.fillRect(rectX, rectY, rectSize, rectSize);
-			g2d.setComposite(originalComposite);
+
+			// Set composite to CLEAR to see underlying image 
+			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0f));
 
 			if (isCircMask && maskCircRadius >= 0) {
-				int radius = 50;
-				try {
-					radius = maskCircRadius;
-				} catch (NumberFormatException ex) {}
+				int radius = maskCircRadius;
 				Shape circle = new java.awt.geom.Ellipse2D.Double(
 					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
-				g2d.setColor(Color.RED);
 				g2d.fill(circle);
-				System.out.println("Base cicle hole=" + radius);
 			} else if (isRectMask && maskRectWidth >= 0 && maskRectHeight >= 0) {
-				int rectW = 80;
-				int rectH = 60;
-				try {
-					rectW = maskRectWidth;
-					rectH = maskRectHeight;
-				} catch (NumberFormatException ex) {}
+				int rectW = maskRectWidth;
+				int rectH = maskRectHeight;
 				int cutoutX = rectX + (rectSize - rectW) / 2;
 				int cutoutY = rectY + (rectSize - rectH) / 2;
-				g2d.setColor(getBackground());
 				g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
-				System.out.println("Base rectangular hole=" + cutoutX + cutoutY + rectW + rectH);
 			}
+
+			// Restore original composite
+			g2d.setComposite(originalComposite);
+
 		}
 	}
 
