@@ -30,6 +30,9 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.JCheckBox;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 
 import org.youscope.clientinterfaces.StandardProperty;
 import org.youscope.clientinterfaces.YouScopeClient;
@@ -564,7 +567,7 @@ public class LiveStreamPanel extends ImagePanel {
 	}
 
 	@Override
-	protected void paintComponent(Graphics g)
+	public void paintComponent(Graphics g)
 	{
 	    super.paintComponent(g);  // ensure default painting occurs
 	    if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
