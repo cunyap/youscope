@@ -79,6 +79,7 @@ public class LiveStreamPanel extends ImagePanel {
 	private int crosshairX = -1;
 	private int crosshairY = -1;
 	private static final Color CROSSHAIR_COLOR = new Color(0, 181, 255);
+	private boolean isMaskDisplayed = false;
 	private JCheckBox overlayEnableCheckbox;
 	private JCheckBox circleCutoutCheckbox;
 	private JTextField circleRadiusField;
@@ -226,6 +227,7 @@ public class LiveStreamPanel extends ImagePanel {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				boolean enabled = overlayEnableCheckbox.isSelected();
+				isMaskDisplayed = enabled;
 				circleCutoutCheckbox.setEnabled(enabled);
 				rectCutoutCheckbox.setEnabled(enabled);
 				circleRadiusField.setEnabled(enabled && circleCutoutCheckbox.isSelected());
@@ -693,12 +695,12 @@ public class LiveStreamPanel extends ImagePanel {
 		}
 
 		// Draw Mask if enabled
-		if (overlayEnableCheckbox.isSelected()) {
+		if (isMaskDisplayed) {
 			g2d.setColor(CROSSHAIR_COLOR);
 			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
 		}
 		System.out.println("trying masks");
-		if (overlayEnableCheckbox != null && overlayEnableCheckbox.isSelected()) {
+		if (isMaskDisplayed) {
 			// Composite originalComposite = g2d.getComposite();
 			// g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f));
 			System.out.println("Draw maks");
