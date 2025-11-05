@@ -105,7 +105,7 @@ public class LiveStreamPanel extends ImagePanel {
 		insertControl("Imaging", channelControl, 0);
 		addControl("Control", startStopControl);
 		
-	    JCheckBox crosshairCheckbox = new JCheckBox("Display Crosshair");
+		final JCheckBox crosshairCheckbox = new JCheckBox("Display Crosshair");
 	    crosshairCheckbox.addActionListener(new ActionListener() {
 	        @Override
 	        public void actionPerformed(ActionEvent e) {
