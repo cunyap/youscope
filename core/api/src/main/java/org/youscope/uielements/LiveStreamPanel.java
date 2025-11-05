@@ -67,6 +67,7 @@ public class LiveStreamPanel extends ImagePanel {
 	private volatile boolean streamRunning = false;
 
 	private boolean isCrosshairDisplayed = false;
+	private boolean isCrosshairCentered = false;
 	private int crosshairX = -1;
 	private int crosshairY = -1;
 	private static final Color CROSSHAIR_COLOR = new Color(0, 181, 255);
@@ -125,6 +126,17 @@ public class LiveStreamPanel extends ImagePanel {
 		        }
 		    }
 		});
+
+		final JCheckBox crosshairCenteredCheckbox = new JCheckBox("Center Crosshair");
+		crosshairCenteredCheckbox.addActionListener(e -> {
+		    isCrosshairCentered = crosshairCenteredCheckbox.isSelected();
+		    if (isCrosshairCentered) {
+		        crosshairX = -1;
+		        crosshairY = -1;
+		    }
+		    repaint();
+		});
+		addControl("Centered Crosshair", crosshairCenteredCheckbox);
 
 		loadSettings(client.getPropertyProvider());
 
@@ -576,6 +588,48 @@ public class LiveStreamPanel extends ImagePanel {
 	        g2.setColor(CROSSHAIR_COLOR); // e.g., light blue
 	        g2.drawLine(crosshairX, 0, crosshairX, getHeight());
 	        g2.drawLine(0, crosshairY, getWidth(), crosshairY);
+	    }
+	}
+
+	@Override
+	public synchronized void setImage(ImageEvent<?> imageEvent) {
+	    super.setImage(imageEvent);
+	
+	    if (isCrosshairCentered && imageEvent != null) {
+	        int imagePixelWidth = imageEvent.getWidth();
+	        int imagePixelHeight = imageEvent.getHeight();
+	
+	        int panelWidth = getWidth();
+	        int panelHeight = getHeight();
+	
+	        // Calculate image draw size preserving aspect ratio
+	        double imageAspect = (double) imagePixelWidth / imagePixelHeight;
+	        double panelAspect = (double) panelWidth / panelHeight;
+	
+	        int drawWidth;
+	        int drawHeight;
+	        int offsetX;
+	        int offsetY;
+	
+	        if (panelAspect > imageAspect) {
+	            // Panel is wider than image aspect
+	            drawHeight = panelHeight;
+	            drawWidth = (int) (drawHeight * imageAspect);
+	            offsetX = (panelWidth - drawWidth) / 2;
+	            offsetY = 0;
+	        } else {
+	            // Panel is taller than image aspect
+	            drawWidth = panelWidth;
+	            drawHeight = (int) (drawWidth / imageAspect);
+	            offsetX = 0;
+	            offsetY = (panelHeight - drawHeight) / 2;
+	        }
+	
+	        // Center of drawn image inside panel coordinates
+	        crosshairX = offsetX + drawWidth / 2;
+	        crosshairY = offsetY + drawHeight / 2;
+	
+	        repaint();
 	    }
 	}
 	
