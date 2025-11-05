@@ -8,7 +8,7 @@
  * Contributors:
  *     Moritz Lang - initial API and implementation
  *     Elisa Garulli - initial Crosshair implementation
- *     Andreas P. Cuny - Crosshair final Crosshair implementation
+ *     Andreas P. Cuny - initial Mask & Crosshair implementation
  ******************************************************************************/
 package org.youscope.uielements;
 
@@ -177,6 +177,8 @@ public class LiveStreamPanel extends ImagePanel {
 
 		final JCheckBox overlayEnableCheckbox = new JCheckBox("Show Overlay", false);
 		overlayPanel.add(overlayEnableCheckbox);
+		final JCheckBox invertMaskCheckbox = new JCheckBox("Invert mask");
+		overlayPanel.add(invertMaskCheckbox);
 
 		// Circle negative mask checkbox and radius field
 		final JCheckBox circleCutoutCheckbox = new JCheckBox("Circular mask");
@@ -197,8 +199,6 @@ public class LiveStreamPanel extends ImagePanel {
 		overlayPanel.add(new JLabel("Height:"));
 		overlayPanel.add(rectHeightField);
 
-		final JCheckBox invertMaskCheckbox = new JCheckBox("Invert mask");
-		overlayPanel.add(invertMaskCheckbox);
 
 		circleCutoutCheckbox.addActionListener(new ActionListener() {
 			@Override
@@ -211,10 +211,21 @@ public class LiveStreamPanel extends ImagePanel {
 					rectCutoutCheckbox.setSelected(false);
 					rectWidthField.setEnabled(false);
 					rectHeightField.setEnabled(false);
-
 					maskCircRadius = Integer.parseInt(circleRadiusField.getText());	
+				} else{
+					circleRadiusField.setEnabled(false);
 				}
 				repaint();
+			}
+		});
+
+		circleRadiusField.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					maskCircRadius = Integer.parseInt(circleRadiusField.getText());
+					repaint();
+				} catch (NumberFormatException ex) {}
 			}
 		});
 
@@ -232,8 +243,31 @@ public class LiveStreamPanel extends ImagePanel {
 					
 					maskRectWidth = Integer.parseInt(rectWidthField.getText());
 					maskRectHeight = Integer.parseInt(rectHeightField.getText());
+				} else{
+					rectWidthField.setEnabled(false);
+					rectHeightField.setEnabled(false);
 				}
 				repaint();
+			}
+		});
+
+		rectWidthField.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					maskRectWidth = Integer.parseInt(rectWidthField.getText());
+					repaint();
+				} catch (NumberFormatException ex) {}
+			}
+		});
+
+		rectHeightField.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					maskRectHeight = Integer.parseInt(rectHeightField.getText());
+					repaint();
+				} catch (NumberFormatException ex) {}
 			}
 		});
 
