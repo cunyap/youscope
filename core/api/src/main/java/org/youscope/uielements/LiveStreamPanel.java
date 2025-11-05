@@ -99,6 +99,7 @@ public class LiveStreamPanel extends ImagePanel {
 	public LiveStreamPanel(YouScopeClient client, YouScopeServer server) 
 	{
 		super(client);
+		this.setOpaque(false); 
 		setNoImageText("Press start to start imaging");
 		setTitle("LiveStream");
 		this.client = client;
