@@ -102,8 +102,7 @@ public class LiveStreamPanel extends ImagePanel {
 		setNoImageText("Press start to start imaging");
 		setTitle("LiveStream");
 		this.client = client;
-		this.server = server;
-		
+		this.server = server;	
 		channelControl = new ChannelControl(client, server);
 		channelControl.addActionListener(new ActionListener()
 		{
@@ -692,45 +691,43 @@ public class LiveStreamPanel extends ImagePanel {
 	    }
 
 		// Draw Maks if enabled
-		if (overlayEnableCheckbox.isSelected()) {
-			// Set semi-transparent fill
-			Composite originalComposite = g2d.getComposite();
-			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
-			g2d.setColor(Color.BLACK);
+		if (overlayEnableCheckbox != null && overlayEnableCheckbox.isSelected()) {
+				Composite originalComposite = g2d.getComposite();
+				g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+				g2d.setColor(Color.BLACK);
 
-			// Draw rectangle centered on displayed image bounds
-			int panelWidth = getWidth();
-			int panelHeight = getHeight();
-			int rectSize = Math.min(panelWidth, panelHeight) - 20;
-			int rectX = (panelWidth - rectSize) / 2;
-			int rectY = (panelHeight - rectSize) / 2;
-			g2d.fillRect(rectX, rectY, rectSize, rectSize);
+				int panelWidth = getWidth();
+				int panelHeight = getHeight();
+				int rectSize = Math.min(panelWidth, panelHeight) - 20;
+				int rectX = (panelWidth - rectSize) / 2;
+				int rectY = (panelHeight - rectSize) / 2;
+				g2d.fillRect(rectX, rectY, rectSize, rectSize);
 
-			g2d.setComposite(originalComposite);
+				g2d.setComposite(originalComposite);
 
-			// Cutout circle or rectangle accordingly
-			if (circleCutoutCheckbox.isSelected()) {
-				int radius = 50; 
-				try {
-					radius = Integer.parseInt(circleRadiusField.getText());
-				} catch (NumberFormatException ex) {}
-				Shape circle = new java.awt.geom.Ellipse2D.Double(
-					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
-				// Create hole by setting clipping or painting background over circle
-				g2d.setColor(getBackground());
-				g2d.fill(circle);
-			} else if (rectCutoutCheckbox.isSelected()) {
-				int rectW = 80, rectH = 60;
-				try {
-					rectW = Integer.parseInt(rectWidthField.getText());
-					rectH = Integer.parseInt(rectHeightField.getText());
-				} catch (NumberFormatException ex) {}
-				int cutoutX = rectX + (rectSize - rectW) / 2;
-				int cutoutY = rectY + (rectSize - rectH) / 2;
-				g2d.setColor(getBackground());
-				g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
+				if (circleCutoutCheckbox != null && circleCutoutCheckbox.isSelected() && circleRadiusField != null) {
+					int radius = 50;
+					try {
+						radius = Integer.parseInt(circleRadiusField.getText());
+					} catch (NumberFormatException ex) { }
+					Shape circle = new java.awt.geom.Ellipse2D.Double(
+						rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
+					g2d.setColor(getBackground());
+					g2d.fill(circle);
+				} else if (rectCutoutCheckbox != null && rectCutoutCheckbox.isSelected() &&
+						rectWidthField != null && rectHeightField != null) {
+					int rectW = 80;
+					int rectH = 60;
+					try {
+						rectW = Integer.parseInt(rectWidthField.getText());
+						rectH = Integer.parseInt(rectHeightField.getText());
+					} catch (NumberFormatException ex) { }
+					int cutoutX = rectX + (rectSize - rectW) / 2;
+					int cutoutY = rectY + (rectSize - rectH) / 2;
+					g2d.setColor(getBackground());
+					g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
+				}
 			}
-		}
 	}
 
 	@Override
