@@ -7,6 +7,8 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Elisa Garulli - initial Crosshair implementation
+ *     Andreas P. Cuny - Crosshair final Crosshair implementation
  ******************************************************************************/
 package org.youscope.uielements;
 
@@ -60,6 +62,11 @@ public class LiveStreamPanel extends ImagePanel {
 	private volatile Measurement measurement = null;
 	private volatile ImageHandler imageHandler = null;
 	private volatile boolean streamRunning = false;
+
+	private boolean isCrosshairDisplayed = false;
+	private int crosshairX = -1;
+	private int crosshairY = -1;
+	private static final Color CROSSHAIR_COLOR = new Color(0, 181, 255);
 	
 	private final Object fullScreenLock = new Object();
 	private JFrame fullScreenFrame = null;
@@ -95,7 +102,29 @@ public class LiveStreamPanel extends ImagePanel {
 		insertControl("Imaging", channelControl, 0);
 		addControl("Control", startStopControl);
 		
+	    JCheckBox crosshairCheckbox = new JCheckBox("Display Crosshair");
+	    crosshairCheckbox.addActionListener(new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            isCrosshairDisplayed = crosshairCheckbox.isSelected();
+	            repaint();
+	        }
+	    });
+	    addControl("Crosshair", crosshairCheckbox);
+
+		addMouseListener(new java.awt.event.MouseAdapter() {
+		    @Override
+		    public void mouseClicked(java.awt.event.MouseEvent e) {
+		        if (isCrosshairDisplayed) {
+		            crosshairX = e.getX();
+		            crosshairY = e.getY();
+		            repaint();
+		        }
+		    }
+		});
+
 		loadSettings(client.getPropertyProvider());
+
 	}
 	
 	/**
@@ -532,6 +561,19 @@ public class LiveStreamPanel extends ImagePanel {
 		}
 		
 		startStopControl.fullScreenButton.setVisible(userChooses);
+	}
+
+	@Override
+	protected void paintComponent(Graphics g)
+	{
+	    super.paintComponent(g);  // ensure default painting occurs
+	    if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
+	    {
+	        Graphics2D g2 = (Graphics2D) g;
+	        g2.setColor(CROSSHAIR_COLOR); // e.g., light blue
+	        g2.drawLine(crosshairX, 0, crosshairX, getHeight());
+	        g2.drawLine(0, crosshairY, getWidth(), crosshairY);
+	    }
 	}
 	
 	private class StartStopControl extends DynamicPanel
