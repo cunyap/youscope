@@ -686,15 +686,18 @@ public class LiveStreamPanel extends ImagePanel {
 		// Draw Crosshair if enabled
 		if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
 		{
+			System.out.println("Crosshair displayed");
 			g2d.setColor(CROSSHAIR_COLOR); 
 			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
 			g2d.drawLine(0, crosshairY, getWidth(), crosshairY);
 		}
 
 		// Draw Mask if enabled
+		System.out.println("trying masks");
 		if (overlayEnableCheckbox != null && overlayEnableCheckbox.isSelected()) {
 			// Composite originalComposite = g2d.getComposite();
 			// g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f));
+			System.out.println("Draw maks");
 			g2d.setColor(CROSSHAIR_COLOR);
 
 			int panelWidth = getWidth();
@@ -702,6 +705,7 @@ public class LiveStreamPanel extends ImagePanel {
 			int rectSize = Math.min(panelWidth, panelHeight) - 20;
 			int rectX = (panelWidth - rectSize) / 2;
 			int rectY = (panelHeight - rectSize) / 2;
+			System.out.println("Base rectanlge=" + rectX + rectY + rectSize + rectSize);
 			g2d.fillRect(rectX, rectY, rectSize, rectSize);
 
 			// g2d.setComposite(originalComposite);
@@ -715,6 +719,7 @@ public class LiveStreamPanel extends ImagePanel {
 					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
 				g2d.setColor(getBackground());
 				g2d.fill(circle);
+				System.out.println("Base cicle hole=" + radius);
 			} else if (rectCutoutCheckbox != null && rectCutoutCheckbox.isSelected() &&
 					rectWidthField != null && rectHeightField != null) {
 				int rectW = 80;
@@ -727,6 +732,7 @@ public class LiveStreamPanel extends ImagePanel {
 				int cutoutY = rectY + (rectSize - rectH) / 2;
 				g2d.setColor(getBackground());
 				g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
+				System.out.println("Base rectangular hole=" + cutoutX + cutoutY + rectW + rectH);
 			}
 		}
 	}
