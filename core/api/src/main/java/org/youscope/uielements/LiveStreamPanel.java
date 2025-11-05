@@ -717,7 +717,7 @@ public class LiveStreamPanel extends ImagePanel {
 				} catch (NumberFormatException ex) {}
 				Shape circle = new java.awt.geom.Ellipse2D.Double(
 					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
-				g2d.setColor(getBackground());
+				g2d.setColor(Color.RED);
 				g2d.fill(circle);
 				System.out.println("Base cicle hole=" + radius);
 			} else if (rectCutoutCheckbox != null && rectCutoutCheckbox.isSelected() &&
