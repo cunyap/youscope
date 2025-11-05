@@ -24,8 +24,9 @@ import java.rmi.RemoteException;
 import java.awt.AlphaComposite;
 import java.awt.Composite;
 import java.awt.Shape;
-// import java.awt.geom.Ellipse2D;
-// import java.awt.geom.Rectangle2D;
+import java.awt.geom.Area;
+import java.awt.geom.Rectangle2D;
+import java.awt.geom.Ellipse2D;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
@@ -82,16 +83,10 @@ public class LiveStreamPanel extends ImagePanel {
 	private boolean isMaskDisplayed = false;
 	private boolean isCircMask = false;
 	private boolean isRectMask = false;
+	private boolean isInvertMask = false;
 	private int maskCircRadius = -1;
 	private int maskRectWidth = -1;
-	private int maskRectHeight = -1;
-	// private JCheckBox overlayEnableCheckbox;
-	// private JCheckBox circleCutoutCheckbox;
-	// private JTextField circleRadiusField;
-	// private JCheckBox rectCutoutCheckbox;
-	// private JTextField rectWidthField;
-	// private JTextField rectHeightField;
-	
+	private int maskRectHeight = -1;	
 	private final Object fullScreenLock = new Object();
 	private JFrame fullScreenFrame = null;
 	private volatile boolean fullScreenOn = false;
@@ -202,6 +197,9 @@ public class LiveStreamPanel extends ImagePanel {
 		overlayPanel.add(new JLabel("Height:"));
 		overlayPanel.add(rectHeightField);
 
+		final JCheckBox invertMaskCheckbox = new JCheckBox("Invert mask");
+		overlayPanel.add(invertMaskCheckbox);
+
 		circleCutoutCheckbox.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -249,6 +247,15 @@ public class LiveStreamPanel extends ImagePanel {
 				circleRadiusField.setEnabled(enabled && circleCutoutCheckbox.isSelected());
 				rectWidthField.setEnabled(enabled && rectCutoutCheckbox.isSelected());
 				rectHeightField.setEnabled(enabled && rectCutoutCheckbox.isSelected());
+				repaint();
+			}
+		});
+
+		invertMaskCheckbox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				boolean selected = invertMaskCheckbox.isSelected();
+				isInvertMask = selected;
 				repaint();
 			}
 		});
@@ -712,36 +719,47 @@ public class LiveStreamPanel extends ImagePanel {
 		// Draw Mask if enabled
 		if (isMaskDisplayed) {
 			Composite originalComposite = g2d.getComposite();
-			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
-			g2d.setColor(CROSSHAIR_COLOR);
 
 			int panelWidth = getWidth();
 			int panelHeight = getHeight();
 			int rectSize = Math.min(panelWidth, panelHeight);
 			int rectX = (panelWidth - rectSize) / 2;
 			int rectY = (panelHeight - rectSize) / 2;
-			g2d.fillRect(rectX, rectY, rectSize, rectSize);
 
-			// Set composite to CLEAR to see underlying image 
-			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0f));
+			// @todo currently does not scale when image is zoomed
+			Area overlayArea = new Area(new Rectangle2D.Double(rectX, rectY, rectSize, rectSize));
 
 			if (isCircMask && maskCircRadius >= 0) {
 				int radius = maskCircRadius;
-				Shape circle = new java.awt.geom.Ellipse2D.Double(
-					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
-				g2d.fill(circle);
+				Shape circleHole = new Ellipse2D.Double(
+					rectX + rectSize / 2 - radius, rectY + rectSize / 2 - radius, radius * 2, radius * 2);
+				if (!isInvertMask) {
+					overlayArea.subtract(new Area(circleHole));
+				} else {
+					overlayArea = new Area(circleHole);
+				};
 			} else if (isRectMask && maskRectWidth >= 0 && maskRectHeight >= 0) {
 				int rectW = maskRectWidth;
 				int rectH = maskRectHeight;
 				int cutoutX = rectX + (rectSize - rectW) / 2;
 				int cutoutY = rectY + (rectSize - rectH) / 2;
-				g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
+				Shape rectHole = new Rectangle2D.Double(cutoutX, cutoutY, rectW, rectH);
+				if (!isInvertMask) {
+					overlayArea.subtract(new Area(rectHole));
+				} else {
+					overlayArea = new Area(rectHole);
+				};
 			}
+
+			// Draw semi-transparent overlay with the hole
+			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+			g2d.setColor(CROSSHAIR_COLOR);
+			g2d.fill(overlayArea);
 
 			// Restore original composite
 			g2d.setComposite(originalComposite);
-
 		}
+
 	}
 
 	@Override
