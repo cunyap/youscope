@@ -679,56 +679,56 @@ public class LiveStreamPanel extends ImagePanel {
 	@Override
 	public void paintComponent(Graphics g)
 	{
-	    super.paintComponent(g);  
+		super.paintComponent(g);  
+
+		Graphics2D g2d = (Graphics2D) g;
 
 		// Draw Crosshair if enabled
-	    if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
-	    {
-	        Graphics2D g2 = (Graphics2D) g;
-	        g2.setColor(CROSSHAIR_COLOR); 
-	        g2.drawLine(crosshairX, 0, crosshairX, getHeight());
-	        g2.drawLine(0, crosshairY, getWidth(), crosshairY);
-	    }
+		if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
+		{
+			g2d.setColor(CROSSHAIR_COLOR); 
+			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
+			g2d.drawLine(0, crosshairY, getWidth(), crosshairY);
+		}
 
-		// Draw Maks if enabled
+		// Draw Mask if enabled
 		if (overlayEnableCheckbox != null && overlayEnableCheckbox.isSelected()) {
-				Graphics2D g2d = (Graphics2D) g;
-				Composite originalComposite = g2d.getComposite();
-				g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
-				g2d.setColor(CROSSHAIR_COLOR);
+			Composite originalComposite = g2d.getComposite();
+			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+			g2d.setColor(CROSSHAIR_COLOR);
 
-				int panelWidth = getWidth();
-				int panelHeight = getHeight();
-				int rectSize = Math.min(panelWidth, panelHeight) - 20;
-				int rectX = (panelWidth - rectSize) / 2;
-				int rectY = (panelHeight - rectSize) / 2;
-				g2d.fillRect(rectX, rectY, rectSize, rectSize);
+			int panelWidth = getWidth();
+			int panelHeight = getHeight();
+			int rectSize = Math.min(panelWidth, panelHeight) - 20;
+			int rectX = (panelWidth - rectSize) / 2;
+			int rectY = (panelHeight - rectSize) / 2;
+			g2d.fillRect(rectX, rectY, rectSize, rectSize);
 
-				g2d.setComposite(originalComposite);
+			g2d.setComposite(originalComposite);
 
-				if (circleCutoutCheckbox != null && circleCutoutCheckbox.isSelected() && circleRadiusField != null) {
-					int radius = 50;
-					try {
-						radius = Integer.parseInt(circleRadiusField.getText());
-					} catch (NumberFormatException ex) { }
-					Shape circle = new java.awt.geom.Ellipse2D.Double(
-						rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
-					g2d.setColor(getBackground());
-					g2d.fill(circle);
-				} else if (rectCutoutCheckbox != null && rectCutoutCheckbox.isSelected() &&
-						rectWidthField != null && rectHeightField != null) {
-					int rectW = 80;
-					int rectH = 60;
-					try {
-						rectW = Integer.parseInt(rectWidthField.getText());
-						rectH = Integer.parseInt(rectHeightField.getText());
-					} catch (NumberFormatException ex) { }
-					int cutoutX = rectX + (rectSize - rectW) / 2;
-					int cutoutY = rectY + (rectSize - rectH) / 2;
-					g2d.setColor(getBackground());
-					g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
-				}
+			if (circleCutoutCheckbox != null && circleCutoutCheckbox.isSelected() && circleRadiusField != null) {
+				int radius = 50;
+				try {
+					radius = Integer.parseInt(circleRadiusField.getText());
+				} catch (NumberFormatException ex) {}
+				Shape circle = new java.awt.geom.Ellipse2D.Double(
+					rectX + rectSize/2 - radius, rectY + rectSize/2 - radius, radius * 2, radius * 2);
+				g2d.setColor(getBackground());
+				g2d.fill(circle);
+			} else if (rectCutoutCheckbox != null && rectCutoutCheckbox.isSelected() &&
+					rectWidthField != null && rectHeightField != null) {
+				int rectW = 80;
+				int rectH = 60;
+				try {
+					rectW = Integer.parseInt(rectWidthField.getText());
+					rectH = Integer.parseInt(rectHeightField.getText());
+				} catch (NumberFormatException ex) {}
+				int cutoutX = rectX + (rectSize - rectW) / 2;
+				int cutoutY = rectY + (rectSize - rectH) / 2;
+				g2d.setColor(getBackground());
+				g2d.fillRect(cutoutX, cutoutY, rectW, rectH);
 			}
+		}
 	}
 
 	@Override
