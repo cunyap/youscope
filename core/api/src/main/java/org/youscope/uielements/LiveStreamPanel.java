@@ -205,6 +205,7 @@ public class LiveStreamPanel extends ImagePanel {
 			public void actionPerformed(ActionEvent e) {
 				boolean selected = circleCutoutCheckbox.isSelected();
 				isCircMask = selected;
+				isRectMask = false;
 
 				if(isCircMask) {
 					circleRadiusField.setEnabled(true);
@@ -234,6 +235,7 @@ public class LiveStreamPanel extends ImagePanel {
 			public void actionPerformed(ActionEvent e) {
 				boolean selected = rectCutoutCheckbox.isSelected();
 				isRectMask = selected;
+				isCircMask = false;
 
 				if(isRectMask) {
 					rectWidthField.setEnabled(true);
