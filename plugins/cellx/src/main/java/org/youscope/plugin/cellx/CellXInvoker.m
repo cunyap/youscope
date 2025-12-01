@@ -17,13 +17,22 @@ pathFolders = {...
 	[scriptsFolder, '/mex'], ...
 	[scriptsFolder, '/mex/maxflow'], ...
 	[scriptsFolder, '/YouScopeInterface']};
-for i=1:length(pathFolders)
-	addpath(pathFolders{i}, '-begin');
+for i = 1:length(pathFolders)
+    if exist(pathFolders{i}, 'dir') == 7 && isempty(strfind(path, pathFolders{i}))
+        addpath(pathFolders{i}, '-begin');
+    end
 end
 
 %% deactivate serialization warnings
 oldWarnState = warning('off', 'MATLAB:structOnObject');
 
+fprintf('The value of trackCells is %d\n', trackCells);
+fprintf('The value of numCores is %d\n', numCores);
+poolobj = gcp('nocreate'); % Get current pool without creating new one
+if isempty(poolobj)
+    c = parcluster('local'); 
+    parpool(c, numCores); 
+end
 
 %% Get last state (needed for incremental tracking
 if ~isempty(lastResult)
@@ -114,8 +123,10 @@ if numel(cellXYouScopeInterfacer.currentResult.data) > 0
 		tableDataSink.addCell(cellXYouScopeInterfacer.currentResult.headers, cellXYouScopeInterfacer.currentResult.data(i, :));
 	end
 end
+
+% @TODO: use uint16 to support more labels. Fix also label visualizer to support more than 255 cells.
 if exist('imageSink', 'var')
-    imageSink.imageMade(toYouScopeImage(uint8(cellXYouScopeInterfacer.currentSegmentationMask)));  
+    imageSink.imageMade(toYouScopeImage(uint16(cellXYouScopeInterfacer.currentSegmentationMask), 16));
 end
    
 

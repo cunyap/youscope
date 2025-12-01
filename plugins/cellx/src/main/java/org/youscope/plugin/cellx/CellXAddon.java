@@ -24,10 +24,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import javax.script.SimpleScriptContext;
 
 import org.youscope.addon.celldetection.CellDetectionAddon;
 import org.youscope.addon.celldetection.CellDetectionException;
@@ -44,12 +46,13 @@ import org.youscope.common.table.TableDefinition;
 import org.youscope.common.table.TableListener;
 
 /**
- * Uses the CellX cell detection environment to detect cells in microscope images (e.g. out-of-focus) and quantify fluorescence images.
+ * Uses the CellX cell detection environment to detect cells in microscope
+ * images (e.g. out-of-focus) and quantify fluorescence images.
+ * 
  * @author Moritz Lang
  *
  */
-class CellXAddon extends ResourceAdapter<CellXConfiguration> implements CellDetectionAddon
-{
+class CellXAddon extends ResourceAdapter<CellXConfiguration> implements CellDetectionAddon {
 	/**
 	 * Serial Version UID
 	 */
@@ -58,124 +61,139 @@ class CellXAddon extends ResourceAdapter<CellXConfiguration> implements CellDete
 	private final StringWriter outputListener = new StringWriter();
 	private volatile CellXLastResult lastResult = null;
 	private final ArrayList<TableListener> tableListeners = new ArrayList<TableListener>();
-	CellXAddon(PositionInformation positionInformation, CellXConfiguration configuration) throws ConfigurationException, RemoteException
-	{
-		super(positionInformation, configuration, CellXConfiguration.TYPE_IDENTIFIER,CellXConfiguration.class, "CellX cell detection.");
+
+	CellXAddon(PositionInformation positionInformation, CellXConfiguration configuration)
+			throws ConfigurationException, RemoteException {
+		super(positionInformation, configuration, CellXConfiguration.TYPE_IDENTIFIER, CellXConfiguration.class,
+				"CellX cell detection.");
 	}
-	
+
 	@Override
-	public void initialize(MeasurementContext measurementContext) throws ResourceException, RemoteException
-	{
-		if(isInitialized())
+	public void initialize(MeasurementContext measurementContext) throws ResourceException, RemoteException {
+		if (isInitialized())
 			return;
 		super.initialize(measurementContext);
 		CellXConfiguration configuration = getConfiguration();
-		
-		if(configuration.getConfigurationFile() == null || configuration.getConfigurationFile().length() < 1)
+
+		if (configuration.getConfigurationFile() == null || configuration.getConfigurationFile().length() < 1)
 			throw new CellDetectionException("No XML file for CellX detection algorithm set.");
-		
-		List<ScriptEngineFactory> factories = new ScriptEngineManager(CellXAddon.class.getClassLoader()).getEngineFactories();
+
+		// List<ScriptEngineFactory> factories = new
+		// ScriptEngineManager(CellXAddon.class.getClassLoader()).getEngineFactories();
+		ScriptEngineManager manager = new ScriptEngineManager(CellXAddon.class.getClassLoader());
+		@SuppressWarnings("unused")
+		List<ScriptEngineFactory> factories = manager.getEngineFactories(); // We preload the Engine (async)
+
 		ScriptEngineFactory theFactory = null;
-		for(ScriptEngineFactory factory : factories)
+		for (ScriptEngineFactory factory : manager.getEngineFactories()) // We call a second time, now Matlab should be
+																			// found
 		{
-			if(factory.getEngineName().compareTo("Matlab Scripting")==0)
-			{
+			if (factory.getEngineName().compareTo("Matlab Scripting") == 0) {
 				theFactory = factory;
 				break;
 			}
 		}
-		if(theFactory == null)
-		{
+		if (theFactory == null) {
 			String message = "No local script engine with name Matlab Scripting is registered. Registered engines:\n";
 			boolean first = true;
-			for(ScriptEngineFactory factory : factories)
-			{
-				if(first)
+			for (ScriptEngineFactory factory : factories) {
+				if (first)
 					first = false;
 				else
 					message += ", ";
 				message += factory.getEngineName();
 			}
 			throw new CellDetectionException(message);
-		}			
-		try
-		{
-			scriptEngine = theFactory.getScriptEngine();
 		}
-		catch(Throwable e)
-		{
+		try {
+			scriptEngine = theFactory.getScriptEngine();
+		} catch (Throwable e) {
 			throw new ResourceException("Could not create local script engine with name Matlab Scripting.", e);
 		}
-		if(scriptEngine == null)
+		if (scriptEngine == null)
 			throw new CellDetectionException("Could not create local script engine with name Matlab Scripting.");
 		// Set output writer of engine
-		scriptEngine.getContext().setWriter(outputListener);
-		Object returnVal;
-		try
-		{
-			returnVal = scriptEngine.eval("disp('CellX Cell Detection is initialized.')");
+		// scriptEngine.getContext().setWriter(outputListener);
+		ScriptContext context = scriptEngine.getContext();
+		if (context == null) {
+			// Create new context as fallback
+			context = new SimpleScriptContext();
+			scriptEngine.setContext(context);
 		}
-		catch(ScriptException e)
-		{
-			throw new CellDetectionException("Matlab is not interpreting messages as expected.", e);
-		}
-		receiveEngineMessages();	
-		if(returnVal != null)
-			sendMessage(returnVal.toString());
+		context.setWriter(outputListener);
+		// Object returnVal;
+		// try {
+		// returnVal = scriptEngine.eval("disp('CellX Cell Detection is
+		// initialized.')");
+		// } catch (ScriptException e) {
+		// throw new CellDetectionException("Matlab is not interpreting messages as
+		// expected.", e);
+		// }
+		// receiveEngineMessages();
+		// if (returnVal != null)
+		// sendMessage(returnVal.toString());
+		// Object returnVal;
+		// try {
+		// // Wait for MATLAB initializeing Threads (JMIWrapper.isMatlabThread())
+		// Thread.sleep(5000);
+
+		// // Test
+		// returnVal = scriptEngine.eval("disp('CellX Cell Detection is
+		// initialized.')");
+		// } catch (ScriptException | InterruptedException e) {
+		// throw new CellDetectionException("Matlab initialization failed: " +
+		// e.getMessage(), e);
+		// }
+
+		receiveEngineMessages();
+		sendMessage("CellX Cell Detection is initialized.");
 
 	}
 
 	@Override
-	public void uninitialize(MeasurementContext measurementContext) throws ResourceException, RemoteException
-	{
+	public void uninitialize(MeasurementContext measurementContext) throws ResourceException, RemoteException {
 		scriptEngine = null;
 		lastResult = null;
 		super.uninitialize(measurementContext);
 	}
 
 	@Override
-	public CellDetectionResult detectCells(ImageEvent<?> detectionImage) throws CellDetectionException,RemoteException
-	{
+	public CellDetectionResult detectCells(ImageEvent<?> detectionImage)
+			throws CellDetectionException, RemoteException {
 		return detectCells(detectionImage, new ImageEvent[0]);
 	}
+
 	@Override
-	public CellDetectionResult detectCells(ImageEvent<?> detectionImage, ImageEvent<?>[] quantificationImages) throws CellDetectionException, RemoteException
-	{
-		if(!isInitialized())
+	public CellDetectionResult detectCells(ImageEvent<?> detectionImage, ImageEvent<?>[] quantificationImages)
+			throws CellDetectionException, RemoteException {
+		if (!isInitialized())
 			throw new CellDetectionException("Addon not yet initialized.");
-		if(detectionImage == null)
+
+		if (detectionImage == null)
 			throw new CellDetectionException("Image in which cells should be detected is null.");
-		
+
 		CellXSinkImpl tableDataSink;
-		try
-		{
-			tableDataSink = new CellXSinkImpl(detectionImage.getCreationTime(), detectionImage.getPositionInformation(), detectionImage.getExecutionInformation());
-		}
-		catch(RemoteException e1)
-		{
-			throw new CellDetectionException("Could not create table data adapter for matlab cell detection script.", e1);
+		try {
+			tableDataSink = new CellXSinkImpl(detectionImage.getCreationTime(), detectionImage.getPositionInformation(),
+					detectionImage.getExecutionInformation());
+		} catch (RemoteException e1) {
+			throw new CellDetectionException("Could not create table data adapter for matlab cell detection script.",
+					e1);
 		}
 		CellXLastResult currentResult;
-		try
-		{
+		try {
 			currentResult = new CellXLastResultImpl();
-		}
-		catch(RemoteException e)
-		{
+		} catch (RemoteException e) {
 			throw new CellDetectionException("Could not create object to store CellX's current result.", e);
 		}
-		
+
 		// Pass parameters to script
 		CellXConfiguration configuration = getConfiguration();
 		ImageAdapter imageSink = null;
-		if(configuration.isGenerateLabelImage())
-		{
-			try
-			{
+		if (configuration.isGenerateLabelImage()) {
+			try {
 				imageSink = new ImageAdapter();
-			}
-			catch(RemoteException e1)
-			{
+			} catch (RemoteException e1) {
 				throw new CellDetectionException("Could not create image adapter for cell detection script.", e1);
 			}
 			scriptEngine.put("imageSink", imageSink);
@@ -184,73 +202,76 @@ class CellXAddon extends ResourceAdapter<CellXConfiguration> implements CellDete
 		scriptEngine.put("detectionImage", detectionImage);
 		scriptEngine.put("fluorescenceImages", quantificationImages);
 		scriptEngine.put("configFileName", configuration.getConfigurationFile());
-		//scriptEngine.put("debug_mode", 1);
+		// scriptEngine.put("debug_mode", 1);
 		scriptEngine.put("lastResult", lastResult);
 		scriptEngine.put("currentResult", currentResult);
 		scriptEngine.put("trackCells", configuration.isTrackCells() ? 1 : 0);
-		
+		scriptEngine.put("numCores", configuration.getNumCores());
+
+		if (lastResult == null) { // Erster Aufruf
+			try {
+				scriptEngine.eval("if isempty(gcp('nocreate')), parpool(" + configuration.getNumCores() + "); end");
+				sendMessage("Parpool started (" + configuration.getNumCores() + " cores)");
+			} catch (ScriptException e) {
+				sendMessage("Parpool skipped: " + e.getMessage()); // OK!
+			}
+		}
+
 		File scriptsFolder = new File("cellx/");
-		if(!scriptsFolder.exists() || !scriptsFolder.isDirectory())
-			throw new CellDetectionException("CellX folder ("+scriptsFolder.getAbsolutePath()+") does not exist. Check your installation.");			
+		if (!scriptsFolder.exists() || !scriptsFolder.isDirectory())
+			throw new CellDetectionException(
+					"CellX folder (" + scriptsFolder.getAbsolutePath() + ") does not exist. Check your installation.");
 		scriptEngine.put("scriptsFolder", scriptsFolder.getAbsolutePath());
-		
+
 		// Open & eval matlab file
 		URL matlabFile = getClass().getClassLoader().getResource("org/youscope/plugin/cellx/CellXInvoker.m");
-		if(matlabFile == null)
-			throw new CellDetectionException("Could not detect matlab script in CellX JAR file. Check file consistency.");
+		if (matlabFile == null)
+			throw new CellDetectionException(
+					"Could not detect matlab script in CellX JAR file. Check file consistency.");
 
 		Object returnVal;
 		scriptEngine.getContext().setWriter(outputListener);
-		try(InputStreamReader fileReader = new InputStreamReader(matlabFile.openStream());
-				BufferedReader bufferedReader = new BufferedReader(fileReader);)
-		{
+		try (InputStreamReader fileReader = new InputStreamReader(matlabFile.openStream());
+				BufferedReader bufferedReader = new BufferedReader(fileReader);) {
 			returnVal = scriptEngine.eval(bufferedReader);
-		}
-		catch(ScriptException ex)
-		{
-			String errorMessage = "Error in script on line " + ex.getLineNumber() + ", column " + ex.getColumnNumber() + ".";
+		} catch (ScriptException ex) {
+			String errorMessage = "Error in script on line " + ex.getLineNumber() + ", column " + ex.getColumnNumber()
+					+ ".";
 			Throwable cause = ex;
-			while(true)
-			{
+			while (true) {
 				errorMessage += "\n" + cause.getMessage();
 				cause = cause.getCause();
-				if(cause == null)
+				if (cause == null)
 					break;
 			}
 			throw new CellDetectionException(errorMessage);
-		}
-		catch(IOException e1)
-		{
+		} catch (IOException e1) {
 			throw new CellDetectionException("Script file " + matlabFile.toString() + " could not be opened.", e1);
 		}
 		receiveEngineMessages();
-		if(returnVal != null)
+		if (returnVal != null)
 			sendMessage(returnVal.toString());
-		
+
 		// TODO: update script for new table layout.
 		Table table = tableDataSink.getTable();
-		sendTableToListeners(table);		
+		sendTableToListeners(table);
 		CellDetectionResult result = new CellDetectionResult(table, imageSink == null ? null : imageSink.clearImage());
-		
+
 		lastResult = currentResult;
 		return result;
 	}
-	
-	private void receiveEngineMessages()
-	{
+
+	private void receiveEngineMessages() {
 		outputListener.flush();
 		String message = outputListener.toString();
 		outputListener.getBuffer().setLength(0);
-		if(message != null && message.length() > 0)
+		if (message != null && message.length() > 0)
 			sendMessage(message);
 	}
 
-	private void sendTableToListeners(Table table)
-	{
-		synchronized(tableListeners)
-		{
-			for(Iterator<TableListener> iterator = tableListeners.iterator(); iterator.hasNext();)
-			{
+	private void sendTableToListeners(Table table) {
+		synchronized (tableListeners) {
+			for (Iterator<TableListener> iterator = tableListeners.iterator(); iterator.hasNext();) {
 				TableListener listener = iterator.next();
 				try {
 					listener.newTableProduced(table.clone());
@@ -260,19 +281,17 @@ class CellXAddon extends ResourceAdapter<CellXConfiguration> implements CellDete
 			}
 		}
 	}
-	
+
 	@Override
 	public void removeTableListener(TableListener listener) throws RemoteException {
-		synchronized(tableListeners)
-		{
+		synchronized (tableListeners) {
 			tableListeners.add(listener);
 		}
 	}
 
 	@Override
 	public void addTableListener(TableListener listener) throws RemoteException {
-		synchronized(tableListeners)
-		{
+		synchronized (tableListeners) {
 			tableListeners.remove(listener);
 		}
 	}
@@ -280,5 +299,5 @@ class CellXAddon extends ResourceAdapter<CellXConfiguration> implements CellDete
 	@Override
 	public TableDefinition getProducedTableDefinition() throws RemoteException {
 		return CellXTable.getTableDefinition();
-	}	
+	}
 }

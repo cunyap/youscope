@@ -26,80 +26,84 @@ import com.thoughtworks.xstream.converters.basic.BooleanConverter;
  *
  */
 @XStreamAlias("cellx")
-public class CellXConfiguration extends CellDetectionConfiguration
-{
+public class CellXConfiguration extends CellDetectionConfiguration {
 
 	/**
 	 * Serial Version UID.
 	 */
-	private static final long	serialVersionUID	= -8155501676160652226L;
-	
+	private static final long serialVersionUID = -8155501676160652226L;
+
 	/**
 	 * Constructor.
 	 */
-	public CellXConfiguration()
-	{
+	public CellXConfiguration() {
 		// do nothing.
 	}
-		
+
 	@XStreamAlias("generate-label-image")
 	@XStreamAsAttribute
-	@XStreamConverter(value = BooleanConverter.class, booleans = {false}, strings = {"yes", "no"})
+	@XStreamConverter(value = BooleanConverter.class, booleans = { false }, strings = { "yes", "no" })
 	private boolean generateLabelImage = true;
-	
+
 	@XStreamAlias("track-cells")
 	@XStreamAsAttribute
-	@XStreamConverter(value = BooleanConverter.class, booleans = {false}, strings = {"yes", "no"})
+	@XStreamConverter(value = BooleanConverter.class, booleans = { false }, strings = { "yes", "no" })
 	private boolean trackCells = true;
-	
+
+	@XStreamAlias("num-cores")
+	@XStreamAsAttribute
+	private int numCores = 1; // default to 1 core
+
 	/**
 	 * The identifier for this configuration.
 	 */
-	public static final String	TYPE_IDENTIFIER	= "YouScope.CellX";
-	
+	public static final String TYPE_IDENTIFIER = "YouScope.CellX";
+
 	@XStreamAlias("configuration-file")
 	private String configurationFile = null;
-	
+
 	@Override
-	public String getTypeIdentifier()
-	{
+	public String getTypeIdentifier() {
 		return TYPE_IDENTIFIER;
 	}
-	
+
 	/**
 	 * Set to true if a label image should be generated.
-	 * @param generateLabelImage True if detection image should be generated, otherwise false.
+	 * 
+	 * @param generateLabelImage True if detection image should be generated,
+	 *                           otherwise false.
 	 */
-	public void setGenerateLabelImage(boolean generateLabelImage)
-	{
+	public void setGenerateLabelImage(boolean generateLabelImage) {
 		this.generateLabelImage = generateLabelImage;
 	}
 
 	/**
 	 * Returns true if a label image should be generated.
+	 * 
 	 * @return True if detection image should be generated, otherwise false.
 	 */
 	@Override
-	public boolean isGenerateLabelImage()
-	{
+	public boolean isGenerateLabelImage() {
 		return generateLabelImage;
 	}
 
 	/**
-	 * Sets the path to the file which contains the configuration settings for the CellX algorithm.
+	 * Sets the path to the file which contains the configuration settings for the
+	 * CellX algorithm.
+	 * 
 	 * @param configurationFile Absolute path to the configuration file (*.xml).
 	 */
-	public void setConfigurationFile(String configurationFile)
-	{
+	public void setConfigurationFile(String configurationFile) {
 		this.configurationFile = configurationFile;
 	}
 
 	/**
-	 * Returns the path to the file which contains the configuration settings for the CellX algorithm.
+	 * Returns the path to the file which contains the configuration settings for
+	 * the CellX algorithm.
+	 * 
 	 * @return Absolute path to the configuration file (*.xml), or null.
 	 */
-	public String getConfigurationFile()
-	{
+	public String getConfigurationFile() {
 		return configurationFile;
 	}
 
@@ -109,20 +113,44 @@ public class CellXConfiguration extends CellDetectionConfiguration
 	}
 
 	/**
-	 * Set to true if cells should not only be segmented, but also be tracked between adjacent frames.
+	 * Set to true if cells should not only be segmented, but also be tracked
+	 * between adjacent frames.
+	 * 
 	 * @param trackCells True if cells should be tracked.
 	 */
-	public void setTrackCells(boolean trackCells)
-	{
+	public void setTrackCells(boolean trackCells) {
 		this.trackCells = trackCells;
 	}
 
 	/**
-	 * Returns true if cells should not only be segmented, but also be tracked between adjacent frames.
+	 * Returns true if cells should not only be segmented, but also be tracked
+	 * between adjacent frames.
+	 * 
 	 * @return True if cells should be tracked.
 	 */
-	public boolean isTrackCells()
-	{
+	public boolean isTrackCells() {
 		return trackCells;
+	}
+
+	/**
+	 * Returns number of cores to be used for segmentation.
+	 * 
+	 * @param numCores Number of cores.
+	 */
+	public int getNumCores() {
+		return numCores;
+	}
+
+	/**
+	 * Set number of cores to be used for segmentation.
+	 * 
+	 * @param numCores Number of cores.
+	 */
+	public void setNumCores(int numCores) {
+		if (numCores < 1) {
+			this.numCores = 1; // enforce minimum 1 core
+		} else {
+			this.numCores = numCores;
+		}
 	}
 }
