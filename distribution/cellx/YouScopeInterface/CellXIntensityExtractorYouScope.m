@@ -146,7 +146,9 @@ classdef CellXIntensityExtractorYouScope < handle
                     xmin = xmv + windsizealign + 1;
                     ymin = ymv + windsizealign + 1;
                     cropRectangle = [xmin,ymin, width-1, height-1];
-                    tempfluoImage = imcrop(extimage,cropRectangle);
+                    % tempfluoImage = imcrop(extimage,cropRectangle);
+                    % Own imcrop function
+                    tempfluoImage = imcrop_own(extimage,cropRectangle, size(extimage,1), size(extimage,2));
                     totalFluoVal(cnt,1) =  sum(sum(tempfluoImage(segmask)));
                     pixelMoves(cnt,:) = [xmv,ymv];
                 end
@@ -164,7 +166,8 @@ classdef CellXIntensityExtractorYouScope < handle
             xopt = ret1(1,1) + windsizealign + 1;
             yopt = ret1(1,2) + windsizealign + 1;
             cropRectangle = [xopt,yopt, width-1, height-1];
-            ret2 = imcrop(extimage,cropRectangle);
+            % ret2 = imcrop(extimage,cropRectangle);
+            ret2 = imcrop_own(extimage,cropRectangle, size(extimage,1), size(extimage,2));
             
         end
         
@@ -255,8 +258,11 @@ classdef CellXIntensityExtractorYouScope < handle
             %---crop image around the cell + make zero the
             %   pixels outside the cell
             cropRectangle = currentCell.boundingBox;
-            cellImage = imcrop(fluoImage,cropRectangle);
-            cellSegMask = imcrop(this.segmentationBinaryMask,cropRectangle);
+            %cellImage = imcrop(fluoImage,cropRectangle);
+            %cellSegMask = imcrop(this.segmentationBinaryMask,cropRectangle);
+            % Fix for speed:
+            cellImage = imcrop_own(fluoImage,round(cropRectangle), size(fluoImage,1), size(fluoImage,2));
+            cellSegMask = imcrop_own(this.segmentationBinaryMask,round(cropRectangle), size(fluoImage,1), size(fluoImage,2));  
             cellImageMasked = cellImage.*double(cellSegMask);
             
             %---find the nuclear center in croped image (i.e cellImageMasked )
@@ -267,8 +273,8 @@ classdef CellXIntensityExtractorYouScope < handle
             
             % take the linear indices of the nucleus from the fluo
             % image
-            
-            ret = this.findNuclearPixelList(fluoImage , nuclearCenterInfluoImage,nuclearRadius);
+            fluoImageSize = size(fluoImage);
+            ret = this.findNuclearPixelList(fluoImageSize , nuclearCenterInfluoImage,nuclearRadius);
                         
         end
         
@@ -299,21 +305,25 @@ classdef CellXIntensityExtractorYouScope < handle
             
         end
         
-        
-        function ret = findNuclearPixelList(this,fluoImage , nuclearCenter,nuclearRadius)
+               
+        function ret = findNuclearPixelList(this, fluoImageSize, nuclearCenter, nuclearRadius)
+            % Ensure bounding box covers entire nuclear circle
+            xStart = max(1, floor(nuclearCenter(1) - nuclearRadius));
+            xEnd = min(fluoImageSize(2), ceil(nuclearCenter(1) + nuclearRadius));
+            yStart = max(1, floor(nuclearCenter(2) - nuclearRadius));
+            yEnd = min(fluoImageSize(1), ceil(nuclearCenter(2) + nuclearRadius));
             
-            % grid size
-            x = 1:size(fluoImage,2);
-            y = 1:size(fluoImage,1);
-            % make the grid
-            [X,Y] = meshgrid(x,y);
-            % define nuclear center
-            c= nuclearCenter;     
-            % create nuclear circle:left side of cell in x axis
-            nuccir = (X-c(1)).^2 + (Y-c(2)).^2  <= nuclearRadius^2 ;
-            %generate nuclear mask
-            ret = find(nuccir);
+            xRange = xStart:xEnd;
+            yRange = yStart:yEnd;
             
+            % Generate grid limited to bounding box
+            [X, Y] = meshgrid(xRange, yRange);
+            
+            % Logical mask of pixels within nucleus circle
+            mask = (X - nuclearCenter(1)).^2 + (Y - nuclearCenter(2)).^2 <= nuclearRadius^2;
+            
+            % Convert subscripts to linear indices in full image
+            ret = int32(sub2ind(fluoImageSize, Y(mask), X(mask)));
         end
         
         
@@ -334,17 +344,17 @@ classdef CellXIntensityExtractorYouScope < handle
                       
         end
                  
-        function ret = findEulerNumber(this,mostBrightAreaIndices)
-            % construct an empty mask that has the size of the 
-            % segmentationBinaryMask
-            [height width] =size(this.segmentationBinaryMask);
-            EulerMask = zeros(height,width);
-            % substitute the linear indices
-            EulerMask(mostBrightAreaIndices)=1;
-            % find the disconected objects
-            [~, eulerNum] = bwlabel(EulerMask);
-            ret = eulerNum;
+        function ret = findEulerNumber(this, mostBrightAreaIndices)
+            % Create empty logical mask (logical is faster than double zeros)
+            EulerMask = false(size(this.segmentationBinaryMask));
+            % Set mask pixels from indices
+            EulerMask(mostBrightAreaIndices) = true;
             
+            % Use bwconncomp to get connected components
+            CC = bwconncomp(EulerMask);
+            
+            % Euler number is connected component count here
+            ret = CC.NumObjects;
         end
                 
 

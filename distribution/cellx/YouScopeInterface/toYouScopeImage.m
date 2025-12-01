@@ -1,4 +1,8 @@
-function imageEvent = toYouScopeImage(matlabImage)
+function imageEvent = toYouScopeImage(matlabImage, bitDepth)
+
+    if nargin < 2 || isempty(bitDepth)
+        bitDepth = 8; 
+    end
     
     % Matlab saves image data in the other way round than the rest of
     % the world...
@@ -8,14 +12,12 @@ function imageEvent = toYouScopeImage(matlabImage)
         % Grayscale image
         colorImage = false;
         bytesPerPixel = 1;
-        bitDepth = 8;
         
         
     else
         % Color image -> Create RGBA image
         colorImage = true;
         bytesPerPixel = 4;
-        bitDepth = 8;
         
         % Set alpha to maximum (no transparency).
         alpha = ones(size(matlabImage, 1), size(matlabImage, 2)) * 255;

@@ -169,30 +169,47 @@ classdef CellXSegmenterYouScope < handle
             fprintf('   Elapsed time: %4.2fs\n', t);
         end
         
-        function initCurrentCrops(this)
-            l =  this.config.maximumCellLength;
-            cropRegion = [this.currentSeed.houghCenterX this.currentSeed.houghCenterY 2*l 2*l];
-            this.currentCropImage = imcrop(this.imageExtended, cropRegion);
-            this.currentCropGradientPhase = imcrop(this.imageGradientPhase, cropRegion);
-            cropRegion(3:4) = cropRegion(3:4)+1;
-            this.currentSeed.setCenterOnCropImage(l,l,cropRegion);
-        end 
+%         function initCurrentCrops(this)
+%             l =  this.config.maximumCellLength;
+%             cropRegion = [this.currentSeed.houghCenterX this.currentSeed.houghCenterY 2*l 2*l];
+%             % this.currentCropImage = imcrop(this.imageExtended, cropRegion);
+%             % this.currentCropGradientPhase = imcrop(this.imageGradientPhase, cropRegion);
+%             this.currentCropImage = imcrop_own(this.imageExtended, round(cropRegion), size(this.imageExtended,1), size(this.imageExtended,2));
+%             this.currentCropGradientPhase = imcrop_own(this.imageGradientPhase, round(cropRegion), size(this.imageGradientPhase,1), size(this.imageGradientPhase,2));
+%             cropRegion(3:4) = cropRegion(3:4)+1;
+%             this.currentSeed.setCenterOnCropImage(l,l,cropRegion);
+%         end 
         
         function detectMembranes(this)         
             seedCount = numel(this.seeds);
-            for i = 1:seedCount
-                fprintf('   Processing seed %d\n', i);
-                this.currentSeed = this.seeds(i);
-                this.initCurrentCrops();
+            allSeeds = this.seeds;
+            l =  this.config.maximumCellLength;
+            imageExtended = this.imageExtended;
+            imageGradientPhase = this.imageGradientPhase;
+            parfor i = 1:seedCount
+                %fprintf('   Processing seed %d\n', i);
+                % this.currentSeed = this.seeds(i);
+                currentSeed = allSeeds(i);
+                currentImageExtended = imageExtended;
+                currentImageGradientPhase = imageGradientPhase;
+                % this.initCurrentCrops();
+                cropRegion = [currentSeed.houghCenterX currentSeed.houghCenterY 2*l 2*l];
+                currentCropImage = imcrop_own(currentImageExtended, round(cropRegion), size(currentImageExtended,1), size(currentImageExtended,2));
+                currentCropGradientPhase = imcrop_own(currentImageGradientPhase, round(cropRegion), size(currentImageGradientPhase,1), size(currentImageGradientPhase,2));
+                cropRegion(3:4) = cropRegion(3:4)+1;
+                currentSeed.setCenterOnCropImage(l,l,cropRegion);
+                
                 this.membraneDetector.run(...
-                    this.currentSeed, ...
-                    this.currentCropImage, ...
-                    this.currentCropGradientPhase, ...
+                    currentSeed, ...
+                    currentCropImage, ...
+                    currentCropGradientPhase, ...
                     i);
+                allSeeds(i) = this.membraneDetector.seed;
                 if( this.config.debugLevel>1 )
                     disp(this.seeds(i));
                 end
             end
+            this.seeds = allSeeds;
         end
         
         function ret = computeBackground(this, image)

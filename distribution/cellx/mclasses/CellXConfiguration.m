@@ -2,18 +2,14 @@ classdef CellXConfiguration < handle
     %CELLXCONFIGURATION Encapsulates the parameters for CellX
     
     properties(Constant)
-        version = 1;
-        release = 10;
+        version = 2;
+        release = 12;
     end
     
     
     properties (GetAccess=public, SetAccess=private)
-        
-        % maximum cell length [pixel]
-        % (CellXSegmenter, CellXMembraneDetector, ...)
-        %
-        % general param
-        maximumCellLength = [];
+        % Fluorescence Quantiles to report
+        fluoQuantiles = [25 50 75];
         
         % number of intensity classes (i.e. the number of gaussians to be
         % fitted to the histogram)
@@ -21,6 +17,12 @@ classdef CellXConfiguration < handle
         % (CellXSegmenter)
         intensityClassesCount = [3];
         
+        % maximum cell length [pixel]
+        % (CellXSegmenter, CellXMembraneDetector, ...)
+        %
+        % general param
+        maximumCellLength = [];
+               
         % analyse crop region of image only [xbegin, ybegin, xend, yend]
         % leave empty for the complete image
         % (CellXSegmenter, CellXIntensityExtractor, CellXTracker)
@@ -31,26 +33,24 @@ classdef CellXConfiguration < handle
         % (CellXSegmenter, CellXIntensityExtractor)
         wiener2params = [3 3]; % [pixels]
         
+        useWienerFilter = 1; % [bool]
         
         % compute the Hough transform 
         % 0 => on the original (normalized to 0-1) image
         % 1 => on the CLAHE image
         % (CellXSegmenter)
         % adv param
-        isHoughTransformOnCLAHE = 1; % [bool]
+        isHoughTransformOnCLAHE = 0; % [bool]
                
-        
-        %
-        %
         %  
-        maximumNumberOfCentroids = 3000;              
+        maximumNumberOfCentroids = Inf;              
         
         % compute the graph-cut 
         % 0 => on the original (normalized to 0-1) image
         % 1 => on the CLAHE image
         % (CellXSegmenter, CellXMembraneDetector)
         % adv param
-        isGraphCutOnCLAHE = 1; % [bool]
+        isGraphCutOnCLAHE = 0; % [bool]
                        
         
         % the membrane profile (gray values) as is is seen along a ray 
@@ -74,6 +74,7 @@ classdef CellXConfiguration < handle
         % minimum gradient between two pixels to trigger circular hough transform
         % (CellXSegmenter)        
         houghTransformGradientThreshold = 0.01; % [gray-level-difference]
+        % LW: NOT IN GUI
         
         % minimum and maximum radius (pixels) of the circular seeds
         % in the hough transform
@@ -92,12 +93,14 @@ classdef CellXConfiguration < handle
         % in the graph for the max-flow.
         % (CellXMembraneDetector)
         seedMaskRadiusFraction = 0.5; % [fraction]
+        % LW: NOT IN GUI
         
         % the fraction of pixels of the maximum cell length that define the
         % width of the border vertices that are connected to the sink 
         % vertex in the max-flow graph
         % (CellXMembraneDetector)
         pixelBorderFractionOfMaxCellLength = 0.05; % [fraction] 
+        % LW: NOT IN GUI
         
         % vertex connectivity (4 or 8);
         % (CellXMembraneDetector)
@@ -108,24 +111,27 @@ classdef CellXConfiguration < handle
         % this shape is created when the membrane width is set.
         % (CellXMembraneDetector, CellXIntersectionResolver)
         membraneErosionShape; % [disk shape]
+        % LW: NOT IN GUI
         
         % detection of low energy membrane regions and refinement
         % 0 => disabled
         % 1 => enabled
         % (CellXMembraneDetector)
         isNonConvexRegionDetectionEnabled = 1; % [bool]
+        % LW: NOT IN GUI
         
         % the minimum length of low energy membrane pixels to compute
         % a new ray convolution from the center of that region 
         % (smoothing if any is applied first, see next param).
         % (CellXMembraneDetector)
         minimumLengthOfLowEnergyMembraneRegion = 5; % [pixels]
-        
+        % LW: NOT IN GUI
         
         % two weak regions of membrane border pixels are connected
         % if their distance is at most maximumSmoothingDistance
         % (CellXMembraneDetector)
         maximumSmoothingDistance = 2; % [pixels]
+        % LW: NOT IN GUI
         
         % the refined max-flow labeling 
         % (using the ray convolutions of centers of weak membrane regions) 
@@ -133,24 +139,25 @@ classdef CellXConfiguration < handle
         % initial labeling (wrt the initial labeling) is less than the 
         % following fraction threshold. 
         % (CellXMembraneDetector)
-        maximumExpansionFraction = 0.35; % [fraction]
-        
+        maximumExpansionFraction = 0.5; % [fraction]
+        % LW: NOT IN GUI
                  
         % the required fraction of rays with a maximum >
         % getRayConvolutionValueThreshold() to remain a valid seed.
         % (CellXMembraneDetector)                
         requiredFractionOfGoodRays = 0.5; % [fraction]
+        % LW: NOT IN GUI
         
         % the required fraction of the membrane signal correlation value
         % that a convolution ray requires to be a 'good' ray
         % (CellXMembraneDetector)
         requiredCorrelationFraction = 0.25; % [fraction]
-
+        % LW: NOT IN GUI
         
         % a reference value that represents a good correlation value
         % determined when the membraneProfile is set.
         % it is not recommended to set this manually
-        % (CellXMembraneDetector)
+        % (CellXMembraneDetector) 
         membraneReferenceCorrelationValue; % [value]
         
         
@@ -165,7 +172,7 @@ classdef CellXConfiguration < handle
         % convolution pixels values on the membrane
         % (CellXValidator)
         numberOfRayIntensityClasses = 3; % [positive integer]
-        
+        % LW: NOT IN GUI
 
         % Threshold that determines which
         % membrane pixels are 'good'/accepted
@@ -173,6 +180,7 @@ classdef CellXConfiguration < handle
         % (CellXValidator)
         % 0.3 < value < 0.8
         membraneConvolutionThresholdFraction = 0.4; % [fraction]
+        % LW: NOT IN GUI
         
         % if the fraction of 'good' membrane pixels
         % is less than this fraction, the seed will be invalidated.
@@ -192,6 +200,7 @@ classdef CellXConfiguration < handle
         % the image boundary 
         % (CellXValidator)
         requiredDistanceToImageBoundary = 1; % [pixels]
+        % LW: NOT IN GUI
         
         % merge two seeds if the overlapping area of one wrt 
         % to its total area is above overlapMergeThreshold
@@ -223,7 +232,8 @@ classdef CellXConfiguration < handle
         % cells is maximized
         %  0 <= value < 20
         % display name: MaxFluoImageDisplacement
-        fluoAlignPixelMove = 5;
+        fluoAlignPixelMove = 1;
+        % LW: NOT IN GUI
         
         % The maximum number of pixels that 
         % the center of a cell can move between
@@ -266,29 +276,29 @@ classdef CellXConfiguration < handle
             %check for matlab>2009, assignment of ~
             
             if verLessThan('matlab', '7.9')
-                error('CellX requires MATLAB 7.9 or higher.\nPlease use the deployed version and the MATLAB Compiler Runtime (MCR) if your MATALB version is too old');
+                error('CellX requires MATLAB 7.9 or higher. You can use the deployed version and the MATLAB Compiler Runtime (MCR) if your MATALB version is too old');
             end
 
             
             % check defined
             if( isempty(this.maximumCellLength) )
-                error('Undefined value for maximum cell length\n');
+                error('Undefined value for maximum cell length');
             end
             
             if( isempty(this.membraneWidth) )
-                error('Undefined value for membrane width\n');
+                error('Undefined value for membrane width');
             end
             
             if( isempty(this.membraneLocation) )
-                error('Undefined value for membrane location\n');
+                error('Undefined value for membrane location');
             end
             
             if( isempty(this.membraneIntensityProfile) )
-                error('Undefined value for membrane intensity profile\n');
+                error('Undefined value for membrane intensity profile');
             end
             
             if( isempty(this.seedRadiusLimit) )
-                error('Undefined value for membrane intensity profile\n');
+                error('Undefined value for membrane intensity profile');
             end
             
             % check ranges
@@ -319,11 +329,15 @@ classdef CellXConfiguration < handle
                  error('Membrane location (%d) must be within (%d,%d)', ...
                      this.membraneLocation, 1, numel(this.membraneIntensityProfile) );
             end
-         
-            maxWidth = numel(this.membraneIntensityProfile) - this.membraneLocation + 1;
-            if( this.membraneWidth > maxWidth )
-                 error('Membrane width (%d) cannot be more than %d pixel', this.membraneWidth, maxWidth);
+            
+            if (any(this.fluoQuantiles < 0) || any(this.fluoQuantiles > 100))
+                error('Fluorescence Quantiles must be between 0 and 100');
             end
+         
+%             maxWidth = numel(this.membraneIntensityProfile) - this.membraneLocation + 1;
+%             if( this.membraneWidth > maxWidth )
+%                  error('Membrane width (%d) cannot be more than %d pixel', this.membraneWidth, maxWidth);
+%             end
 
         end
         
@@ -351,7 +365,8 @@ classdef CellXConfiguration < handle
         %
         % setters 
         %
-             
+        
+        
         function setSeedSensitivity(this, value)
             this.seedSensitivity = value;
         end
@@ -387,7 +402,7 @@ classdef CellXConfiguration < handle
         
         function setMembraneWidth(this, w)
             if( w<1 )
-                error('Invalid value for membrane width (membraneWidth): %d  (min=%d)\n', w, 1);
+                error('Invalid value for membrane width (membraneWidth): %d  (min=%d)', w, 1);
             end          
             this.membraneWidth = w;
             this.membraneErosionShape = strel('disk', w);
@@ -525,7 +540,7 @@ classdef CellXConfiguration < handle
                         childElement = doc.createElement(arrayElemTagName);
                         x = this.(id)(j);
                         if( numel(x)~=1 )
-                            error('Cannot handle property ''%s'' inXML export\n', id);
+                            error('Cannot handle property ''%s'' in XML export', id);
                         end
                         if( isnumeric(x) )
                             if( x==round(x) )

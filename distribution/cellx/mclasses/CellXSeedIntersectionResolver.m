@@ -43,9 +43,9 @@ classdef CellXSeedIntersectionResolver < handle
             this.initOverlap(1);
             n = numel(this.overlapsU);
             if(n>0)
-                fprintf('   Merging cells (%d pair(s))\n', n);
+                %fprintf('   Merging cells (%d pair(s))\n', n);
                 this.cluster();
-                fprintf('    -> in %d cluster(s)\n', numel(this.clusters));
+                %fprintf('    -> in %d cluster(s)\n', numel(this.clusters));
                 this.merge();
                 validator = CellXSeedValidator(this.config, this.mergedSeeds, this.dim);
                 validator.checkMinorAxixsLength();
@@ -56,9 +56,9 @@ classdef CellXSeedIntersectionResolver < handle
             this.initOverlap(2);
             n = numel(this.overlapsU);
             if(n>0)
-                fprintf('   Splitting cells (%d pair(s)) \n', n);
+                %fprintf('   Splitting cells (%d pair(s)) \n', n);
                 this.cluster();
-                fprintf('    -> in %d cluster(s)\n', numel(this.clusters));
+                %fprintf('    -> in %d cluster(s)\n', numel(this.clusters));
                 this.resolve();
             end
             
@@ -66,7 +66,7 @@ classdef CellXSeedIntersectionResolver < handle
             this.initOverlap(3);
             n = numel(this.overlapsU);
             if(n>0)
-                fprintf('   Resolving intersecting cell pairs (%d) \n', n);
+                %fprintf('   Resolving intersecting cell pairs (%d) \n', n);
                 this.deleteSmallerCell();
             end
             
@@ -78,15 +78,15 @@ classdef CellXSeedIntersectionResolver < handle
             n = numel(this.overlapsU);
             if(n>0)
                 
-                fprintf('   Removing nonresolvable cells (%d pair(s))\n', n);
+                %fprintf('   Removing nonresolvable cells (%d pair(s))\n', n);
                 this.cluster();
-                fprintf('    -> in %d cluster(s)\n', numel(this.clusters));
+                %fprintf('    -> in %d cluster(s)\n', numel(this.clusters));
                 n = numel(this.clusters);
                 for i=1:n
-                    fprintf('    Processing cluster %d\n',i);
+                    %fprintf('    Processing cluster %d\n',i);
                     cn = numel(this.clusters{i});
                     for k = 1:cn
-                        fprintf('      Removing seed %d\n', this.clusters{i}(k));
+                        %fprintf('      Removing seed %d\n', this.clusters{i}(k));
                         this.seeds(this.clusters{i}(k)).setSkipped(7, 'Intersecting area between thresholds');
                     end
                 end
@@ -105,86 +105,172 @@ classdef CellXSeedIntersectionResolver < handle
         % else   : Find overlapping cells in between the split and merge
         %          thresholds
         %
+        %         function initOverlap(this, mode)
+        %             validSeedIdx = find([this.seeds.skipped]==0);
+        %             n = numel(validSeedIdx);
+        %
+        %             safeDist = 2*this.config.maximumCellLength;
+        %
+        %             this.overlaps  = cell(n,1);
+        %             this.overlapsU = zeros(n,1);
+        %             this.overlapsV = zeros(n,1);
+        %             c=1;
+        %             for j = 1:n
+        %                 vj = validSeedIdx(j);
+        %                 for k = j:n
+        %                     if( j~=k )
+        %                         vk = validSeedIdx(k);
+        %                         sj = this.seeds(vj);
+        %                         sk = this.seeds(vk);
+        %
+        %                         dist = sqrt( ...
+        %                             (sj.houghCenterX-sk.houghCenterX)^2 + ...
+        %                             (sj.houghCenterY-sk.houghCenterY)^2);
+        %
+        %                         if(dist<safeDist)
+        %                             common = intersect(sj.cellPixelListLindx, sk.cellPixelListLindx);
+        %                             nc = numel(common);
+        %                             if(nc>0)
+        %                                 if(mode==1)
+        %                                     ru = nc/numel(sj.cellPixelListLindx);
+        %                                     rv = nc/numel(sk.cellPixelListLindx);
+        %                                     maxRatio = max(ru,rv);
+        %                                     if( maxRatio>this.config.overlapMergeThreshold )
+        %                                         this.overlaps{c}  = common;
+        %                                         this.overlapsU(c) = vj;
+        %                                         this.overlapsV(c) = vk;
+        %                                         c = c+1;
+        %                                     end
+        %                                 elseif(mode==2)
+        %                                     ru = nc/numel(sj.cellPixelListLindx);
+        %                                     rv = nc/numel(sk.cellPixelListLindx);
+        %
+        %                                     if( ru < this.config.overlapResolveThreshold && ...
+        %                                             rv < this.config.overlapResolveThreshold )
+        %                                         this.overlaps{c}  = common;
+        %                                         this.overlapsU(c) = vj;
+        %                                         this.overlapsV(c) = vk;
+        %                                         c = c+1;
+        %                                     end
+        %                                 elseif(mode==3)
+        %                                     ru = nc/numel(sj.cellPixelListLindx);
+        %                                     rv = nc/numel(sk.cellPixelListLindx);
+        %                                     minRatio = min(ru,rv);
+        %                                     maxRatio = max(ru,rv);
+        %                                     if( minRatio < this.config.overlapResolveThreshold && ...
+        %                                             maxRatio > this.config.overlapResolveThreshold )
+        %                                         this.overlaps{c}  = common;
+        %                                         % save the surviving (larger) cell in the U array
+        %                                         if(ru<rv)
+        %                                             this.overlapsU(c) = vj;
+        %                                             this.overlapsV(c) = vk;
+        %                                         else
+        %                                             this.overlapsU(c) = vk;
+        %                                             this.overlapsV(c) = vj;
+        %                                         end
+        %                                         c = c+1;
+        %                                     end
+        %                                 else
+        %                                     this.overlaps{c}  = common;
+        %                                     this.overlapsU(c) = vj;
+        %                                     this.overlapsV(c) = vk;
+        %                                     c = c+1;
+        %                                 end
+        %                             end
+        %                         end
+        %                     end
+        %                 end
+        %             end
+        %             c = c-1;
+        %             this.overlaps  = this.overlaps(1:c);
+        %             this.overlapsU = this.overlapsU(1:c);
+        %             this.overlapsV = this.overlapsV(1:c);
+        %         end
         function initOverlap(this, mode)
             validSeedIdx = find([this.seeds.skipped]==0);
             n = numel(validSeedIdx);
             
-            safeDist = 2*this.config.maximumCellLength;
+            safeDist = 2 * this.config.maximumCellLength;
             
-            this.overlaps  = cell(n,1);
-            this.overlapsU = zeros(n,1);
-            this.overlapsV = zeros(n,1);
-            c=1;
-            for j = 1:n
-                vj = validSeedIdx(j);
-                for k = j:n
-                    if( j~=k )
-                        vk = validSeedIdx(k);
-                        sj = this.seeds(vj);
-                        sk = this.seeds(vk);
-                        
-                        dist = sqrt( ...
-                            (sj.houghCenterX-sk.houghCenterX)^2 + ...
-                            (sj.houghCenterY-sk.houghCenterY)^2);
-                        
-                        if(dist<safeDist)
-                            common = intersect(sj.cellPixelListLindx, sk.cellPixelListLindx);
-                            nc = numel(common);
-                            if(nc>0)
-                                if(mode==1)
-                                    ru = nc/numel(sj.cellPixelListLindx);
-                                    rv = nc/numel(sk.cellPixelListLindx);
-                                    maxRatio = max(ru,rv);
-                                    if( maxRatio>this.config.overlapMergeThreshold )
-                                        this.overlaps{c}  = common;
-                                        this.overlapsU(c) = vj;
-                                        this.overlapsV(c) = vk;
-                                        c = c+1;
-                                    end
-                                elseif(mode==2)
-                                    ru = nc/numel(sj.cellPixelListLindx);
-                                    rv = nc/numel(sk.cellPixelListLindx);
-                                    
-                                    if( ru < this.config.overlapResolveThreshold && ...
-                                            rv < this.config.overlapResolveThreshold )
-                                        this.overlaps{c}  = common;
-                                        this.overlapsU(c) = vj;
-                                        this.overlapsV(c) = vk;
-                                        c = c+1;
-                                    end
-                                elseif(mode==3)
-                                    ru = nc/numel(sj.cellPixelListLindx);
-                                    rv = nc/numel(sk.cellPixelListLindx);
-                                    minRatio = min(ru,rv);
-                                    maxRatio = max(ru,rv);
-                                    if( minRatio < this.config.overlapResolveThreshold && ...
-                                            maxRatio > this.config.overlapResolveThreshold )
-                                        this.overlaps{c}  = common;
-                                        % save the surviving (larger) cell in the U array
-                                        if(ru<rv)
-                                            this.overlapsU(c) = vj;
-                                            this.overlapsV(c) = vk;
-                                        else
-                                            this.overlapsU(c) = vk;
-                                            this.overlapsV(c) = vj;
-                                        end
-                                        c = c+1;
+            % Cache seed properties for fast access
+            houghCenterX = zeros(n,1);
+            houghCenterY = zeros(n,1);
+            pixelLists = cell(n,1);
+            for iSeed = 1:n
+                seed = this.seeds(validSeedIdx(iSeed));
+                houghCenterX(iSeed) = seed.houghCenterX;
+                houghCenterY(iSeed) = seed.houghCenterY;
+                pixelLists{iSeed} = seed.cellPixelListLindx;
+            end
+            
+            % Temporary local storage for overlaps
+            overlapsCell  = cell(n,1);
+            overlapsUCell = cell(n,1);
+            overlapsVCell = cell(n,1);
+            
+            parfor j = 1:n
+                localOverlaps  = {};
+                localOverlapsU = [];
+                localOverlapsV = [];
+                
+                for k = j+1:n
+                    % Distance check
+                    dist = hypot(houghCenterX(j)-houghCenterX(k), houghCenterY(j)-houghCenterY(k));
+                    if dist < safeDist
+                        common = intersect(pixelLists{j}, pixelLists{k});
+                        nc = numel(common);
+                        if nc > 0
+                            ru = nc / numel(pixelLists{j});
+                            rv = nc / numel(pixelLists{k});
+                            
+                            flagInclude = false;
+                            switch mode
+                                case 1
+                                    flagInclude = max(ru, rv) > this.config.overlapMergeThreshold;
+                                case 2
+                                    flagInclude = ru < this.config.overlapResolveThreshold && rv < this.config.overlapResolveThreshold;
+                                case 3
+                                    minRatio = min(ru, rv);
+                                    maxRatio = max(ru, rv);
+                                    flagInclude = minRatio < this.config.overlapResolveThreshold && maxRatio > this.config.overlapResolveThreshold;
+                                otherwise
+                                    flagInclude = true;
+                            end
+                            
+                            if flagInclude
+                                localOverlaps{end+1,1} = common;
+                                if mode==3 && flagInclude
+                                    if ru < rv
+                                        localOverlapsU(end+1,1) = validSeedIdx(j);
+                                        localOverlapsV(end+1,1) = validSeedIdx(k);
+                                    else
+                                        localOverlapsU(end+1,1) = validSeedIdx(k);
+                                        localOverlapsV(end+1,1) = validSeedIdx(j);
                                     end
                                 else
-                                    this.overlaps{c}  = common;
-                                    this.overlapsU(c) = vj;
-                                    this.overlapsV(c) = vk;
-                                    c = c+1;
+                                    localOverlapsU(end+1,1) = validSeedIdx(j);
+                                    localOverlapsV(end+1,1) = validSeedIdx(k);
                                 end
                             end
                         end
                     end
                 end
+                overlapsCell{j}  = localOverlaps;
+                overlapsUCell{j} = localOverlapsU;
+                overlapsVCell{j} = localOverlapsV;
             end
-            c = c-1;
-            this.overlaps  = this.overlaps(1:c);
-            this.overlapsU = this.overlapsU(1:c);
-            this.overlapsV = this.overlapsV(1:c);
+            
+            % Concatenate results
+            this.overlaps = vertcat(overlapsCell{:});
+            this.overlapsU = vertcat(overlapsUCell{:});
+            this.overlapsV = vertcat(overlapsVCell{:});
+            
+            % Normalize pairs to avoid duplicates like (a,b) and (b,a)
+            edges = [min(this.overlapsU, this.overlapsV), max(this.overlapsU, this.overlapsV)];
+            [~, uniqueIdx] = unique(edges, 'rows', 'stable');
+            this.overlaps = this.overlaps(uniqueIdx);
+            this.overlapsU = this.overlapsU(uniqueIdx);
+            this.overlapsV = this.overlapsV(uniqueIdx);
         end
         
         
@@ -229,14 +315,14 @@ classdef CellXSeedIntersectionResolver < handle
             n = numel(this.clusters);
             this.mergedSeeds = CellXSeed.empty(n,0);
             for i=1:n
-                fprintf('    Processing cluster %d\n',i);
+                %fprintf('    Processing cluster %d\n',i);
                 % compute the common bounding box
                 cbb = this.computeCommonBoundingBox(this.clusters{i});
                 % merge the seed areas
                 this.updateMask = false(cbb(4), cbb(3));
                 cn = numel(this.clusters{i});
                 for k = 1:cn
-                    fprintf('      Merging seed %d\n', this.clusters{i}(k));
+                    %fprintf('      Merging seed %d\n', this.clusters{i}(k));
                     s = this.seeds(this.clusters{i}(k));
                     s.setSkipped(5, sprintf('Merged into seed %d', numel(this.seeds)+i));
                     [iIdx jIdx] = ind2sub(this.dim, s.cellPixelListLindx);
@@ -251,18 +337,29 @@ classdef CellXSeedIntersectionResolver < handle
                 hy = round(sum([this.seeds(this.clusters{i}).houghCenterY])/cn);
                 hr = round(sum([this.seeds(this.clusters{i}).houghRadius])/cn);
                 
+                % LW PATCH: Compute common fracOfGoodMemPixels
+                fracOfGoodMemPixelsSum = 0;
+                pixelConvolutionSum = 0;
+                for k = 1:cn
+                    s = this.seeds(this.clusters{i}(k));
+                    fracOfGoodMemPixelsSum = fracOfGoodMemPixelsSum + s.fracOfGoodMemPixels * length(s.perimeterPixelConvolutionValues);
+                    pixelConvolutionSum = pixelConvolutionSum + length(s.perimeterPixelConvolutionValues);
+                end
+                fracOfGoodMemPixels = fracOfGoodMemPixelsSum / pixelConvolutionSum;
+                
                 % create a new seed object for the merge result
                 ms = CellXSeedIntersectionResolver.createNewSeed( ...
                     hx ,...
                     hy, ...
                     hr,...
                     cbb,...
+                    fracOfGoodMemPixels,...
                     this.updateMask, ...
                     this.dim, ...
                     this.config);
                 
-                %addprop(ms, 'sourceSeeds'); % Add a dynamic property
-                %ms.sourceSeeds = this.clusters{i};
+                %ms.addprop('sourceSeeds'); % Add a dynamic property
+                ms.sourceSeeds = this.clusters{i};
                 this.mergedSeeds(i) = ms;
                 
             end
@@ -291,7 +388,7 @@ classdef CellXSeedIntersectionResolver < handle
             end
             
             for i=1:n
-                fprintf('    Processing cluster %d\n',i);
+                %fprintf('    Processing cluster %d\n',i);
                 edgeList = intersectionClusters{i};
                 edgeCount = numel(edgeList);
                 % collect the intersection pixels of all pairs in cluster i
@@ -346,7 +443,7 @@ classdef CellXSeedIntersectionResolver < handle
                 sc = numel(this.clusters{i});
                 
                 for k = 1:sc
-                    fprintf('      Resolving seed %d\n', this.clusters{i}(k));
+                    %fprintf('      Resolving seed %d\n', this.clusters{i}(k));
                     this.updateMask = false(cbb(4) , cbb(3));
                     this.updateMask(freePixels{k}.lidx) = true;
                     this.updateMask( rPixelsLoc.lidx(assignment==k) ) = true;
@@ -359,6 +456,7 @@ classdef CellXSeedIntersectionResolver < handle
                         originalSeed.houghCenterY, ...
                         originalSeed.houghRadius, ...
                         cbb, ...
+                        originalSeed.fracOfGoodMemPixels, ...
                         this.updateMask, ...
                         this.dim, ...
                         this.config);
@@ -378,24 +476,24 @@ classdef CellXSeedIntersectionResolver < handle
                 end
             end
         end
-       
+        
         
         
         %
-        % processes the seed pairs, where 
+        % processes the seed pairs, where
         % seed A is > this.config.overlapResolveThreshold and
-        % seed B is < this.config.overlapResolveThreshold     
-        % 
+        % seed B is < this.config.overlapResolveThreshold
+        %
         % step1: the pair is resolved, i.e. the pixels of the intersection
-        %        area are assigned to the seed that is closest 
+        %        area are assigned to the seed that is closest
         %        (wrt the non intersecting pixels)
         %
         % step2: a new seed is created for the updated area of the larger
         %        seed
         %
         % step3: the two overlapping seeds are marked to be
-        %        replaced by the new seed 
-        % 
+        %        replaced by the new seed
+        %
         function deleteSmallerCell(this)
             edgeCount = numel(this.overlapsU);
             for i=1:edgeCount
@@ -432,30 +530,31 @@ classdef CellXSeedIntersectionResolver < handle
                 end
                 
                 
-                fprintf('   Resolving seed %d\n', tseeds(1));
+                %fprintf('   Resolving seed %d\n', tseeds(1));
                 this.updateMask = false(cbb(4) , cbb(3));
                 % write pixels of the larger cell in mask
                 this.updateMask(freePixels{1}.lidx) = true;
                 this.updateMask( rPixelsLoc.lidx(assignment==1) ) = true;
                 originalSeed = this.seeds( tseeds(1) );
                 originalSeed.setSkipped(6, ...
-                    sprintf('Resolved seed in %d (large cell of a small/large pair (%d,%d))', numel(this.seeds)+numel(this.resolvedSeeds), tseeds(1), tseeds(2) )); 
+                    sprintf('Resolved seed in %d (large cell of a small/large pair (%d,%d))', numel(this.seeds)+numel(this.resolvedSeeds), tseeds(1), tseeds(2) ));
                 newSeed = CellXSeedIntersectionResolver.createNewSeed( ...
-                        originalSeed.houghCenterX, ...
-                        originalSeed.houghCenterY, ...
-                        originalSeed.houghRadius, ...
-                        cbb, ...
-                        this.updateMask, ...
-                        this.dim, ...
-                        this.config);
-                    
+                    originalSeed.houghCenterX, ...
+                    originalSeed.houghCenterY, ...
+                    originalSeed.houghRadius, ...
+                    cbb, ...
+                    originalSeed.fracOfGoodMemPixels, ...
+                    this.updateMask, ...
+                    this.dim, ...
+                    this.config);
+                
                 this.resolvedSeeds(end+1) = newSeed;
                 
-                fprintf('   Removing seed %d\n', tseeds(2));
+                %fprintf('   Removing seed %d\n', tseeds(2));
                 originalSeed = this.seeds( tseeds(2) );
                 originalSeed.setSkipped(6, ...
-                     sprintf('Resolved seed in %d (small cell of a small/large pair (%d,%d))', numel(this.seeds)+numel(this.resolvedSeeds), tseeds(1), tseeds(2) ));
-
+                    sprintf('Resolved seed in %d (small cell of a small/large pair (%d,%d))', numel(this.seeds)+numel(this.resolvedSeeds), tseeds(1), tseeds(2) ));
+                
                 if( this.config.debugLevel>=4 )
                     debugMask =  zeros(cbb(4) , cbb(3));
                     debugMask(freePixels{1}.lidx) = 0.1;
@@ -471,7 +570,7 @@ classdef CellXSeedIntersectionResolver < handle
             
         end
         
-      
+        
         
         % creates a mask with a border of 2px around
         % the intersection area(s)
@@ -532,14 +631,14 @@ classdef CellXSeedIntersectionResolver < handle
     
     methods(Static)
         
-         % creates a new seed in image coordinates
-        function s = createNewSeed(x, y, r, bb, updateMask, inputImageDimension, config)
+        % creates a new seed in image coordinates
+        function s = createNewSeed(x, y, r, bb, fracOfGoodMemPixels, updateMask, inputImageDimension, config)
             % compute the new region properties
             p = regionprops(updateMask, 'all');
             %mergeArea(round(p.Centroid(1)), round(p.Centroid(2))) = false;
             %figure;
             %imagesc(mergeArea);
-            s = CellXSeed( x, y, r );     
+            s = CellXSeed( x, y, r );
             % transform the original hough center to the new bb
             s.setCenterOnCropImage(x-bb(1), y-bb(2), bb);
             
@@ -551,17 +650,17 @@ classdef CellXSeedIntersectionResolver < handle
             else
                 tmpMask = updateMask;
             end
-                 
+            
             % create a new seed with the merged info
-
-            s.centroid          = p.Centroid;
-            s.boundingBox       = p.BoundingBox;
-            s.eccentricity      = p.Eccentricity;
-            s.orientation       = p.Orientation;
-            s.equivDiameter     = p.EquivDiameter;
-            s.majorAxisLength   = p.MajorAxisLength;
-            s.minorAxisLength   = p.MinorAxisLength;
-            s.perimeter         = p.Perimeter;
+            s.fracOfGoodMemPixels = fracOfGoodMemPixels;
+            s.centroid            = p.Centroid;
+            s.boundingBox         = p.BoundingBox;
+            s.eccentricity        = p.Eccentricity;
+            s.orientation         = p.Orientation;
+            s.equivDiameter       = p.EquivDiameter;
+            s.majorAxisLength     = p.MajorAxisLength;
+            s.minorAxisLength     = p.MinorAxisLength;
+            s.perimeter           = p.Perimeter;
             s.cellPixelListLindx  = p.PixelList;
             s.perimeterPixelListLindx = find( bwperim(tmpMask, 8) );
             
@@ -580,7 +679,7 @@ classdef CellXSeedIntersectionResolver < handle
             %c = c + bb(1) -1;
             %s.perimeterPixelListLindx = sub2ind(this.dim,r,c);
             
-        end 
+        end
         
         
     end

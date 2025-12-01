@@ -22,7 +22,7 @@ classdef CellXMembraneDetector < handle
         nEdgeListVertexLindx;
         NLinkLindx;
     end
-    
+        
     methods
         
         function this = CellXMembraneDetector(config)

@@ -41,6 +41,8 @@ classdef CellXSeed < handle
         
         % source seeds - was a dynamic property before
         sourceSeeds;
+        %probBeingValid=NaN;
+        fracOfGoodMemPixels=NaN;
     end
     
     properties (SetAccess=private, GetAccess=public)
