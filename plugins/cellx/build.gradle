@@ -1,3 +1,16 @@
 dependencies {
 	implementation project(':plugins:cell-detection')
 }
+
+tasks.register('copyMatlabScripts', Copy) {
+    from 'src/main/java/org/youscope/plugin/cellx/CellXInvoker.m'   
+    into 'src/main/resources/org/youscope/plugin/cellx/'           
+
+    inputs.file('src/main/java/org/youscope/plugin/cellx/CellXInvoker.m')
+    outputs.dir('src/main/resources/org/youscope/plugin/cellx')
+}
+
+// Ensure copy happens before resources are processed for packaging in jar
+tasks.named('processResources') {
+    dependsOn tasks.named('copyMatlabScripts')
+}
