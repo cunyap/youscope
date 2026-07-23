@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Class-Path: ../common/youscope-api.jar ../lib/xstream-1.4.2.jar ../lib/p
+ olyglot-24.1.0.jar ../lib/python-language-24.1.0.jar ../lib/python-reso
+ urces-24.1.0.jar ../lib/truffle-api-24.1.0.jar ../lib/truffle-runtime-2
+ 4.1.0.jar ../lib/truffle-nfi-24.1.0.jar ../lib/truffle-nfi-libffi-24.1.
+ 0.jar ../lib/nativeimage-24.1.0.jar ../lib/word-24.1.0.jar ../lib/colle
+ ctions-24.1.0.jar ../lib/regex-24.1.0.jar ../lib/icu4j-74.2.jar ../lib/
+ icu4j-24.1.0.jar ../lib/bcprov-jdk18on-1.78.1.jar ../lib/bcpkix-jdk18on
+ -1.78.1.jar ../lib/bcutil-jdk18on-1.78.1.jar
+
