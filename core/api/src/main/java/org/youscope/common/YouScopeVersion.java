@@ -36,54 +36,49 @@ import java.util.List;
  * 
  * @author Franz-Josef Elmer
  */
-public class YouScopeVersion
-{
-	private static final String	UNKNOWN	= "UNKNOWN";
+public class YouScopeVersion {
+	private static final String UNKNOWN = "UNKNOWN";
 
-	private final static String		DEVELOPER_VERSION = "2.3.0"; 
+	private final static String DEVELOPER_VERSION = "2.4.0";
 
-	private final static String		PRODUCT_VERSION = "R2025"; 
+	private final static String PRODUCT_VERSION = "R2026";
 
-	private final static String		APPLICATION_NAME = "YouScope";
-	
+	private final static String APPLICATION_NAME = "YouScope";
+
 	private final static boolean PRE_RELEASE = false;
 
 	/**
 	 * Constructor.
-	 * @param APPLICATION_NAME The part of YouScope (client, server,...). for which the Version should be returned.
+	 * 
+	 * @param APPLICATION_NAME The part of YouScope (client, server,...). for which
+	 *                         the Version should be returned.
 	 */
-	private YouScopeVersion()
-	{
+	private YouScopeVersion() {
 		// static functions only
 	}
 
-	private final static String getProperty(final String property)
-	{
+	private final static String getProperty(final String property) {
 		return System.getProperty(property, UNKNOWN);
 	}
 
-	private final static boolean isPropertyUnknown(final String property)
-	{
+	private final static boolean isPropertyUnknown(final String property) {
 		return property.equals(UNKNOWN);
 	}
 
 	/**
 	 * @return Name of the CPU architecture.
 	 */
-	public static final String getCPUArchitecture()
-	{
+	public static final String getCPUArchitecture() {
 		return getProperty("os.arch");
 	}
 
 	/**
 	 * @return Name and version of the operating system.
 	 */
-	public static final String getOS()
-	{
+	public static final String getOS() {
 		final String osName = getProperty("os.name");
 		final String osVersion = getProperty("os.version");
-		if(isPropertyUnknown(osName) || isPropertyUnknown(osVersion))
-		{
+		if (isPropertyUnknown(osName) || isPropertyUnknown(osVersion)) {
 			return osName;
 		}
 		return osName + " (v" + osVersion + ")";
@@ -92,12 +87,10 @@ public class YouScopeVersion
 	/**
 	 * @return Name and version of the Java Virtual Machine.
 	 */
-	public static final String getJavaVM()
-	{
+	public static final String getJavaVM() {
 		final String vmName = getProperty("java.vm.name");
 		final String vmVersion = getProperty("java.vm.version");
-		if(isPropertyUnknown(vmName) || isPropertyUnknown(vmVersion))
-		{
+		if (isPropertyUnknown(vmName) || isPropertyUnknown(vmVersion)) {
 			return vmName;
 		}
 		return vmName + " (v" + vmVersion + ")";
@@ -106,46 +99,47 @@ public class YouScopeVersion
 	/**
 	 * @return The version of the software.
 	 */
-	public static final String getProductVersion()
-	{
+	public static final String getProductVersion() {
 		return PRODUCT_VERSION;
 	}
+
 	/**
 	 * Returns true if the current YouScope version corresponds to a pre-release.
+	 * 
 	 * @return True if pre-release, false if regular release.
 	 */
-	public static boolean isPreRealease()
-	{
+	public static boolean isPreRealease() {
 		return PRE_RELEASE;
 	}
-	
+
 	/**
 	 * Returns the version accompanied by the build number of the software.
+	 * 
 	 * @return Full version.
 	 */
-	public static final String getFullVersion()
-	{
+	public static final String getFullVersion() {
 		final StringBuilder builder = new StringBuilder(getProductVersion());
-		if(PRE_RELEASE)
+		if (PRE_RELEASE)
 			builder.append("*");
 		return builder.append(" [build: ").append(getDeveloperVersion()).append("]").toString();
 	}
 
 	/**
 	 * Returns the name of the (sub-) application/library which is versioned.
+	 * 
 	 * @return Name of library/application.
 	 */
-	public static String getApplicationName()
-	{
+	public static String getApplicationName() {
 		return APPLICATION_NAME;
 	}
 
 	/**
-	 * Returns version, build number, Java VM, and OS as a {@link List} with four entries.
+	 * Returns version, build number, Java VM, and OS as a {@link List} with four
+	 * entries.
+	 * 
 	 * @return List of environmental variables.
 	 */
-	public static final List<String> getEnvironmentInfo()
-	{
+	public static final List<String> getEnvironmentInfo() {
 		final List<String> environmentInfo = new ArrayList<String>();
 		environmentInfo.add("Application: " + getApplicationName());
 		environmentInfo.add("Version: " + getFullVersion());
@@ -156,19 +150,17 @@ public class YouScopeVersion
 	}
 
 	/**
-	 * Returns version, build number, Java VM, and OS in a four-liner as one {@link String}.
+	 * Returns version, build number, Java VM, and OS in a four-liner as one
+	 * {@link String}.
 	 */
 	@Override
-	public final String toString()
-	{
+	public final String toString() {
 		final StringBuilder builder = new StringBuilder();
 		final List<String> environmentInfo = getEnvironmentInfo();
 		final int n = environmentInfo.size();
-		for(int i = 0; i < n; i++)
-		{
+		for (int i = 0; i < n; i++) {
 			builder.append(environmentInfo.get(i));
-			if(i < n - 1)
-			{
+			if (i < n - 1) {
 				builder.append(System.getProperty("line.separator"));
 			}
 		}
@@ -178,8 +170,7 @@ public class YouScopeVersion
 	/**
 	 * @return Major version number.
 	 */
-	public static String getDeveloperVersion()
-	{
+	public static String getDeveloperVersion() {
 		return DEVELOPER_VERSION;
 	}
 }
