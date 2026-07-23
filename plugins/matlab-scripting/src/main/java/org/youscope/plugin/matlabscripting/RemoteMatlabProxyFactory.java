@@ -43,15 +43,17 @@ import java.util.UUID;
 import java.util.Vector;
 
 /**
- * Use this class to create instances of {@link RemoteMatlabProxy}. Each proxy will control a
- * different instance of MATLAB. Confirmed to work on OS X, Windows, & Linux. If your operating
- * system is not reported as OS X, it will launch it as if it were on Windows or Linux (they are
+ * Use this class to create instances of {@link RemoteMatlabProxy}. Each proxy
+ * will control a
+ * different instance of MATLAB. Confirmed to work on OS X, Windows, & Linux. If
+ * your operating
+ * system is not reported as OS X, it will launch it as if it were on Windows or
+ * Linux (they are
  * handled exactly the same).
  * 
  * @author <a href="mailto:jak2@cs.brown.edu">Joshua Kaplan</a>
  */
-public class RemoteMatlabProxyFactory
-{
+public class RemoteMatlabProxyFactory {
     /**
      * A timer that keeps periodically checks if the proxies are still connected.
      */
@@ -66,7 +68,8 @@ public class RemoteMatlabProxyFactory
     private Vector<MatlabConnectionListener> _listeners = new Vector<MatlabConnectionListener>();
 
     /**
-     * Specified location of MATLAB executable. If none is ever provided then an OS specific value
+     * Specified location of MATLAB executable. If none is ever provided then an OS
+     * specific value
      * is used.
      * 
      * @see #setMatlabLocation(String)
@@ -89,7 +92,8 @@ public class RemoteMatlabProxyFactory
     private Vector<MatlabProxyReceiver> _receivers = new Vector<MatlabProxyReceiver>();
 
     /**
-     * The RMI registry used to communicate between JVMs. There is only ever one registry actually
+     * The RMI registry used to communicate between JVMs. There is only ever one
+     * registry actually
      * running.
      */
     private static Registry _registry = null;
@@ -99,8 +103,7 @@ public class RemoteMatlabProxyFactory
      * 
      * @return
      */
-    private static String getRandomBindValue()
-    {
+    private static String getRandomBindValue() {
         return UUID.randomUUID().toString();
     }
 
@@ -108,8 +111,7 @@ public class RemoteMatlabProxyFactory
      * This class receives the {@link RemoteMatlabProxy} from the MATLAB JVM.
      */
     private class MatlabProxyReceiver extends UnicastRemoteObject implements
-            MatlabInternalProxyReceiver
-    {
+            MatlabInternalProxyReceiver {
         /**
          * Serial Version UID.
          */
@@ -118,22 +120,21 @@ public class RemoteMatlabProxyFactory
         /**
          * @throws RemoteException
          */
-        protected MatlabProxyReceiver() throws RemoteException
-        {
+        protected MatlabProxyReceiver() throws RemoteException {
             super();
         }
 
         /**
-         * This method is to be called by {@link MatlabConnector} instance running inside of the
+         * This method is to be called by {@link MatlabConnector} instance running
+         * inside of the
          * MATLAB JVM.
          * 
-         * @param bindValue unique identifier of what receiver the proxy belongs to
+         * @param bindValue     unique identifier of what receiver the proxy belongs to
          * @param internalProxy the proxy used internally
          */
         @Override
-		public void registerControl(String bindValue, MatlabInternalProxy internalProxy)
-                throws RemoteException
-        {
+        public void registerControl(String bindValue, MatlabInternalProxy internalProxy)
+                throws RemoteException {
             RemoteMatlabProxy proxy = new RemoteMatlabProxy(internalProxy);
             _proxies.put(bindValue, proxy);
             RemoteMatlabProxyFactory.this.connectionEstablished(proxy);
@@ -144,176 +145,174 @@ public class RemoteMatlabProxyFactory
     }
 
     /**
-     * Set the location of the MATLAB program. If this property is not set an appropriate default
-     * for your operating system will be used. If that fails, then use this method to give the
+     * Set the location of the MATLAB program. If this property is not set an
+     * appropriate default
+     * for your operating system will be used. If that fails, then use this method
+     * to give the
      * correct location.
      * 
      * @param matlabLocation
      */
-    public void setMatlabLocation(String matlabLocation)
-    {
+    public void setMatlabLocation(String matlabLocation) {
         _specifiedMatlabLoc = matlabLocation;
     }
 
     /**
-     * Requests a proxy. When the proxy has been made (there is a possibility it will not be if
+     * Requests a proxy. When the proxy has been made (there is a possibility it
+     * will not be if
      * errors occur), all listeners will be notified.
      * 
      * @see #getProxy()
      * @see #addConnectionListener(MatlabConnectionListener)
      * @throws MatlabConnectionException
      */
-    public void requestProxy() throws MatlabConnectionException
-    {
+    public void requestProxy() throws MatlabConnectionException {
         this.requestProxy(getRandomBindValue());
     }
 
     /**
-     * Internal method that actually sets up the RMI binding and begins the process of creating the
+     * Internal method that actually sets up the RMI binding and begins the process
+     * of creating the
      * proxy.
      * 
      * @param bindValue unique binding used to register the proxy control
      * @throws MatlabConnectionException
      */
-    private void requestProxy(String bindValue) throws MatlabConnectionException
-    {
+    private void requestProxy(String bindValue) throws MatlabConnectionException {
         // If there is no timer yet, create a timer to monitor the connection
-        if (_connectionTimer == null)
-        {
+        if (_connectionTimer == null) {
             _connectionTimer = new Timer();
-            _connectionTimer.schedule(new TimerTask()
-                {
-                    @Override
-					public void run()
-                    {
-                        RemoteMatlabProxyFactory.this.checkConnections();
-                    }
-                }, 5000, 1000);
+            _connectionTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    RemoteMatlabProxyFactory.this.checkConnections();
+                }
+            }, 5000, 1000);
         }
 
         // Initialize the registry if necessary
         initRegistry();
 
-        // Sets the security manager if not yet set.
-        if (System.getSecurityManager() == null)
-        {
-            System.setSecurityManager(new SecurityManager());
-        }
+        // Sets the security manager if not yet set. Deprecated in JDK21
+        // if (System.getSecurityManager() == null)
+        // {
+        // System.setSecurityManager(new SecurityManager());
+        // }
 
-        // If a registry exists, bind this class and then launch Matlab which will in turn launch
+        // If a registry exists, bind this class and then launch Matlab which will in
+        // turn launch
         // the MatlabControl
-        if (_registry != null)
-        {
+        if (_registry != null) {
             // Bind this object
-            try
-            {
+            try {
                 MatlabProxyReceiver receiver = new MatlabProxyReceiver();
                 _receivers.add(receiver);
-                
+
                 Naming.rebind("//localhost:1243/" + bindValue, receiver);
-                
-            } catch (Exception e)
-            {
+
+            } catch (Exception e) {
                 throw new MatlabConnectionException(
                         "Could not bind proxy receiever to the RMI registry", e);
             }
 
             // Run Matlab
             this.runMatlab(bindValue);
-        } else
-        {
+        } else {
             throw new MatlabConnectionException("Could not create or connect to the RMI registry");
         }
     }
 
     /**
-     * Initializes the registry if it has not already been set up. Specifies the code base so that
+     * Initializes the registry if it has not already been set up. Specifies the
+     * code base so that
      * paths with spaces in them will work properly.
      * 
      * @throws MatlabConnectionException
      */
-    private static void initRegistry() throws MatlabConnectionException
-    {
+    private static void initRegistry() throws MatlabConnectionException {
         // If the registry hasn't been created
-        if (_registry == null)
-        {
-        	java.net.URL location = RemoteMatlabProxyFactory.class.getProtectionDomain().getCodeSource().getLocation(); 
-            String path = "file://"+location.getPath();
+        if (_registry == null) {
+            java.net.URL location = RemoteMatlabProxyFactory.class.getProtectionDomain().getCodeSource().getLocation();
+            String path = "file://" + location.getPath();
             String oldpath = System.getProperty("java.rmi.server.codebase");
-            System.out.println("old RMI path=\""+oldpath+"\"");
-            System.out.println("new RMI path=\""+path+"\"");
+            System.out.println("old RMI path=\"" + oldpath + "\"");
+            System.out.println("new RMI path=\"" + path + "\"");
             System.setProperty("java.rmi.server.codebase", path);
-        	
+
             // Create a RMI registry
-            try
-            {
+            try {
                 _registry = LocateRegistry.createRegistry(1243/* Registry.REGISTRY_PORT */);
             }
             // If we can't create one, try to retrieve an existing one
-            catch (Exception e)
-            {
-            	throw new MatlabConnectionException("Could not create registry.", e);
-                /*try
-                {
-                    _registry = LocateRegistry.getRegistry(1243);
-                } catch (Exception ex)
-                {
-                    throw new MatlabConnectionException(
-                            "Could not create or connect to the RMI registry", ex);
-                }*/
+            catch (Exception e) {
+                throw new MatlabConnectionException("Could not create registry.", e);
+                /*
+                 * try
+                 * {
+                 * _registry = LocateRegistry.getRegistry(1243);
+                 * } catch (Exception ex)
+                 * {
+                 * throw new MatlabConnectionException(
+                 * "Could not create or connect to the RMI registry", ex);
+                 * }
+                 */
             }
 
             // If we created a registry, register this code base
-            /*if (_registry != null)
-            {
-
-                // Get the location of the directory or jar this class is in
-                
-                  URL location = RemoteMatlabProxyFactory.class.getProtectionDomain().getCodeSource().getLocation(); 
-                  String path = location.getPath(); 
-                  // Workaround for error in debugging in Windows using Eclipse (and probably at other occasions, too). 
-                  String os = System.getProperty("os.name"); 
-                  if(os.indexOf("Windows") >= 0 && path.charAt(0) == '/') 
-                	  path = path.substring(1); //Tell the code base where it is, and just to be safe force it to use it 
-                  //(This is necessary so that paths  with spaces work properly) 
-                  System.setProperty("java.rmi.server.codebase",
-                  "file:/U:\\Micros~1\\MatlabScripting\\bin\\");//"file://"+path);
-                  //System.setProperty("java.rmi.server.useCodebaseOnly", "true");
-                 
-            }*/
+            /*
+             * if (_registry != null)
+             * {
+             * 
+             * // Get the location of the directory or jar this class is in
+             * 
+             * URL location =
+             * RemoteMatlabProxyFactory.class.getProtectionDomain().getCodeSource().
+             * getLocation();
+             * String path = location.getPath();
+             * // Workaround for error in debugging in Windows using Eclipse (and probably
+             * at other occasions, too).
+             * String os = System.getProperty("os.name");
+             * if(os.indexOf("Windows") >= 0 && path.charAt(0) == '/')
+             * path = path.substring(1); //Tell the code base where it is, and just to be
+             * safe force it to use it
+             * //(This is necessary so that paths with spaces work properly)
+             * System.setProperty("java.rmi.server.codebase",
+             * "file:/U:\\Micros~1\\MatlabScripting\\bin\\");//"file://"+path);
+             * //System.setProperty("java.rmi.server.useCodebaseOnly", "true");
+             * 
+             * }
+             */
         }
     }
 
     /**
-     * Calling this method will get a {@link RemoteMatlabProxy}. This will take some time as it
-     * involves launching MATLAB. If for any reason a connection cannot be established, this method
-     * will timeout in 60 seconds or the amount of time as specified by {@link #setTimeout(int)}.
+     * Calling this method will get a {@link RemoteMatlabProxy}. This will take some
+     * time as it
+     * involves launching MATLAB. If for any reason a connection cannot be
+     * established, this method
+     * will timeout in 60 seconds or the amount of time as specified by
+     * {@link #setTimeout(int)}.
      * 
      * @see #requestProxy()
      * @throws MatlabConnectionException
      * @return proxy
      */
-    public RemoteMatlabProxy getProxy() throws MatlabConnectionException
-    {
+    public RemoteMatlabProxy getProxy() throws MatlabConnectionException {
         String bindValue = getRandomBindValue();
         this.requestProxy(bindValue);
 
         // Wait until the controller is received or until timeout
         long timeout = System.currentTimeMillis() + _timeout;
-        while (!_proxies.containsKey(bindValue) && System.currentTimeMillis() < timeout)
-        {
-            try
-            {
+        while (!_proxies.containsKey(bindValue) && System.currentTimeMillis() < timeout) {
+            try {
                 Thread.sleep(1000);
-            } catch (InterruptedException e)
-            {
+            } catch (InterruptedException e) {
                 throw new MatlabConnectionException(
                         "Thread was interrupted while waiting for MATLAB proxy", e);
             }
         }
 
-        if (!_proxies.containsKey(bindValue))
-        {
+        if (!_proxies.containsKey(bindValue)) {
             throw new MatlabConnectionException("MATLAB proxy could not be created");
         }
 
@@ -321,79 +320,68 @@ public class RemoteMatlabProxyFactory
     }
 
     /**
-     * Sets the maximum amount of time to wait in attempting to setup a connection to MATLAB in
+     * Sets the maximum amount of time to wait in attempting to setup a connection
+     * to MATLAB in
      * milliseconds. The default value is 60 seconds.
      * 
      * @param ms
      */
-    public void setTimeout(int ms)
-    {
+    public void setTimeout(int ms) {
         _timeout = ms;
     }
 
     /**
-     * Launches Matlab. This is OS specific. Confirmed to work on OS X, Windows, & Linux.
+     * Launches Matlab. This is OS specific. Confirmed to work on OS X, Windows, &
+     * Linux.
      * 
      * @param bindValue binding value used to send the proxy to this JVM
      */
-    private void runMatlab(String bindValue) throws MatlabConnectionException
-    {
+    private void runMatlab(String bindValue) throws MatlabConnectionException {
         // Switch off some warnings...
-        //String runArg = "warning('off', 'MATLAB:javaclasspath:jarAlreadySpecified'); ";
+        // String runArg = "warning('off', 'MATLAB:javaclasspath:jarAlreadySpecified');
+        // ";
 
         // Operating system
         String osName = System.getProperty("os.name");
 
         // Determine the location of MATLAB,
         String matlabLoc = "";
-        if (_specifiedMatlabLoc == null)
-        {
+        if (_specifiedMatlabLoc == null) {
             // OS X
-            if (osName.equalsIgnoreCase("Mac OS X"))
-            {
+            if (osName.equalsIgnoreCase("Mac OS X")) {
                 matlabLoc = RemoteMatlabProxyFactory.getOSXMatlabLocation();
             }
             // Windows, Linux, and possibly others
-            else
-            {
+            else {
                 matlabLoc = "matlab";
             }
-        } else
-        {
+        } else {
             matlabLoc = _specifiedMatlabLoc;
         }
 
-        String mStartupFile =ScriptingTools.createStartupScript(bindValue);
+        String mStartupFile = ScriptingTools.createStartupScript(bindValue);
         System.out.println("Matlab startup file is: " + mStartupFile);
-        
+
         String runArg = "run('" + mStartupFile + "');";
-        
-        
+
         // Attempt to run MATLAB
-        try
-        {
-            Runtime.getRuntime().exec(new String[]
-                { matlabLoc, "-automation", "-r", runArg });
-        } catch (IOException e)
-        {
+        try {
+            Runtime.getRuntime().exec(new String[] { matlabLoc, "-automation", "-r", runArg });
+        } catch (IOException e) {
             throw new MatlabConnectionException("Could not launch MATLAB. OS is believed to be: "
                     + osName, e);
         }
     }
 
-    private static String getOSXMatlabLocation() throws MatlabConnectionException
-    {
+    private static String getOSXMatlabLocation() throws MatlabConnectionException {
         String matlabName = null;
-        for (String fileName : new File("/Applications/").list())
-        {
-            if (fileName.startsWith("MATLAB") && fileName.endsWith(".app"))
-            {
+        for (String fileName : new File("/Applications/").list()) {
+            if (fileName.startsWith("MATLAB") && fileName.endsWith(".app")) {
                 matlabName = fileName;
             }
         }
 
-        if (matlabName == null)
-        {
+        if (matlabName == null) {
             throw new MatlabConnectionException(
                     "Could not find MATLAB location, please specify one using setMatlabLocation(...)");
         }
@@ -402,12 +390,12 @@ public class RemoteMatlabProxyFactory
     }
 
     /**
-     * Add a listener to be notified when MATLAB connections are established and lost.
+     * Add a listener to be notified when MATLAB connections are established and
+     * lost.
      * 
      * @param listener
      */
-    public void addConnectionListener(MatlabConnectionListener listener)
-    {
+    public void addConnectionListener(MatlabConnectionListener listener) {
         _listeners.add(listener);
     }
 
@@ -416,8 +404,7 @@ public class RemoteMatlabProxyFactory
      * 
      * @param listener
      */
-    public void removeConnectionListener(MatlabConnectionListener listener)
-    {
+    public void removeConnectionListener(MatlabConnectionListener listener) {
         _listeners.remove(listener);
     }
 
@@ -426,10 +413,8 @@ public class RemoteMatlabProxyFactory
      * 
      * @param proxy
      */
-    private void connectionEstablished(RemoteMatlabProxy proxy)
-    {
-        for (MatlabConnectionListener listener : _listeners)
-        {
+    private void connectionEstablished(RemoteMatlabProxy proxy) {
+        for (MatlabConnectionListener listener : _listeners) {
             listener.connectionEstablished(proxy);
         }
     }
@@ -437,37 +422,31 @@ public class RemoteMatlabProxyFactory
     /**
      * Called when it detects a connection has been lost.
      */
-    private void connectionLost(RemoteMatlabProxy proxy)
-    {
-        for (MatlabConnectionListener listener : _listeners)
-        {
+    private void connectionLost(RemoteMatlabProxy proxy) {
+        for (MatlabConnectionListener listener : _listeners) {
             listener.connectionLost(proxy);
         }
     }
 
     /**
-     * Checks the connections to MATLAB. If a connection has died, the listeners are informed and
+     * Checks the connections to MATLAB. If a connection has died, the listeners are
+     * informed and
      * all references to it by this class are removed.
      */
-    private void checkConnections()
-    {
-        synchronized (_proxies)
-        {
+    private void checkConnections() {
+        synchronized (_proxies) {
             // Check each proxy's connection, if it has died add to toRemove
             Vector<String> toRemove = new Vector<String>();
-            for (String proxyKey : _proxies.keySet())
-            {
+            for (String proxyKey : _proxies.keySet()) {
                 RemoteMatlabProxy proxy = _proxies.get(proxyKey);
-                if (!proxy.isConnected())
-                {
+                if (!proxy.isConnected()) {
                     toRemove.add(proxyKey);
                     this.connectionLost(proxy);
                 }
             }
 
             // Remove the dead connections
-            for (String proxyKey : toRemove)
-            {
+            for (String proxyKey : toRemove) {
                 _proxies.remove(proxyKey);
             }
         }
