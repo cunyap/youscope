@@ -18,7 +18,16 @@ application {
 allprojects {
     tasks.withType(JavaExec) {
         workingDir = new File("distribution")
-    } 
+    }
+    tasks.withType(Copy) {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+    tasks.withType(Tar) {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+    tasks.withType(Zip) {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
 }
 
 // Empty task to prevent unnecessary copying of libs by launch4j
@@ -48,7 +57,7 @@ launch4j {
    
    bundledJre64Bit = false
    bundledJreAsFallback = false
-   jreMinVersion = "1.7.0" 
+   jreMinVersion = "17.0.0" 
    initialHeapSize = 256
    initialHeapPercent = 10
    maxHeapSize = 1024
@@ -60,7 +69,7 @@ launch4j {
    splashTimeoutError = true
     
    fileDescription = 'YouScope - Microscope Control Environment'
-   copyright = 'Moritz Lang, info@youscope.org'
+   copyright = 'Andreas P. Cuny & Moritz Lang, info@youscope.org'
    productName = "YouScope - Microscope Control Environment"
    companyName = "YouScope.org"
    internalName = "YouScope"
@@ -70,7 +79,15 @@ launch4j {
 createExe {
     outfile = 'YouScope64.exe'
     jreRuntimeBits = "64"
-    jvmOptions = ["-Dpython.console.encoding=UTF-8", "-Djava.library.path=drivers64"]
+    jvmOptions = ["-Dpython.console.encoding=UTF-8",
+              "-Djava.library.path=drivers64",
+              "--enable-native-access=ALL-UNNAMED",
+              "--add-opens=java.base/java.util=ALL-UNNAMED",
+              "--add-opens=java.base/java.lang=ALL-UNNAMED",
+              "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+              "--add-opens=java.base/java.text=ALL-UNNAMED",
+              "--add-opens=java.base/java.math=ALL-UNNAMED",
+              "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED"]
 	variables = ['PATH=%EXEDIR%\\drivers64;%PATH%']
 }
 
@@ -78,7 +95,15 @@ createExe {
 task createExe32(type: edu.sc.seis.launch4j.tasks.Launch4jLibraryTask) {
     outfile = 'YouScope32.exe'
     jreRuntimeBits = "32"
-    jvmOptions = ["-Dpython.console.encoding=UTF-8", "-Djava.library.path=drivers32"]
+    jvmOptions = ["-Dpython.console.encoding=UTF-8",
+              "-Djava.library.path=drivers32",
+              "--enable-native-access=ALL-UNNAMED",
+              "--add-opens=java.base/java.util=ALL-UNNAMED",
+              "--add-opens=java.base/java.lang=ALL-UNNAMED",
+              "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+              "--add-opens=java.base/java.text=ALL-UNNAMED",
+              "--add-opens=java.base/java.math=ALL-UNNAMED",
+              "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED"]
 	variables = ['PATH=%EXEDIR%\\drivers32;%PATH%']
 }
 
@@ -92,7 +117,7 @@ startScripts {
 
 // global variables
 ext.archivesBaseName = "youscope"
-ext.version = '2.1.0'
+ext.version = '2.4.0'
 
 // Basic subprojects of youscope
 project(':core')
