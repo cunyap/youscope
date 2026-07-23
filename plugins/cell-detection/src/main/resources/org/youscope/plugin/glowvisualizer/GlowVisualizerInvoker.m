@@ -2,6 +2,9 @@
 if ~exist('imageEvent', 'var') || isempty(imageEvent) || ~exist('detectionResult', 'var') || isempty(detectionResult)
     error('GlowVisualizer:ParametersMissing', 'Either imageEvent or detectionResult are not defined.');
 end
+
+whos
+
 % Get image metadata
 bytesPerPixel = imageEvent.getBytesPerPixel();
 maxValue = 2^imageEvent.getBitDepth()-1;

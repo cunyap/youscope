@@ -5,7 +5,9 @@ if ~exist('tableDataSink', 'var') ...
         || ~exist('lastResult', 'var') ...
         || ~exist('currentResult', 'var') ...
         || ~exist('scriptsFolder', 'var') ...
-        || ~exist('configFileName', 'var')
+        || ~exist('configFileName', 'var') ...
+		|| ~exist('trackCells', 'var') ... 
+		|| ~exist('numCores', 'var')
     error('YouScopeCellXInterface:EmptyParameters', 'Not all parameters for the YouScope-CellX Interfacer were set.');
 end
 
@@ -30,8 +32,11 @@ fprintf('The value of trackCells is %d\n', trackCells);
 fprintf('The value of numCores is %d\n', numCores);
 poolobj = gcp('nocreate'); % Get current pool without creating new one
 if isempty(poolobj)
+	fprintf('Starting Parpool with profile local\n')
     c = parcluster('local'); 
     parpool(c, numCores); 
+else
+    fprintf('Parpool still running\n')
 end
 
 %% Get last state (needed for incremental tracking
@@ -95,7 +100,7 @@ config.check();
 cellXYouScopeInterfacer = CellXYouScopeInterface(invocationNo, configFileName,segmImage,...
     fluoTags,flatFieldFileNames,fluoInitialImages,...
     previousSegmentedCells,previousSegmentationMask,...
-    previousCellTable);
+    previousCellTable, trackCells);
 cellXYouScopeInterfacer.run;
 
 %% Display headers for debugging
