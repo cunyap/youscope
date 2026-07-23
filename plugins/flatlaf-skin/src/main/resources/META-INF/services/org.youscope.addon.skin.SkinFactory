@@ -1,0 +1,3 @@
+org.youscope.plugin.flatlaf.FlatLafLightSkinFactory
+org.youscope.plugin.flatlaf.FlatLafDarkSkinFactory
+org.youscope.plugin.flatlaf.FlatLafRedSkinFactory

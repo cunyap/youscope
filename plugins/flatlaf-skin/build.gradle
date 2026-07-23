@@ -1,0 +1,69 @@
+// plugins/flatlaf-skin/build.gradle
+// FlatLaf skins for YouScope. FlatLaf loaded at runtime from lib/ via MANIFEST.MF.
+// compileOnly avoids the Java 7/8 conflict in root runtimeClasspath/startScripts.
+
+plugins {
+    id 'java'
+}
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+compileJava.doFirst {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+repositories { mavenCentral() }
+
+// Set attributes before resolution using a configuration action (not afterEvaluate).
+// This overrides the root allprojects Java 7 target for compile only.
+configurations {
+    compileClasspath {
+        attributes {
+            attribute(
+                org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+                8)
+        }
+    }
+    apiElements {
+        attributes {
+            attribute(
+                org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+                7)
+        }
+    }
+    runtimeElements {
+        attributes {
+            attribute(
+                org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+                7)
+        }
+    }
+}
+
+dependencies {
+    // compileOnly: compile against FlatLaf API without adding to runtimeClasspath.
+    // At runtime, YouScope loads flatlaf-3.5.4.jar from lib/ via MANIFEST.MF.
+    compileOnly 'com.formdev:flatlaf:3.5.4'
+}
+
+// Copy FlatLaf JAR to libs/ for the installer (resolved from compileClasspath).
+task copyFlatLafJar {
+    doLast {
+        def flatLafJar = configurations.compileClasspath.resolvedConfiguration
+            .resolvedArtifacts
+            .find { it.moduleVersion.id.module.group == 'com.formdev' }
+            ?.file
+        if (flatLafJar) {
+            copy {
+                from flatLafJar
+                into "${rootProject.projectDir}/libs"
+                duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
+            }
+            println "Copied ${flatLafJar.name} to libs/"
+        }
+    }
+}
+build.dependsOn copyFlatLafJar
