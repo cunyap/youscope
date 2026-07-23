@@ -9,15 +9,51 @@ jobs:
     name: Build YouScope
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
-      
-      - name: Set up JDK 1.8
-        uses: actions/setup-java@v1
-        with:
-          java-version: 1.8
+      - uses: actions/checkout@v4
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      # JDK 17+ is required for GraalPy plugin compilation and runtime.
+      # All existing plugins still compile at Java 1.7 source level.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      # Verify libs/ contains GraalPy + BouncyCastle JARs committed to repo.
+      # If any are missing, download them now (fallback for fresh checkouts
+      # before the JARs are committed).
+      - name: Ensure GraalPy runtime JARs present in libs/
+        shell: pwsh
+        run: |
+          $M = "https://repo1.maven.org/maven2"
+          $V = "24.1.0"
+          New-Item -ItemType Directory -Force -Path "libs" | Out-Null
+          $jars = @{
+            "polyglot-$V.jar"            = "$M/org/graalvm/polyglot/polyglot/$V/polyglot-$V.jar"
+            "python-language-$V.jar"     = "$M/org/graalvm/python/python-language/$V/python-language-$V.jar"
+            "python-resources-$V.jar"    = "$M/org/graalvm/python/python-resources/$V/python-resources-$V.jar"
+            "truffle-api-$V.jar"         = "$M/org/graalvm/truffle/truffle-api/$V/truffle-api-$V.jar"
+            "truffle-runtime-$V.jar"     = "$M/org/graalvm/truffle/truffle-runtime/$V/truffle-runtime-$V.jar"
+            "nativeimage-$V.jar"         = "$M/org/graalvm/sdk/nativeimage/$V/nativeimage-$V.jar"
+            "word-$V.jar"                = "$M/org/graalvm/sdk/word/$V/word-$V.jar"
+            "collections-$V.jar"         = "$M/org/graalvm/sdk/collections/$V/collections-$V.jar"
+            "regex-$V.jar"               = "$M/org/graalvm/regex/regex/$V/regex-$V.jar"
+            "icu4j-74.2.jar"             = "$M/com/ibm/icu/icu4j/74.2/icu4j-74.2.jar"
+            "icu4j-24.1.0.jar"           = "$M/org/graalvm/shadowed/icu4j/24.1.0/icu4j-24.1.0.jar"
+            "bcprov-jdk18on-1.78.1.jar"  = "$M/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.jar"
+            "bcpkix-jdk18on-1.78.1.jar"  = "$M/org/bouncycastle/bcpkix-jdk18on/1.78.1/bcpkix-jdk18on-1.78.1.jar"
+            "bcutil-jdk18on-1.78.1.jar"  = "$M/org/bouncycastle/bcutil-jdk18on/1.78.1/bcutil-jdk18on-1.78.1.jar"
+          }
+          foreach ($name in $jars.Keys) {
+            $dest = Join-Path "libs" $name
+            if (-not (Test-Path $dest)) {
+              Write-Host "Downloading $name"
+              Invoke-WebRequest -Uri $jars[$name] -OutFile $dest -UseBasicParsing
+            } else {
+              Write-Host "Present: $name"
+            }
+          }
 
       - name: Build with Gradle
         run: ./gradlew createInstallers
@@ -40,19 +76,17 @@ jobs:
           name: YouScope_3264bit_Installer.exe
           path: build/distributions/YouScope_3264bit_Installer.exe
 
-      # Create or update release (associating with branch or tag)
       - name: Create or Update Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: nightly-${{ github.run_number }}      # Use a unique tag per run, adjust as you want
+          tag_name: nightly-${{ github.run_number }}
           release_name: Nightly Build ${{ github.run_number }}
           draft: false
           prerelease: true
-      
-      # Upload the 64bit installer to the release
+
       - name: Upload 64bit installer to release
         uses: actions/upload-release-asset@v1
         env:
@@ -63,7 +97,6 @@ jobs:
           asset_name: YouScope_Installer_${{ github.run_number }}-64bit.exe
           asset_content_type: application/exe
 
-      # Upload the 32bit installer to the release
       - name: Upload 32bit installer to release
         uses: actions/upload-release-asset@v1
         env:
@@ -74,7 +107,6 @@ jobs:
           asset_name: YouScope_Installer_${{ github.run_number }}-32bit.exe
           asset_content_type: application/exe
 
-      # Upload the 32/64bit installer to the release
       - name: Upload 32/64bit installer to release
         uses: actions/upload-release-asset@v1
         env:
