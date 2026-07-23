@@ -155,6 +155,51 @@ classdef CellXTrackerYouScope < handle
             this.nextFileSetSegmentationMask = m2.(genvarname(maskVarName{1}));
         end
         
+        % APC patch 2025 faster alternative to lineprofile
+        function vals = lineProfileLabelImage(this, L, p1, p2)
+            % L: label image (currentSegmentationMask)
+            % p1, p2: [x y] coordinates (can be non-integer)
+            
+            % convert to integer pixel coordinates (1-based)
+            x1 = round(p1(1));  y1 = round(p1(2));
+            x2 = round(p2(1));  y2 = round(p2(2));
+            
+            % clip to image bounds
+            [h,w] = size(L);
+            x1 = min(max(x1,1),w);  x2 = min(max(x2,1),w);
+            y1 = min(max(y1,1),h);  y2 = min(max(y2,1),h);
+            
+            dx = abs(x2-x1);
+            dy = abs(y2-y1);
+            sx = sign(x2-x1);
+            sy = sign(y2-y1);
+            
+            err = dx - dy;
+            
+            x = x1; y = y1;
+            idx = 1;
+            maxSteps = dx + dy + 1;      % upper bound
+            vals = zeros(maxSteps,1,'like',L);
+            
+            while true
+                vals(idx) = L(y,x);      % note: row = y, col = x
+                idx = idx + 1;
+                if x == x2 && y == y2
+                    break;
+                end
+                e2 = 2*err;
+                if e2 > -dy
+                    err = err - dy;
+                    x = x + sx;
+                end
+                if e2 < dx
+                    err = err + dx;
+                    y = y + sy;
+                end
+            end
+            
+            vals = vals(1:idx-1);
+        end
         
         function ret1 = computeNeighborhoodInMask(this, currentSegmentationMask,currentFileSetData)
             
@@ -181,10 +226,15 @@ classdef CellXTrackerYouScope < handle
                     for nrn = 1:length(PotentialNeighbInd)
                         curNeighCenter= currentFrameCellCenters( PotentialNeighbInd(nrn),:);
                         % draw the connecting line
-                        [~,~,maskprofile] = improfile(currentSegmentationMask,...
-                            [CurCellCentroid(1)   curNeighCenter(1)],[CurCellCentroid(2)    curNeighCenter(2)]);
-                        % if too many  zeros exist then do not accept
-                        NrBackPixels =  length(find(maskprofile==0));
+%                         [~,~,maskprofile] = improfile(currentSegmentationMask,...
+%                             [CurCellCentroid(1)   curNeighCenter(1)],[CurCellCentroid(2)    curNeighCenter(2)]);
+%                         % if too many  zeros exist then do not accept
+%                         NrBackPixels =  length(find(maskprofile==0));
+                        % APC patch
+                        maskprofile = this.lineProfileLabelImage(currentSegmentationMask, ...
+                                                            CurCellCentroid, curNeighCenter);
+                        NrBackPixels = sum(maskprofile == 0);
+                        % end patch
                         if  NrBackPixels <  this.segmentationConfig.maximumCellLength
                             % check if there is any other number, apart from current cell's, neighbor's and zero
                             Cell_In_Between_Indices = find(maskprofile~=k & maskprofile~=0 & maskprofile~=PotentialNeighbInd(nrn));
@@ -598,7 +648,7 @@ classdef CellXTrackerYouScope < handle
             ret.tracksHeader = this.trackingInfoNames;    
         end
         
-        
+             
     end
     
 end

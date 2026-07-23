@@ -100,8 +100,16 @@ classdef CellXSegmenterYouScope < handle
 %                    this.fileSet.oofImage, ...
 %                    this.config.cropRegionBoundary);
 
+            % Use cropRegionBoundary when set
+            if ~isempty(this.config.cropRegionBoundary)
+                this.image = imcrop_own(this.image, round(this.config.cropRegionBoundary), size(this.image, 1), size(this.image, 2));
+            end
+
             this.image = CellXImageIO.normalize( this.image );
-            %this.image = wiener2( this.image , this.config.wiener2params );
+            % Use wiener2params when set
+            if ~isempty(this.config.wiener2params)
+                this.image = wiener2( this.image , this.config.wiener2params );
+            end
             
             if( this.config.requiresCLAHE)
                 

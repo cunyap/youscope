@@ -23,6 +23,7 @@ classdef CellXYouScopeInterface < handle
        trackingIndices
        currentResult
        previousResult
+       isTracking
        
        
     end
@@ -33,7 +34,7 @@ classdef CellXYouScopeInterface < handle
        function obj = CellXYouScopeInterface(fileSetNum, configFileName,segmImage,...
                                               fluoTags,flatFieldFileNames,fluoInitialImages,...
                                               previousSegmentedCells,previousSegmentationMask,...
-                                              previousResult)
+                                              previousResult, isTracking)
             obj.fileSetNum = fileSetNum;                              
             obj.configFileName  = configFileName;
             obj.segmImage = segmImage;
@@ -43,6 +44,7 @@ classdef CellXYouScopeInterface < handle
             obj.previousSegmentedCells =  previousSegmentedCells;
             obj.previousSegmentationMask = previousSegmentationMask;
             obj.previousResult = previousResult;
+            obj.isTracking = isTracking;
             
         end
         
@@ -80,12 +82,22 @@ classdef CellXYouScopeInterface < handle
             cellXIntensityExtractor.run();
             
             % take the current segmentation mask
-            dim = size(this.segmImage);
-            this.currentSegmentationMask = CellXResultExtractorYouScope.takeSegmentationMask(this.currentSegmentedCells, dim);
+            if ~isempty(this.config.cropRegionBoundary)
+                 % APC Patch: map labeled segmentation mask back to
+                 % original sized image dimensions
+                dim = size(cellXSegmenter.image);
+                this.currentSegmentationMask = zeros(size(this.segmImage));
+                this.currentSegmentationMask(this.config.cropRegionBoundary(2) : this.config.cropRegionBoundary(2) + dim(1) - 1, ...
+                    this.config.cropRegionBoundary(1) : this.config.cropRegionBoundary(1) + dim(2) - 1) =  ...
+                    CellXResultExtractorYouScope.takeSegmentationMask(this.currentSegmentedCells, dim);
+            else
+                dim = size(this.segmImage);
+                this.currentSegmentationMask = CellXResultExtractorYouScope.takeSegmentationMask(this.currentSegmentedCells, dim);
+            end
             
             %  if tracking is to be done
-            if ~isempty(this.previousSegmentationMask)
-                
+            if ~isempty(this.previousSegmentationMask) && this.isTracking
+                fprintf('Start tracking ... \n')
                 trackerYouScope = CellXTrackerYouScope(this.config,...
                                              this.previousSegmentedCells,this.previousSegmentationMask,...
                                              this.currentSegmentedCells,this.currentSegmentationMask);
@@ -109,14 +121,26 @@ classdef CellXYouScopeInterface < handle
                     newTrackingIndices = maxTrackingIndex+1:maxTrackingIndex+numel(zeroAssignments);
                     this.trackingIndices(zeroAssignments) = newTrackingIndices';
                 end
-                
+                fprintf('End tracking ... \n')
             else
                 this.trackingIndices = (1:numel(this.currentSegmentedCells))';
             end
             
             % store current result
-             this.currentResult = CellXResultExtractorYouScope.extractSegmentationResults(...
-                  this.fSet, this.currentSegmentedCells, this.config, this.trackingIndices);
+            if ~isempty(this.config.cropRegionBoundary)
+                 % APC Patch: map labeled segmentation cell centers back to
+                 % original sized image dimensions
+                 this.currentResult = CellXResultExtractorYouScope.extractSegmentationResults(...
+                      this.fSet, this.currentSegmentedCells, this.config, this.trackingIndices);
+                 this.currentResult.data(:,3) = this.currentResult.data(:,3) + this.config.cropRegionBoundary(1) - 1;
+                 this.currentResult.data(:,4) = this.currentResult.data(:,4) + this.config.cropRegionBoundary(2) - 1;
+                 % @ToDo: Note this leaves the this.currentSegmentedCells
+                 % uncorrected; so all PixelListLidx map and X, Y map to
+                 % the cropped segmImage.
+            else
+                 this.currentResult = CellXResultExtractorYouScope.extractSegmentationResults(...
+                      this.fSet, this.currentSegmentedCells, this.config, this.trackingIndices);
+            end
         end
         
         

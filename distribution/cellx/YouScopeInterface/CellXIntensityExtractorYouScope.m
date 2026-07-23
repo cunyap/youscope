@@ -44,6 +44,11 @@ classdef CellXIntensityExtractorYouScope < handle
 %                this.fluoInitialImages{fi} = CellXImageIO.loadToGrayScaleImage(fluofilename, this.config.cropRegionBoundary);
                 % substitute the one we measure
                 this.fluoImages{fi} =this.fluoInitialImages{fi};
+
+                % Use crop when cropRegionBoundary is set      
+                if ~isempty(this.config.cropRegionBoundary)
+                    this.fluoImages{fi} = imcrop_own(this.fluoImages{fi}, round(this.config.cropRegionBoundary), size(this.fluoImages{fi}, 1), size(this.fluoImages{fi}, 2));
+                end
                 
                 %--2. do the flat-field correction if image exists
                 if this.fileSet.hasFlatFieldImage(fi)
