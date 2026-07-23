@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - extend API to support modern Python
  ******************************************************************************/
 /**
  * 
@@ -38,55 +39,54 @@ import org.youscope.serverinterfaces.YouScopeServer;
  * @author Moritz Lang
  *
  */
-class ScriptingTool extends ToolAddonUIAdapter implements EditFileListener
-{
+class ScriptingTool extends ToolAddonUIAdapter implements EditFileListener {
 	/**
 	 * The default script engine (JavaScript).
 	 */
 	private static final String ORACLE_NASHORN = "Oracle Nashorn";
-		
+
 	/**
 	 * The name of the function to debug a scripting job.
 	 */
 	public static final String FUNCTION_DEBUG_SCRIPTING_JOB = "debugScriptingJob";
-	
+
 	/**
 	 * The name of the function to debug a script file.
 	 */
 	public static final String FUNCTION_DEBUG_SCRIPT = "debugScript";
-	
+
 	private final Workspace workspace;
 	private final FileSystem fileSystem;
 	private final Console console;
 	private final ScriptExcecuter scriptExecuter;
-	
+
 	/**
-	 * Engine which is loaded when tool is started. Set to a different value if a certain engine is e.g. needed for debugging.
+	 * Engine which is loaded when tool is started. Set to a different value if a
+	 * certain engine is e.g. needed for debugging.
 	 */
 	private String engineToLoad = ORACLE_NASHORN;
-	
+
 	/**
 	 * Vector of URLs to files which get loaded at startup of this tool.
 	 */
 	private Vector<URL> scriptURLs = new Vector<URL>();
-	
+
 	public final static String TYPE_IDENTIFIER = "YouScope.YouScopeScripting";
-	
-	static ToolMetadata getMetadata()
-	{
-		return new ToolMetadataAdapter(TYPE_IDENTIFIER, "Scripting Console", new String[0], 
-				"Environment to script the microscope/Youscope's behavior using one of the supported script languages, e.g. Matlab or JavaScript.",
+
+	static ToolMetadata getMetadata() {
+		return new ToolMetadataAdapter(TYPE_IDENTIFIER, "Scripting Console", new String[0],
+				"Environment to script the microscope/Youscope's behavior using one of the supported script languages, e.g. Python, Matlab or JavaScript.",
 				"icons/script-block.png");
 	}
-	
+
 	/**
 	 * Constructor.
+	 * 
 	 * @param client Interface to the YouScope client.
 	 * @param server Interface to the YouScope server.
-	 * @throws AddonException 
+	 * @throws AddonException
 	 */
-	public ScriptingTool(YouScopeClient client, YouScopeServer server) throws AddonException
-	{
+	public ScriptingTool(YouScopeClient client, YouScopeServer server) throws AddonException {
 		super(getMetadata(), client, server);
 		// Initialize sub-elements
 		scriptExecuter = new ScriptExcecuter(client, server);
@@ -94,123 +94,126 @@ class ScriptingTool extends ToolAddonUIAdapter implements EditFileListener
 		workspace = new Workspace();
 		console = new Console();
 	}
+
 	@Override
-	public java.awt.Component createUI()
-	{	
+	public java.awt.Component createUI() {
 		// Connect elements
 		scriptExecuter.addMessageListener(console);
 		console.addEvaluationListener(scriptExecuter);
 		fileSystem.addEvaluationListener(scriptExecuter);
 		fileSystem.addEditFileListener(this);
 		scriptExecuter.addVariablesListener(workspace);
-		
+
 		setMaximizable(true);
 		setResizable(true);
 		setTitle("Script Console");
-		
+
 		// Initialize engine chooser
 		JComboBox<String> engineNamesField = new JComboBox<String>(scriptExecuter.getScriptEngines());
-     	
-		for(int engineID = 0; engineID < engineNamesField.getItemCount(); engineID ++)
-		{
-			if(engineNamesField.getItemAt(engineID).toString().compareToIgnoreCase(engineToLoad) == 0)
-			{
+
+		for (int engineID = 0; engineID < engineNamesField.getItemCount(); engineID++) {
+			if (engineNamesField.getItemAt(engineID).toString().compareToIgnoreCase(engineToLoad) == 0) {
 				engineNamesField.setSelectedIndex(engineID);
 				break;
 			}
 		}
-		engineNamesField.addActionListener(new ActionListener()
-		{
+		engineNamesField.addActionListener(new ActionListener() {
 			@Override
-		    public void actionPerformed(ActionEvent arg0)
-		    {
-				if(!(arg0.getSource() instanceof JComboBox))
+			public void actionPerformed(ActionEvent arg0) {
+				if (!(arg0.getSource() instanceof JComboBox))
 					return;
-		    	String engineName = ((JComboBox<?>)arg0.getSource()).getSelectedItem().toString();
-		      	loadEngine(engineName);            
-		    }
+				String engineName = ((JComboBox<?>) arg0.getSource()).getSelectedItem().toString();
+				loadEngine(engineName);
+			}
 		});
 		JPanel engineNames = new JPanel(new BorderLayout());
 		engineNames.add(engineNamesField, BorderLayout.CENTER);
 		engineNames.setBorder(new TitledBorder("Active Script Engine"));
-        
-        // Initialize split panes
+
+		// Initialize split panes
 		JPanel rightPanel = new JPanel(new BorderLayout());
 		rightPanel.add(engineNames, BorderLayout.NORTH);
 		rightPanel.add(workspace, BorderLayout.CENTER);
-        JSplitPane commandWorkspaceSplitMane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT , false, console, rightPanel);
-        commandWorkspaceSplitMane.setResizeWeight(1.0);
-        commandWorkspaceSplitMane.setOneTouchExpandable(true);
-        commandWorkspaceSplitMane.setBorder(new EmptyBorder(2, 2, 2, 2));
-        
-        JSplitPane fileSystemCommandSplitMane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT , false, fileSystem, commandWorkspaceSplitMane);
-        fileSystemCommandSplitMane.setResizeWeight(0.0);
-        fileSystemCommandSplitMane.setOneTouchExpandable(true);
-        fileSystemCommandSplitMane.setBorder(new EmptyBorder(2, 2, 2, 2));
-        
-        // Open files which should have been opened.
-        for(URL url : scriptURLs)
-		{
-			try
-			{
+		JSplitPane commandWorkspaceSplitMane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, false, console, rightPanel);
+		commandWorkspaceSplitMane.setResizeWeight(1.0);
+		commandWorkspaceSplitMane.setOneTouchExpandable(true);
+		commandWorkspaceSplitMane.setBorder(new EmptyBorder(2, 2, 2, 2));
+
+		JSplitPane fileSystemCommandSplitMane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, false, fileSystem,
+				commandWorkspaceSplitMane);
+		fileSystemCommandSplitMane.setResizeWeight(0.0);
+		fileSystemCommandSplitMane.setOneTouchExpandable(true);
+		fileSystemCommandSplitMane.setBorder(new EmptyBorder(2, 2, 2, 2));
+
+		// Open files which should have been opened.
+		for (URL url : scriptURLs) {
+			try {
 				editFile(new File(url.toURI()));
-			}
-			catch(Exception e)
-			{
+			} catch (Exception e) {
 				sendErrorMessage("Could not obtain file from script job where script is saved.", e);
 			}
 		}
-		
-        // Load the script engine.
-		loadEngine((String)engineNamesField.getSelectedItem());
-        
+
+		// Load the script engine.
+		loadEngine((String) engineNamesField.getSelectedItem());
+
 		return fileSystemCommandSplitMane;
 	}
-	
-	private void loadEngine(String engineName)
-	{
+
+	private void loadEngine(String engineName) {
 		console.clearConsole();
-		console.outputMessage("Initializing script engine.\nDependend on the selected script engine this may take several seconds.");
+		console.outputMessage(
+				"Initializing script engine.\nDependend on the selected script engine this may take several seconds.");
 		console.setEnabled(false);
-    	workspace.variablesChanged(null);
-    	class EngineLoader implements Runnable
-    	{
-    		private final String engineName;
-    		EngineLoader(final String engineName)
-    		{
-    			this.engineName = engineName;
-    		}
-    		@Override
-			public void run()
-			{
-    			try
-    			{
-    				scriptExecuter.loadEngine(engineName);
-    				scriptExecuter.initializeStandardMode();
-    			}
-    			catch(Exception e)
-    			{
-    				console.clearConsole();
-    				console.outputMessage("Script Engine with engine name " +  engineName + " could not be loaded.\n" + e.getMessage() + "\n=====================================================\n");
-    				console.setEnabled(false);
-    				getClient().sendError("Could not initialize script engine with name " +  engineName + ".", e);
-					return;
-    			}
-    			console.clearConsole();
-    			console.outputMessage("Active script engine: " + engineName + "\n=====================================================\n");
-    			console.setEnabled(true);
+		workspace.variablesChanged(null);
+		class EngineLoader implements Runnable {
+			private final String engineName;
+
+			EngineLoader(final String engineName) {
+				this.engineName = engineName;
 			}
-    	}
-    	
-    	(new Thread(new EngineLoader(engineName))).start();
-    	
+
+			@Override
+			public void run() {
+				try {
+					scriptExecuter.loadEngine(engineName);
+					scriptExecuter.initializeStandardMode();
+				} catch (Exception e) {
+					console.clearConsole();
+					console.outputMessage("Script Engine with engine name " + engineName + " could not be loaded.\n"
+							+ e.getMessage() + "\n=====================================================\n");
+					console.setEnabled(false);
+					getClient().sendError("Could not initialize script engine with name " + engineName + ".", e);
+					return;
+				}
+				console.clearConsole();
+				console.outputMessage("Active script engine: " + engineName
+						+ "\n=====================================================\n");
+				// Print engine-specific startup guide if the factory provides one.
+				// Convention: ScriptEngineFactory.getParameter("startup.guide") returns
+				// a String with usage hints, or null if the engine has no guide.
+				// GraalPy and GraalJS implement this; Matlab/Jython/others return null.
+				try {
+					javax.script.ScriptEngine eng = scriptExecuter.getEngine();
+					if (eng != null) {
+						Object guide = eng.getFactory().getParameter("startup.guide");
+						if (guide instanceof String && !((String) guide).isEmpty()) {
+							console.outputMessage((String) guide
+									+ "\n=====================================================\n");
+						}
+					}
+				} catch (Exception ignored) {
+				}
+				console.setEnabled(true);
+			}
+		}
+
+		(new Thread(new EngineLoader(engineName))).start();
+
 	}
 
-	
-
 	@Override
-	public void editFile(File file)
-	{
+	public void editFile(File file) {
 		YouScopeFrame clientFrame = getContainingFrame().createChildFrame();
 		ScriptEditorFrame editor = new ScriptEditorFrame(getClient(), clientFrame, file);
 		editor.addEvaluationListener(scriptExecuter);

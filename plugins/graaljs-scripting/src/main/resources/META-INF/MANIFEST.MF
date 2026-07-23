@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Class-Path: ../common/youscope-api.jar ../lib/polyglot-24.1.0.jar ../lib
+ /truffle-api-24.1.0.jar ../lib/truffle-runtime-24.1.0.jar ../lib/native
+ image-24.1.0.jar ../lib/word-24.1.0.jar ../lib/collections-24.1.0.jar .
+ ./lib/regex-24.1.0.jar ../lib/icu4j-74.2.jar ../lib/icu4j-24.1.0.jar ..
+ /lib/js-language-24.1.0.jar
+

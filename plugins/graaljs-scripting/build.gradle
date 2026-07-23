@@ -1,0 +1,65 @@
+// plugins/graaljs-scripting/build.gradle
+// GraalJS scripting engine for YouScope -- replaces Oracle Nashorn (removed JDK 15+).
+//
+// Does NOT depend on js-scriptengine.jar -- we implement ScriptEngine directly
+// on top of org.graalvm.polyglot.Context to avoid version-mismatch issues with
+// GraalJSScriptEngine.createDefaultContext() setting removed context options.
+//
+// Runtime JAR required in YouScope/lib/:
+//   js-language-24.1.0.jar  (org.graalvm.js:js-language:24.1.0)
+//   Download: $M = "https://repo1.maven.org/maven2"
+//   Invoke-WebRequest "$M/org/graalvm/js/js-language/24.1.0/js-language-24.1.0.jar" -OutFile "lib\js-language-24.1.0.jar"
+//
+// js-scriptengine-24.1.0.jar is NOT needed -- our engine bypasses it entirely.
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+compileJava.doFirst {
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+}
+
+afterEvaluate {
+    configurations.apiElements.attributes {
+        attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 7)
+    }
+    configurations.runtimeElements.attributes {
+        attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 7)
+    }
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    def graalvmVersion = '24.1.0'
+
+    // Compile-time: polyglot API (Engine, Context, Value, PolyglotException)
+    // These are already on the classpath via graalpy-scripting at runtime.
+    implementation "org.graalvm.polyglot:polyglot:${graalvmVersion}"
+    implementation "org.graalvm.truffle:truffle-api:${graalvmVersion}"
+    implementation "org.graalvm.sdk:nativeimage:${graalvmVersion}"
+    implementation "org.graalvm.sdk:word:${graalvmVersion}"
+    implementation "org.graalvm.sdk:collections:${graalvmVersion}"
+
+    // Runtime: the actual JS language implementation
+    // Note: org.graalvm.js:js is POM-only in 24.x; the JAR is js-language
+    runtimeOnly "org.graalvm.js:js-language:${graalvmVersion}"
+}
+
+task copyGraalJsLibs(type: Copy) {
+    from configurations.runtimeClasspath
+    into "${rootProject.projectDir}/libs"
+    include {
+        def n = it.file.name
+        n.startsWith('js-language') ||
+        n.startsWith('polyglot-') ||
+        n.startsWith('truffle-') ||
+        n.startsWith('nativeimage') ||
+        n.startsWith('word-') ||
+        n.startsWith('collections-')
+    }
+    duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
+}
+build.dependsOn copyGraalJsLibs
