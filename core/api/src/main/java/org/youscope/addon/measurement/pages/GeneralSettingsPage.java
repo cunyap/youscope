@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - update API to support post-processors at measurement end 
  ******************************************************************************/
 package org.youscope.addon.measurement.pages;
 
@@ -15,6 +16,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JFormattedTextField;
@@ -38,68 +40,88 @@ import org.youscope.uielements.StandardFormats;
 import org.youscope.uielements.SubConfigurationPanel;
 
 /**
- * A page with which the measurement name, save setting and runtime can be set. Setting save settings is omitted when the 
+ * A page with which the measurement name, save setting and runtime can be set.
+ * Setting save settings is omitted when the
  * configuration class does not have the functions with signatures
- * <code>PeriodConfiguration getPeriod()</code> and <code>void setPeriod(PeriodConfiguration)</code>, which is determined using reflection.
+ * <code>PeriodConfiguration getPeriod()</code> and
+ * <code>void setPeriod(PeriodConfiguration)</code>, which is determined using
+ * reflection.
+ * <p>
+ * The page additionally lets the user select post-processors which should run
+ * automatically once the
+ * measurement finished. The list is populated from the registered
+ * {@link PostProcessorAddonFactory}
+ * implementations which also implement {@link AutomaticPostProcessorFactory},
+ * so a newly installed
+ * post-processor appears here without any change to this class.
+ * </p>
+ * 
  * @author mlang
  *
  * @param <T> Measurement configuration type
  */
-public class GeneralSettingsPage<T extends MeasurementConfiguration> extends MeasurementAddonUIPage<T>
-{
+public class GeneralSettingsPage<T extends MeasurementConfiguration> extends MeasurementAddonUIPage<T> {
 
 	/**
 	 * Serial Verision UID.
 	 */
-	private static final long				serialVersionUID		= 885352612109223078L;
+	private static final long serialVersionUID = 885352612109223078L;
 
-	private final YouScopeClient	client;
+	private final YouScopeClient client;
 
-	private final JLabel					fixedPeriodLabel		= new JLabel("Fixed period length:");
+	private final JLabel fixedPeriodLabel = new JLabel("Fixed period length:");
 
-	private final JRadioButton					stopByUser				= new JRadioButton("When stopped manually.", false);
+	private final JRadioButton stopByUser = new JRadioButton("When stopped manually.", false);
 
-	private final JRadioButton					stopByExecutions		= new JRadioButton("After a given number of executions.", false);
+	private final JRadioButton stopByExecutions = new JRadioButton("After a given number of executions.", false);
 
-	private final JRadioButton					stopByRuntime			= new JRadioButton("After a given time.", false);
+	private final JRadioButton stopByRuntime = new JRadioButton("After a given time.", false);
 
-	private final JLabel							runtimeFieldLabel		= new JLabel("Measurement Total Runtime:");
+	private final JLabel runtimeFieldLabel = new JLabel("Measurement Total Runtime:");
 
-	private final JLabel							numExecutionsFieldLabel	= new JLabel("Number of Executions:");
+	private final JLabel numExecutionsFieldLabel = new JLabel("Number of Executions:");
 
-	private final PeriodField				runtimeField			= new PeriodField();
+	private final PeriodField runtimeField = new PeriodField();
 
-	private final JFormattedTextField				numExecutionsField		= new JFormattedTextField(StandardFormats.getIntegerFormat());
+	private final JFormattedTextField numExecutionsField = new JFormattedTextField(StandardFormats.getIntegerFormat());
 
-	private final PeriodField				periodField				= new PeriodField();
+	private final PeriodField periodField = new PeriodField();
 
-	private final JRadioButton					periodAFAP				= new JRadioButton("As fast as possible.", false);
+	private final JRadioButton periodAFAP = new JRadioButton("As fast as possible.", false);
 
-	private final JRadioButton					periodFixed				= new JRadioButton("Every fixed period.", false);
+	private final JRadioButton periodFixed = new JRadioButton("Every fixed period.", false);
 
-	private final JRadioButton					periodVarying			= new JRadioButton("Varying periods.", false);
+	private final JRadioButton periodVarying = new JRadioButton("Varying periods.", false);
 
-	private final PeriodVaryingPanel				periodVaryingDataPanel	= new PeriodVaryingPanel();
+	private final PeriodVaryingPanel periodVaryingDataPanel = new PeriodVaryingPanel();
 
 	private SubConfigurationPanel<SaveSettingsConfiguration> saveSettingPanel = null;
-	
+
+	/**
+	 * Reusable panel with one checkbox per automatable post-processor.
+	 */
+	private final AutomaticPostProcessingPanel postProcessorPanel = new AutomaticPostProcessingPanel();
+
 	private final Method getPeriod;
 	private final Method setPeriod;
-	
+
 	/**
 	 * Constructor.
-	 * @param client YouScope client.
-	 * @param configurationClass Specific measurement configuration class. If this class implements getPeriod and setPeriod as described in the class description, Period set choices are displayed, otherwise not.
+	 * 
+	 * @param client             YouScope client.
+	 * @param configurationClass Specific measurement configuration class. If this
+	 *                           class implements getPeriod and setPeriod as
+	 *                           described in the class description, Period set
+	 *                           choices are displayed, otherwise not.
 	 */
-	public GeneralSettingsPage(YouScopeClient client, Class<T> configurationClass)
-	{
+	public GeneralSettingsPage(YouScopeClient client, Class<T> configurationClass) {
 		this.client = client;
 
-		//initialize functions
+		// initialize functions
 		Method method;
 		try {
 			method = configurationClass.getDeclaredMethod("getPeriod");
-			if(!PeriodConfiguration.class.isAssignableFrom(method.getReturnType()))
+			if (!PeriodConfiguration.class.isAssignableFrom(method.getReturnType()))
 				method = null;
 		} catch (@SuppressWarnings("unused") NoSuchMethodException | SecurityException e) {
 			method = null;
@@ -112,13 +134,13 @@ public class GeneralSettingsPage<T extends MeasurementConfiguration> extends Mea
 		}
 		setPeriod = method;
 	}
-	private boolean isPeriod()
-	{
+
+	private boolean isPeriod() {
 		return getPeriod != null && setPeriod != null;
 	}
-	private PeriodConfiguration getPeriod(MeasurementConfiguration configuration)
-	{
-		if(getPeriod == null)
+
+	private PeriodConfiguration getPeriod(MeasurementConfiguration configuration) {
+		if (getPeriod == null)
 			return null;
 		try {
 			return (PeriodConfiguration) getPeriod.invoke(configuration);
@@ -127,9 +149,9 @@ public class GeneralSettingsPage<T extends MeasurementConfiguration> extends Mea
 			return null;
 		}
 	}
-	private void setPeriod(MeasurementConfiguration configuration, PeriodConfiguration period)
-	{
-		if(setPeriod == null)
+
+	private void setPeriod(MeasurementConfiguration configuration, PeriodConfiguration period) {
+		if (setPeriod == null)
 			return;
 		try {
 			setPeriod.invoke(configuration, period);
@@ -140,154 +162,130 @@ public class GeneralSettingsPage<T extends MeasurementConfiguration> extends Mea
 	}
 
 	@Override
-	public void loadData(MeasurementConfiguration configuration)
-	{
-		if(configuration.getMaxRuntime() >= 0)
+	public void loadData(MeasurementConfiguration configuration) {
+		if (configuration.getMaxRuntime() >= 0)
 			runtimeField.setDuration(configuration.getMaxRuntime());
 		else
-			runtimeField.setDuration(60*60*1000);
-		if(configuration.getSaveSettings() == null)
-			saveSettingPanel.setConfiguration(client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_MEASUREMENT_STANDARD_SAVE_SETTINGS_TYPE).toString());
+			runtimeField.setDuration(60 * 60 * 1000);
+		if (configuration.getSaveSettings() == null)
+			saveSettingPanel.setConfiguration(client.getPropertyProvider()
+					.getProperty(StandardProperty.PROPERTY_MEASUREMENT_STANDARD_SAVE_SETTINGS_TYPE).toString());
 		else
 			saveSettingPanel.setConfiguration(configuration.getSaveSettings());
+
+		// Automatic post-processors.
+		postProcessorPanel.loadData(configuration);
+
 		PeriodConfiguration period;
-		if(isPeriod())
-		{
+		if (isPeriod()) {
 			period = getPeriod(configuration);
-			if(period == null)
-			{
+			if (period == null) {
 				period = new RegularPeriodConfiguration();
 				setPeriod(configuration, period);
 			}
-				
-			if(period.getNumExecutions() >= 0)
+
+			if (period.getNumExecutions() >= 0)
 				numExecutionsField.setValue(period.getNumExecutions());
 			else
 				numExecutionsField.setValue(1);
-			if(period instanceof RegularPeriodConfiguration && !((RegularPeriodConfiguration)period).isFixedTimes())
-			{
+			if (period instanceof RegularPeriodConfiguration && !((RegularPeriodConfiguration) period).isFixedTimes()) {
 				periodField.setDuration(10 * 60 * 1000);
 				periodAFAP.doClick();
-			}
-			else if(period instanceof RegularPeriodConfiguration)
-			{
-				periodField.setDuration(((RegularPeriodConfiguration)period).getPeriod());
+			} else if (period instanceof RegularPeriodConfiguration) {
+				periodField.setDuration(((RegularPeriodConfiguration) period).getPeriod());
 				periodFixed.doClick();
-			}
-			else if(period instanceof VaryingPeriodConfiguration)
-			{
-				periodVaryingDataPanel.setPeriod((VaryingPeriodConfiguration)period);
+			} else if (period instanceof VaryingPeriodConfiguration) {
+				periodVaryingDataPanel.setPeriod((VaryingPeriodConfiguration) period);
 				periodField.setDuration(10 * 60 * 1000);
 				periodVarying.doClick();
 			}
-		}
-		else
+		} else
 			period = null;
-		if(configuration.getMaxRuntime() >= 0)
-		{
+		if (configuration.getMaxRuntime() >= 0) {
 			stopByRuntime.doClick();
-		}
-		else if(period != null && period.getNumExecutions() >= 0)
-		{
+		} else if (period != null && period.getNumExecutions() >= 0) {
 			stopByExecutions.doClick();
-		}
-		else
-		{
+		} else {
 			stopByUser.doClick();
 		}
-	
+
 	}
 
 	@Override
-	public boolean saveData(MeasurementConfiguration configuration)
-	{
-		if(isPeriod())
-		{
+	public boolean saveData(MeasurementConfiguration configuration) {
+		if (isPeriod()) {
 			PeriodConfiguration period;
-			if(periodAFAP.isSelected())
-			{
+			if (periodAFAP.isSelected()) {
 				RegularPeriodConfiguration regPeriod = new RegularPeriodConfiguration();
 				regPeriod.setFixedTimes(false);
 				regPeriod.setStartTime(0);
 				regPeriod.setPeriod(0);
 				period = regPeriod;
-			}
-			else if(periodFixed.isSelected())
-			{
+			} else if (periodFixed.isSelected()) {
 				RegularPeriodConfiguration regPeriod = new RegularPeriodConfiguration();
 				regPeriod.setFixedTimes(true);
 				regPeriod.setStartTime(0);
 				regPeriod.setPeriod(periodField.getDuration());
 				period = regPeriod;
-			}
-			else
-			{
+			} else {
 				// PeriodVarying
 				period = periodVaryingDataPanel.getPeriod();
 			}
-			if(stopByExecutions.isSelected())
-				period.setNumExecutions(((Number)numExecutionsField.getValue()).intValue());
+			if (stopByExecutions.isSelected())
+				period.setNumExecutions(((Number) numExecutionsField.getValue()).intValue());
 			else
 				period.setNumExecutions(-1);
 			setPeriod(configuration, period);
 		}
-		if(stopByRuntime.isSelected())
+		if (stopByRuntime.isSelected())
 			configuration.setMaxRuntime(runtimeField.getDuration());
 		else
 			configuration.setMaxRuntime(-1);
-		
-		
+
 		configuration.setSaveSettings(saveSettingPanel.getConfiguration());
+
+		// Automatic post-processors.
+		postProcessorPanel.saveData(configuration);
 
 		return true;
 	}
 
 	@Override
-	public void setToDefault(MeasurementConfiguration configuration)
-	{
+	public void setToDefault(MeasurementConfiguration configuration) {
 		// do nothing
 	}
 
 	@Override
-	public String getPageName()
-	{
+	public String getPageName() {
 		return "Measurement Properties";
 	}
 
 	@Override
-	public void createUI(YouScopeFrame frame)
-	{
+	public void createUI(YouScopeFrame frame) {
 		DynamicPanel mainPanel = new DynamicPanel();
-		
+
 		mainPanel.add(new JLabel("Measurement finishes:"));
 		ButtonGroup stopConditionGroup = new ButtonGroup();
 		stopConditionGroup.add(stopByUser);
-		if(isPeriod())
+		if (isPeriod())
 			stopConditionGroup.add(stopByExecutions);
 		stopConditionGroup.add(stopByRuntime);
-		class StopTypeChangedListener implements ActionListener
-		{
+		class StopTypeChangedListener implements ActionListener {
 			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				if(stopByUser.isSelected())
-				{
+			public void actionPerformed(ActionEvent e) {
+				if (stopByUser.isSelected()) {
 					runtimeFieldLabel.setVisible(false);
 					runtimeField.setVisible(false);
 					numExecutionsFieldLabel.setVisible(false);
 					numExecutionsField.setVisible(false);
 					fireSizeChanged();
-				}
-				else if(isPeriod() && stopByExecutions.isSelected())
-				{
+				} else if (isPeriod() && stopByExecutions.isSelected()) {
 					runtimeFieldLabel.setVisible(false);
 					runtimeField.setVisible(false);
 					numExecutionsFieldLabel.setVisible(true);
 					numExecutionsField.setVisible(true);
 					fireSizeChanged();
-				}
-				else
-				{
+				} else {
 					// stopByRuntime
 					runtimeFieldLabel.setVisible(true);
 					runtimeField.setVisible(true);
@@ -302,15 +300,14 @@ public class GeneralSettingsPage<T extends MeasurementConfiguration> extends Mea
 		stopByRuntime.addActionListener(new StopTypeChangedListener());
 
 		mainPanel.add(stopByUser);
-		if(isPeriod())
+		if (isPeriod())
 			mainPanel.add(stopByExecutions);
 		mainPanel.add(stopByRuntime);
 
 		mainPanel.add(runtimeFieldLabel);
 		mainPanel.add(runtimeField);
 
-		if(isPeriod())
-		{
+		if (isPeriod()) {
 			mainPanel.add(numExecutionsFieldLabel);
 			mainPanel.add(numExecutionsField);
 
@@ -321,32 +318,25 @@ public class GeneralSettingsPage<T extends MeasurementConfiguration> extends Mea
 			mainPanel.add(fixedPeriodLabel);
 			mainPanel.add(periodField);
 			mainPanel.add(periodVaryingDataPanel);
-	
+
 			ButtonGroup periodGroup = new ButtonGroup();
 			periodGroup.add(periodAFAP);
 			periodGroup.add(periodFixed);
 			periodGroup.add(periodVarying);
-			class PeriodTypeChangedListener implements ActionListener
-			{
+			class PeriodTypeChangedListener implements ActionListener {
 				@Override
-				public void actionPerformed(ActionEvent e)
-				{
-					if(periodAFAP.isSelected())
-					{
+				public void actionPerformed(ActionEvent e) {
+					if (periodAFAP.isSelected()) {
 						periodField.setVisible(false);
 						fixedPeriodLabel.setVisible(false);
 						periodVaryingDataPanel.setVisible(false);
 						fireSizeChanged();
-					}
-					else if(periodFixed.isSelected())
-					{
+					} else if (periodFixed.isSelected()) {
 						periodField.setVisible(true);
 						fixedPeriodLabel.setVisible(true);
 						periodVaryingDataPanel.setVisible(false);
 						fireSizeChanged();
-					}
-					else
-					{
+					} else {
 						// PeriodVarying
 						periodField.setVisible(false);
 						fixedPeriodLabel.setVisible(false);
@@ -359,8 +349,15 @@ public class GeneralSettingsPage<T extends MeasurementConfiguration> extends Mea
 			periodFixed.addActionListener(new PeriodTypeChangedListener());
 			periodVarying.addActionListener(new PeriodTypeChangedListener());
 		}
+
+		// Automatic post-processing. Placed before the save settings, since
+		// post-processing requires
+		// the measurement to be saved and the two belong together conceptually.
+		mainPanel.add(postProcessorPanel);
+
 		// Panel to choose save settings
-		saveSettingPanel = new SubConfigurationPanel<SaveSettingsConfiguration>("Save type:", null, SaveSettingsConfiguration.class, client, frame);
+		saveSettingPanel = new SubConfigurationPanel<SaveSettingsConfiguration>("Save type:", null,
+				SaveSettingsConfiguration.class, client, frame);
 		mainPanel.addFill(saveSettingPanel);
 		setLayout(new BorderLayout());
 		add(mainPanel, BorderLayout.CENTER);

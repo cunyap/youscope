@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - update API supporting post-processors
  ******************************************************************************/
 /**
  * 
@@ -18,6 +19,7 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.EventListener;
@@ -59,125 +61,157 @@ import org.youscope.uielements.LinkLabel;
 /**
  * @author Moritz Lang
  */
-class MeasurementControl
-{
-	private MeasurementConfiguration	configuration				= null;
+class MeasurementControl {
+	/**
+	 * Maximal time waited for the measurement information file to be completely
+	 * written before
+	 * automatic post-processing is given up on.
+	 */
+	private static final long POST_PROCESSING_FILE_TIMEOUT_MS = 60000;
 
-	private final Measurement		measurement;
+	private MeasurementConfiguration configuration = null;
 
-	private JTextField					measurementField;
+	private final Measurement measurement;
 
-	private MeasurementStateField					stateField;
-	
-	private JTextField runTimeField = new JTextField("0d 0h 0m 0s"); 
-	
+	private JTextField measurementField;
+
+	private MeasurementStateField stateField;
+
+	private JTextField runTimeField = new JTextField("0d 0h 0m 0s");
+
 	private final MeasurementListenerImpl measurementListener = new MeasurementListenerImpl();
 	private volatile long measurementStartTime = -1;
 	private volatile long measurementPauseDuration = 0;
-	
-	private final Timer			runTimeTimer				= new Timer(1000, new ActionListener()
-	{
+
+	/**
+	 * Guards against running the automatic post-processors more than once for the
+	 * same measurement run.
+	 */
+	private volatile boolean postProcessingStarted = false;
+
+	private final Timer runTimeTimer = new Timer(1000, new ActionListener() {
 		@Override
-		public void actionPerformed(ActionEvent arg0)
-		{
-			if(getState() == MeasurementState.RUNNING && measurementStartTime>=0 && measurementPauseDuration>=0)
+		public void actionPerformed(ActionEvent arg0) {
+			if (getState() == MeasurementState.RUNNING && measurementStartTime >= 0 && measurementPauseDuration >= 0)
 				setDuration(System.currentTimeMillis() - measurementStartTime - measurementPauseDuration);
 			else
 				runTimeTimer.stop();
 		}
 	});
 
-	private final static Icon START_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control.png", "start measurement");
+	private final static Icon START_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control.png",
+			"start measurement");
 	private final static String START_MEASUREMENT_TEXT = "Start";
 	private final JButton startMeasurementButton;
-	
-	private final static Icon STOP_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control-stop.png", "stop measurement");
+
+	private final static Icon STOP_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control-stop.png",
+			"stop measurement");
 	private final static String STOP_MEASUREMENT_TEXT = "Stop";
 	private final JButton stopMeasurementButton;
-	
-	private final static Icon QUICK_STOP_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control-skip.png", "quick stop measurement");
+
+	private final static Icon QUICK_STOP_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control-skip.png",
+			"quick stop measurement");
 	private final static String QUICK_STOP_MEASUREMENT_TEXT = "Quick Stop";
 	private final JButton quickStopMeasurementButton;
-	
-	private final static Icon SAVE_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/disk.png", "save measurement");
+
+	private final static Icon SAVE_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/disk.png",
+			"save measurement");
 	private final static String SAVE_MEASUREMENT_TEXT = "Save";
 	private final JButton saveMeasurementButton;
-	
-	private final static Icon EDIT_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/block--pencil.png", "edit measurement");
+
+	private final static Icon EDIT_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/block--pencil.png",
+			"edit measurement");
 	private final static String EDIT_MEASUREMENT_TEXT = "Edit";
 	private final JButton editMeasurementButton;
-	
-	private final static Icon PAUSE_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control-pause.png", "pause measurement");
+
+	private final static Icon PAUSE_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/control-pause.png",
+			"pause measurement");
 	private final static String PAUSE_MEASUREMENT_TEXT = "Pause";
 	private final JButton pauseMeasurementButton;
-	
-	private final static Icon PROCESS_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/images-stack.png", "view measurement results");
+
+	private final static Icon PROCESS_MEASUREMENT_ICON = ImageLoadingTools.getResourceIcon("icons/images-stack.png",
+			"view measurement results");
 	private final static String PROCESS_MEASUREMENT_TEXT = "View Results";
 	private final JButton processMeasurementButton;
-	
-	private final static Icon EMERGENCY_STOP_ICON = ImageLoadingTools.getResourceIcon("icons/cross-button.png", "emergency stop");
+
+	private final static Icon EMERGENCY_STOP_ICON = ImageLoadingTools.getResourceIcon("icons/cross-button.png",
+			"emergency stop");
 	private final static String EMERGENCY_STOP_TEXT = "Emergency Stop";
 	private final JButton emergencyStopButton;
-	
-	private volatile MeasurementState				state						= MeasurementState.READY;
+
+	private volatile MeasurementState state = MeasurementState.READY;
 
 	private MeasurementTree measurementTree = new MeasurementTree(this);
-	
-	private Vector<YouScopeFrame>		childFrames			= new Vector<YouScopeFrame>();
+
+	private Vector<YouScopeFrame> childFrames = new Vector<YouScopeFrame>();
 	private final MeasurementControlListener controlListener;
-	
+
 	private final DynamicPanel controlPanel = new DynamicPanel();
-	private final DynamicPanel  informationPanel = new DynamicPanel();
+	private final DynamicPanel informationPanel = new DynamicPanel();
 	private JPanel imagingJobsPanel;
-	
+
 	private JPopupMenu measurementProcessorChooser;
-	
+
 	private String name;
-	
+
 	private boolean isDocked = true;
 
-	MeasurementControl(MeasurementControlListener controlListener, Measurement measurement) throws RemoteException
-	{
-		startMeasurementButton = START_MEASUREMENT_ICON == null ? new JButton(START_MEASUREMENT_TEXT) : new JButton(START_MEASUREMENT_TEXT, START_MEASUREMENT_ICON);
+	MeasurementControl(MeasurementControlListener controlListener, Measurement measurement) throws RemoteException {
+		startMeasurementButton = START_MEASUREMENT_ICON == null ? new JButton(START_MEASUREMENT_TEXT)
+				: new JButton(START_MEASUREMENT_TEXT, START_MEASUREMENT_ICON);
 		startMeasurementButton.setHorizontalAlignment(SwingConstants.LEFT);
 		startMeasurementButton.setOpaque(false);
-		startMeasurementButton.setToolTipText("Starts the measurement. If another measurement is already running, the measurement is queued and started as soon as the other measurement finished.");
-		
-		stopMeasurementButton = STOP_MEASUREMENT_ICON == null ? new JButton(STOP_MEASUREMENT_TEXT) : new JButton(STOP_MEASUREMENT_TEXT, STOP_MEASUREMENT_ICON);
+		startMeasurementButton.setToolTipText(
+				"Starts the measurement. If another measurement is already running, the measurement is queued and started as soon as the other measurement finished.");
+
+		stopMeasurementButton = STOP_MEASUREMENT_ICON == null ? new JButton(STOP_MEASUREMENT_TEXT)
+				: new JButton(STOP_MEASUREMENT_TEXT, STOP_MEASUREMENT_ICON);
 		stopMeasurementButton.setHorizontalAlignment(SwingConstants.LEFT);
 		stopMeasurementButton.setOpaque(false);
-		stopMeasurementButton.setToolTipText("Stops the measurement. All jobs which are already due are executed before the measurement stops.");
-		
-		quickStopMeasurementButton = QUICK_STOP_MEASUREMENT_ICON == null ? new JButton(QUICK_STOP_MEASUREMENT_TEXT) : new JButton(QUICK_STOP_MEASUREMENT_TEXT, QUICK_STOP_MEASUREMENT_ICON);
+		stopMeasurementButton.setToolTipText(
+				"Stops the measurement. All jobs which are already due are executed before the measurement stops.");
+
+		quickStopMeasurementButton = QUICK_STOP_MEASUREMENT_ICON == null ? new JButton(QUICK_STOP_MEASUREMENT_TEXT)
+				: new JButton(QUICK_STOP_MEASUREMENT_TEXT, QUICK_STOP_MEASUREMENT_ICON);
 		quickStopMeasurementButton.setHorizontalAlignment(SwingConstants.LEFT);
 		quickStopMeasurementButton.setOpaque(false);
-		quickStopMeasurementButton.setToolTipText("Stops the measurement. Only the currently executed job is finished. All other jobs which are due but not yet executed are discarded.");
-		
-		saveMeasurementButton = SAVE_MEASUREMENT_ICON == null ? new JButton(SAVE_MEASUREMENT_TEXT) : new JButton(SAVE_MEASUREMENT_TEXT, SAVE_MEASUREMENT_ICON);
+		quickStopMeasurementButton.setToolTipText(
+				"Stops the measurement. Only the currently executed job is finished. All other jobs which are due but not yet executed are discarded.");
+
+		saveMeasurementButton = SAVE_MEASUREMENT_ICON == null ? new JButton(SAVE_MEASUREMENT_TEXT)
+				: new JButton(SAVE_MEASUREMENT_TEXT, SAVE_MEASUREMENT_ICON);
 		saveMeasurementButton.setHorizontalAlignment(SwingConstants.LEFT);
 		saveMeasurementButton.setOpaque(false);
 		saveMeasurementButton.setToolTipText("Saves the measurement configuration to the file system.");
-		
-		editMeasurementButton = EDIT_MEASUREMENT_ICON == null ? new JButton(EDIT_MEASUREMENT_TEXT) : new JButton(EDIT_MEASUREMENT_TEXT, EDIT_MEASUREMENT_ICON);
+
+		editMeasurementButton = EDIT_MEASUREMENT_ICON == null ? new JButton(EDIT_MEASUREMENT_TEXT)
+				: new JButton(EDIT_MEASUREMENT_TEXT, EDIT_MEASUREMENT_ICON);
 		editMeasurementButton.setHorizontalAlignment(SwingConstants.LEFT);
 		editMeasurementButton.setOpaque(false);
-		editMeasurementButton.setToolTipText("Edits the measurement configuration. The control for this measurement is closed when editing.");
-		
-		processMeasurementButton = PROCESS_MEASUREMENT_ICON == null ? new JButton(PROCESS_MEASUREMENT_TEXT) : new JButton(PROCESS_MEASUREMENT_TEXT, PROCESS_MEASUREMENT_ICON);
+		editMeasurementButton.setToolTipText(
+				"Edits the measurement configuration. The control for this measurement is closed when editing.");
+
+		processMeasurementButton = PROCESS_MEASUREMENT_ICON == null ? new JButton(PROCESS_MEASUREMENT_TEXT)
+				: new JButton(PROCESS_MEASUREMENT_TEXT, PROCESS_MEASUREMENT_ICON);
 		processMeasurementButton.setHorizontalAlignment(SwingConstants.LEFT);
 		processMeasurementButton.setOpaque(false);
-		processMeasurementButton.setToolTipText("Allows to view or edit the images made during the current or the last execution of the measurement.");
-		
-		pauseMeasurementButton = PAUSE_MEASUREMENT_ICON == null ? new JButton(PAUSE_MEASUREMENT_TEXT) : new JButton(PAUSE_MEASUREMENT_TEXT, PAUSE_MEASUREMENT_ICON);
+		processMeasurementButton.setToolTipText(
+				"Allows to view or edit the images made during the current or the last execution of the measurement.");
+
+		pauseMeasurementButton = PAUSE_MEASUREMENT_ICON == null ? new JButton(PAUSE_MEASUREMENT_TEXT)
+				: new JButton(PAUSE_MEASUREMENT_TEXT, PAUSE_MEASUREMENT_ICON);
 		pauseMeasurementButton.setHorizontalAlignment(SwingConstants.LEFT);
 		pauseMeasurementButton.setOpaque(false);
-		pauseMeasurementButton.setToolTipText("Pauses the current measurement. The currently running job is executed before pause. After pausing, the measurement can be resumed.");
-		
-		emergencyStopButton = EMERGENCY_STOP_ICON == null ? new JButton(EMERGENCY_STOP_TEXT) : new JButton(EMERGENCY_STOP_TEXT, EMERGENCY_STOP_ICON);
+		pauseMeasurementButton.setToolTipText(
+				"Pauses the current measurement. The currently running job is executed before pause. After pausing, the measurement can be resumed.");
+
+		emergencyStopButton = EMERGENCY_STOP_ICON == null ? new JButton(EMERGENCY_STOP_TEXT)
+				: new JButton(EMERGENCY_STOP_TEXT, EMERGENCY_STOP_ICON);
 		emergencyStopButton.setHorizontalAlignment(SwingConstants.LEFT);
 		emergencyStopButton.setOpaque(false);
-		emergencyStopButton.setToolTipText("Tries to interrupt the measurement as quick as possible without caring about finishing jobs or applying shutdown settings. Furthermore, locks the microscope such that all attempts to control it via YouScope fail until the emergency stop is manually resetted.");
-		
+		emergencyStopButton.setToolTipText(
+				"Tries to interrupt the measurement as quick as possible without caring about finishing jobs or applying shutdown settings. Furthermore, locks the microscope such that all attempts to control it via YouScope fail until the emergency stop is manually resetted.");
+
 		this.measurement = measurement;
 		try {
 			this.configuration = measurement.getMetadata().getConfiguration();
@@ -185,85 +219,79 @@ class MeasurementControl
 			this.configuration = null;
 		}
 		this.controlListener = controlListener;
-		
+
 		// Add measurement listener
 		measurement.addMeasurementListener(measurementListener);
 		// Setup appearance
 		setupUIElements();
 	}
-	
-	public String getName()
-	{
+
+	public String getName() {
 		return name;
 	}
-	public void initializeWideLayout(Container container)
-	{	
+
+	public void initializeWideLayout(Container container) {
 		JPanel dockLabelPanel = new JPanel(new BorderLayout());
 		dockLabelPanel.setOpaque(false);
 		LinkLabel dockLabel = new LinkLabel("dock window");
-		dockLabel.addActionListener(new ActionListener()
-			{
-				@Override
-				public void actionPerformed(ActionEvent e)
-				{
-					if(controlListener != null)
-						controlListener.dockWindow();
-				}
-			});
+		dockLabel.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (controlListener != null)
+					controlListener.dockWindow();
+			}
+		});
 		dockLabelPanel.add(dockLabel, BorderLayout.EAST);
-		
+
 		JPanel centerPanel = new JPanel(new BorderLayout());
 		centerPanel.setOpaque(false);
 		centerPanel.add(imagingJobsPanel, BorderLayout.CENTER);
 		centerPanel.add(informationPanel, BorderLayout.NORTH);
-		
+
 		container.setLayout(new BorderLayout());
 		container.add(dockLabelPanel, BorderLayout.NORTH);
 		container.add(controlPanel, BorderLayout.EAST);
 		container.add(centerPanel, BorderLayout.CENTER);
-		
+
 		isDocked = false;
 	}
-	public void initializeTightLayout(JPanel container)
-	{
+
+	public void initializeTightLayout(JPanel container) {
 		JPanel undockLabelPanel = new JPanel(new BorderLayout());
 		undockLabelPanel.setOpaque(false);
 		LinkLabel undockLabel = new LinkLabel("undock window");
-		undockLabel.addActionListener(new ActionListener()
-			{
-				@Override
-				public void actionPerformed(ActionEvent e)
-				{
-					if(controlListener != null)
-						controlListener.undockWindow();
-				}
-			});
+		undockLabel.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (controlListener != null)
+					controlListener.undockWindow();
+			}
+		});
 		undockLabelPanel.add(undockLabel, BorderLayout.EAST);
-		
+
 		DynamicPanel mainPanel = new DynamicPanel();
 		mainPanel.add(informationPanel);
 		mainPanel.add(controlPanel);
 		mainPanel.addFill(imagingJobsPanel);
-		
+
 		container.setLayout(new BorderLayout());
 		container.add(undockLabelPanel, BorderLayout.NORTH);
 		container.add(mainPanel, BorderLayout.CENTER);
 		container.setPreferredSize(new Dimension(200, 200));
-		
+
 		isDocked = true;
 	}
-	
-	public void setClosed()
-	{
-		if((state == MeasurementState.QUEUED || state == MeasurementState.RUNNING) && configuration != null)
-		{
-			JOptionPane.showMessageDialog(null, "The measurement is currently running or queued and will not be stopped from excecution although this window is closed.\nYou can reopen the window with the help of the measurement manager (Tools -> Measurement Manager).", "Closing active measurement", JOptionPane.INFORMATION_MESSAGE);
+
+	public void setClosed() {
+		if ((state == MeasurementState.QUEUED || state == MeasurementState.RUNNING) && configuration != null) {
+			JOptionPane.showMessageDialog(null,
+					"The measurement is currently running or queued and will not be stopped from excecution although this window is closed.\nYou can reopen the window with the help of the measurement manager (Tools -> Measurement Manager).",
+					"Closing active measurement", JOptionPane.INFORMATION_MESSAGE);
 		}
-		while(childFrames.size() > 0)
-		{
+		while (childFrames.size() > 0) {
 			childFrames.get(0).setVisible(false);
 		}
-		if(controlListener != null)
+		if (controlListener != null)
 			controlListener.measurementControlClosed();
 		try {
 			measurement.removeMeasurementListener(measurementListener);
@@ -271,94 +299,78 @@ class MeasurementControl
 			// do nothing, just more work for the garbage collector...
 		}
 	}
-	public interface MeasurementControlListener extends EventListener
-	{
+
+	public interface MeasurementControlListener extends EventListener {
 		public void measurementControlClosed();
+
 		public void dockWindow();
+
 		public void undockWindow();
 	}
-	
-	public YouScopeFrame createChildFrame()
-	{
+
+	public YouScopeFrame createChildFrame() {
 		final YouScopeFrame childFrame = YouScopeFrameImpl.createTopLevelFrame();
-		childFrame.addFrameListener(new YouScopeFrameListener()
-		{
+		childFrame.addFrameListener(new YouScopeFrameListener() {
 			@Override
-			public void frameClosed()
-			{
+			public void frameClosed() {
 				childFrames.remove(childFrame);
 			}
 
 			@Override
-			public void frameOpened()
-			{
+			public void frameOpened() {
 				childFrames.add(childFrame);
 			}
 
 		});
 		return childFrame;
 	}
-	
-	public void addChildFrame(final YouScopeFrame childFrame)
-	{
-		childFrame.addFrameListener(new YouScopeFrameListener()
-		{
+
+	public void addChildFrame(final YouScopeFrame childFrame) {
+		childFrame.addFrameListener(new YouScopeFrameListener() {
 			@Override
-			public void frameClosed()
-			{
+			public void frameClosed() {
 				childFrames.remove(childFrame);
 			}
 
 			@Override
-			public void frameOpened()
-			{
+			public void frameOpened() {
 				childFrames.add(childFrame);
 			}
 
 		});
 	}
 
-	private void setupUIElements() throws RemoteException
-	{
-		if(configuration != null)
-		{
-			saveMeasurementButton.addActionListener(new ActionListener()
-			{
+	private void setupUIElements() throws RemoteException {
+		if (configuration != null) {
+			saveMeasurementButton.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent e)
-				{
+				public void actionPerformed(ActionEvent e) {
 					YouScopeClientImpl.saveMeasurement(configuration);
 				}
 			});
-			
-			editMeasurementButton.addActionListener(new ActionListener()
-			{
+
+			editMeasurementButton.addActionListener(new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent arg0)
-				{
-					if(state == MeasurementState.READY || state == MeasurementState.UNINITIALIZED || state == MeasurementState.ERROR)
-					{
+				public void actionPerformed(ActionEvent arg0) {
+					if (state == MeasurementState.READY || state == MeasurementState.UNINITIALIZED
+							|| state == MeasurementState.ERROR) {
 						ComponentAddonUI<? extends MeasurementConfiguration> addon;
 						try {
-							addon = ClientAddonProviderImpl.getProvider().createComponentUI(configuration.getTypeIdentifier(), MeasurementConfiguration.class);
+							addon = ClientAddonProviderImpl.getProvider().createComponentUI(
+									configuration.getTypeIdentifier(), MeasurementConfiguration.class);
 						} catch (AddonException e1) {
 							ClientSystem.err.println("Cannot create measurement configuration UI.", e1);
 							return;
 						}
-						addon.addUIListener(new ComponentAddonUIListener<MeasurementConfiguration>()
-							{
-								@Override
-								public void configurationFinished(MeasurementConfiguration configuration) 
-								{
-									YouScopeClientImpl.addMeasurement(configuration);
-								}
-							});
-						try
-						{
+						addon.addUIListener(new ComponentAddonUIListener<MeasurementConfiguration>() {
+							@Override
+							public void configurationFinished(MeasurementConfiguration configuration) {
+								YouScopeClientImpl.addMeasurement(configuration);
+							}
+						});
+						try {
 							addon.setConfiguration(configuration);
-						}
-						catch(Exception e)
-						{
+						} catch (Exception e) {
 							ClientSystem.err.println("Cannot load measurement configuration.", e);
 							return;
 						}
@@ -374,13 +386,11 @@ class MeasurementControl
 					}
 				}
 			});
-		}
-		else
-		{
+		} else {
 			editMeasurementButton.setEnabled(false);
 			saveMeasurementButton.setEnabled(false);
 		}
-		
+
 		informationPanel.setBorder(new TitledBorder("Measurement Information"));
 		informationPanel.setOpaque(false);
 		name = measurement.getName();
@@ -398,70 +408,57 @@ class MeasurementControl
 		informationPanel.add(runTimeField);
 
 		// Initialize Buttons
-		startMeasurementButton.addActionListener(new ActionListener()
-		{
+		startMeasurementButton.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent e)
-			{
+			public void actionPerformed(ActionEvent e) {
 				startMeasurement();
 			}
 		});
-		
-		
+
 		measurementProcessorChooser = new JPopupMenu();
-		processMeasurementButton.addActionListener(new ActionListener()
-            {
-                @Override
-                public void actionPerformed(ActionEvent e)
-                {
-                	if(isDocked)
-                		measurementProcessorChooser.show(processMeasurementButton, -measurementProcessorChooser.getPreferredSize().width, 0);
-                	else
-                		measurementProcessorChooser.show(processMeasurementButton, processMeasurementButton.getWidth(), 0);
-                }
-            });
-		
+		processMeasurementButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (isDocked)
+					measurementProcessorChooser.show(processMeasurementButton,
+							-measurementProcessorChooser.getPreferredSize().width, 0);
+				else
+					measurementProcessorChooser.show(processMeasurementButton, processMeasurementButton.getWidth(), 0);
+			}
+		});
+
 		List<AddonMetadata> postProcessorMetadata = ClientAddonProviderImpl.getProvider().getPostProcessorMetadata();
-		
-		for(AddonMetadata postProcessorMetadate : postProcessorMetadata)
-		{
+
+		for (AddonMetadata postProcessorMetadate : postProcessorMetadata) {
 			measurementProcessorChooser.add(new StartProcessorMenuItem(postProcessorMetadate));
 		}
-		
-		stopMeasurementButton.addActionListener(new ActionListener()
-		{
+
+		stopMeasurementButton.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent e)
-			{
+			public void actionPerformed(ActionEvent e) {
 				stopMeasurement(true);
 			}
 		});
-		
-		pauseMeasurementButton.addActionListener(new ActionListener()
-		{
+
+		pauseMeasurementButton.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent e)
-			{
+			public void actionPerformed(ActionEvent e) {
 				pauseMeasurement();
 			}
 		});
-		quickStopMeasurementButton.addActionListener(new ActionListener()
-		{
+		quickStopMeasurementButton.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent e)
-			{
+			public void actionPerformed(ActionEvent e) {
 				stopMeasurement(false);
 			}
 		});
-		emergencyStopButton.addActionListener(new ActionListener()
-		{
+		emergencyStopButton.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent e)
-			{
+			public void actionPerformed(ActionEvent e) {
 				emergencyStop();
 			}
 		});
-		
+
 		controlPanel.setBorder(new TitledBorder("Measurement Control"));
 		controlPanel.setOpaque(false);
 		controlPanel.add(startMeasurementButton);
@@ -473,7 +470,7 @@ class MeasurementControl
 		controlPanel.add(editMeasurementButton);
 		controlPanel.add(saveMeasurementButton);
 		controlPanel.addEmpty();
-		controlPanel.add(emergencyStopButton);		
+		controlPanel.add(emergencyStopButton);
 		controlPanel.addFillEmpty();
 
 		// Initialize imaging jobs / measurement tree
@@ -483,42 +480,38 @@ class MeasurementControl
 		imagingJobsPanel.add(new JScrollPane(measurementTree), BorderLayout.CENTER);
 		measurementTree.setMeasurement(measurement);
 	}
-	private MeasurementState getState()
-	{
+
+	private MeasurementState getState() {
 		return state;
 	}
-	private synchronized void setState(final MeasurementState state)
-	{
-		if(state == this.state)
+
+	private synchronized void setState(final MeasurementState state) {
+		if (state == this.state)
 			return;
 		this.state = state;
-		if(SwingUtilities.isEventDispatchThread())
+		if (SwingUtilities.isEventDispatchThread())
 			actualizeStateInternal();
-		else
-		{
-			SwingUtilities.invokeLater(new Runnable()
-			{
-				
+		else {
+			SwingUtilities.invokeLater(new Runnable() {
+
 				@Override
-				public void run()
-				{
+				public void run() {
 					actualizeStateInternal();
 				}
 			});
 		}
 	}
-	private boolean showMeasurementProcessors()
-	{
+
+	private boolean showMeasurementProcessors() {
 		return measurementProcessorChooser.getComponentCount() > 0 && ClientSystem.isLocalServer();
 	}
-	private void actualizeStateInternal()
-	{
+
+	private void actualizeStateInternal() {
 		MeasurementState state = this.state;
 		// Set behavior.
-		switch(state)
-		{
+		switch (state) {
 			case UNINITIALIZED:
-				if(showMeasurementProcessors())
+				if (showMeasurementProcessors())
 					processMeasurementButton.setVisible(true);
 				else
 					processMeasurementButton.setVisible(false);
@@ -539,7 +532,7 @@ class MeasurementControl
 				saveMeasurementButton.setVisible(true);
 				break;
 			case PAUSED:
-				if(showMeasurementProcessors())
+				if (showMeasurementProcessors())
 					processMeasurementButton.setVisible(true);
 				else
 					processMeasurementButton.setVisible(false);
@@ -551,7 +544,7 @@ class MeasurementControl
 				saveMeasurementButton.setVisible(false);
 				break;
 			case RUNNING:
-				if(showMeasurementProcessors())
+				if (showMeasurementProcessors())
 					processMeasurementButton.setVisible(true);
 				else
 					processMeasurementButton.setVisible(false);
@@ -593,136 +586,213 @@ class MeasurementControl
 		}
 		// Set state information field.
 		stateField.setState(state);
-		
+
 		// Set duration updating
-		if(state == MeasurementState.RUNNING)
-		{
-			try
-			{
+		if (state == MeasurementState.RUNNING) {
+			try {
 				measurementStartTime = measurement.getStartTime();
 				measurementPauseDuration = measurement.getPauseDuration();
-				if(measurementStartTime >= 0)
+				if (measurementStartTime >= 0)
 					runTimeTimer.restart();
 				else
 					ClientSystem.err.println("Could not get measurement start time. Won't update measurement runtime.");
+			} catch (RemoteException e) {
+				ClientSystem.err.println(
+						"Could not get measurement start time and pause duration. Won't update measurement runtime.",
+						e);
 			}
-			catch(RemoteException e)
-			{
-				ClientSystem.err.println("Could not get measurement start time and pause duration. Won't update measurement runtime.", e);
-			}
-		}
-		else
-		{
-			try
-			{
+		} else {
+			try {
 				runTimeTimer.stop();
-				long runtime =measurement.getRuntime();
-				if(runtime >= 0)
+				long runtime = measurement.getRuntime();
+				if (runtime >= 0)
 					setDuration(runtime);
-			}
-			catch(RemoteException e)
-			{
+			} catch (RemoteException e) {
 				ClientSystem.err.println("Could not get measurement run time", e);
 			}
 		}
 	}
 
-	private void setDuration(long duration)
-	{
+	private void setDuration(long duration) {
 		long seconds = duration / 1000;
 		long minutes = seconds / 60;
 		long hours = minutes / 60;
 		long days = hours / 24;
-		
+
 		seconds = seconds % 60;
 		minutes = minutes % 60;
 		hours = hours % 24;
-		runTimeField.setText(Long.toString(days)+"d "+Long.toString(hours)+"h " + Long.toString(minutes)+"m " + Long.toString(seconds)+"s");
+		runTimeField.setText(Long.toString(days) + "d " + Long.toString(hours) + "h " + Long.toString(minutes) + "m "
+				+ Long.toString(seconds) + "s");
 	}
 
-	private void stopMeasurement(final boolean processJobQueue)
-	{
+	private void stopMeasurement(final boolean processJobQueue) {
 		setState(MeasurementState.STOPPING);
-		
-		try
-		{
+
+		try {
 			measurement.stopMeasurement(processJobQueue);
-		}
-		catch(RemoteException | MeasurementException e)
-		{
+		} catch (RemoteException | MeasurementException e) {
 			ClientSystem.err.println("Could not stop measurement.", e);
 			setState(MeasurementState.ERROR);
 		}
-	
+
 	}
-	
-	private void pauseMeasurement()
-	{
+
+	private void pauseMeasurement() {
 		setState(MeasurementState.PAUSING);
-		
-		try
-		{
+
+		try {
 			measurement.pauseMeasurement();
-		}
-		catch(RemoteException | MeasurementException e)
-		{
+		} catch (RemoteException | MeasurementException e) {
 			ClientSystem.err.println("Could not pause measurement.", e);
 			setState(MeasurementState.ERROR);
 		}
-	
+
 	}
 
-	private void emergencyStop()
-	{
-		try
-		{
+	private void emergencyStop() {
+		try {
 			YouScopeClientImpl.getServer().emergencyStop();
-		}
-		catch(RemoteException e)
-		{
+		} catch (RemoteException e) {
 			ClientSystem.err.println("Could not set microscope to emergency-stop state. Stop microscope manually!", e);
 		}
 		setState(MeasurementState.ERROR);
 	}
 
-	
-
-	private void startMeasurement()
-	{
-		try
-		{
+	private void startMeasurement() {
+		try {
 			// Start measurement
 			measurement.startMeasurement();
-		}
-		catch(RemoteException | MeasurementException e)
-		{
+		} catch (RemoteException | MeasurementException e) {
 			ClientSystem.err.println("Could not start measurement.", e);
 			setState(MeasurementState.ERROR);
 		}
-
+		// A new run may produce new results, so allow automatic post-processing to
+		// trigger again.
+		postProcessingStarted = false;
 	}
 
-	private class MeasurementListenerImpl extends UnicastRemoteObject implements MeasurementListener
-	{
+	// ---------------------------------------------------------------------------------------------
+	// Automatic post-processing
+	// ---------------------------------------------------------------------------------------------
+
+	/**
+	 * Starts the post-processors which the measurement configuration marks as
+	 * automatic.
+	 * <p>
+	 * Runs on a background thread and swallows every error. The measurement data is
+	 * already written and
+	 * safe by the time this is called, so a failing post-processor must not be able
+	 * to make a
+	 * successful measurement look failed, nor delay the next queued measurement.
+	 * </p>
+	 */
+	private void runAutomaticPostProcessors() {
+		if (configuration == null)
+			return;
+		final String[] typeIdentifiers = configuration.getAutomaticPostProcessors();
+		if (typeIdentifiers.length == 0)
+			return;
+		if (postProcessingStarted)
+			return;
+		postProcessingStarted = true;
+
+		final MeasurementFileLocations fileLocations;
+		try {
+			fileLocations = measurement.getSaver().getLastMeasurementFileLocations();
+		} catch (RemoteException e) {
+			ClientSystem.err.println(
+					"Could not obtain the file locations of the finished measurement. Automatic post-processing is skipped.",
+					e);
+			return;
+		}
+		if (fileLocations == null || fileLocations.getMeasurementBaseFolder() == null) {
+			ClientSystem.err.println(
+					"The finished measurement was not saved. Automatic post-processing is skipped, since a post-processor reads the saved files.");
+			return;
+		}
+
+		Thread thread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				// A measurement reaches UNINITIALIZED as soon as it is torn down, which is not
+				// necessarily after the saver has flushed the measurement information file. A
+				// post-processor reading it too early would fail on a perfectly good
+				// measurement, so
+				// wait for the file to exist and stop growing first.
+				String informationPath = fileLocations.getXmlInformationPath();
+				if (informationPath != null && !waitForCompleteFile(informationPath, POST_PROCESSING_FILE_TIMEOUT_MS)) {
+					ClientSystem.err.println("The measurement information file was not completely written within "
+							+ (POST_PROCESSING_FILE_TIMEOUT_MS / 1000)
+							+ " seconds. Automatic post-processing is skipped; "
+							+ "it can still be started manually from the \"" + PROCESS_MEASUREMENT_TEXT + "\" menu.");
+					return;
+				}
+				for (String typeIdentifier : typeIdentifiers) {
+					try {
+						ClientAddonProviderImpl.getProvider().runAutomaticPostProcessor(typeIdentifier, fileLocations);
+					} catch (Throwable e) {
+						// Deliberately catching Throwable and continuing: one broken post-processor
+						// must not prevent the others, and none of them may fail the measurement.
+						ClientSystem.err.println("Automatic post-processor " + typeIdentifier
+								+ " failed. The measurement data is unaffected, and the post-processor can be run "
+								+ "again from the \"" + PROCESS_MEASUREMENT_TEXT + "\" menu.", e);
+					}
+				}
+			}
+		}, "Automatic post-processing of " + name);
+		thread.setDaemon(true);
+		thread.start();
+	}
+
+	/**
+	 * Waits until a file exists and its size has stopped changing, so that it is
+	 * not parsed while still
+	 * being written.
+	 * 
+	 * @param path      Path of the file.
+	 * @param timeoutMs Maximal time to wait.
+	 * @return True if the file appears to be completely written.
+	 */
+	private static boolean waitForCompleteFile(String path, long timeoutMs) {
+		File file = new File(path);
+		long deadline = System.currentTimeMillis() + timeoutMs;
+		long lastSize = -1;
+		while (System.currentTimeMillis() < deadline) {
+			if (file.isFile()) {
+				long size = file.length();
+				if (size > 0 && size == lastSize)
+					return true;
+				lastSize = size;
+			}
+			try {
+				Thread.sleep(500);
+			} catch (@SuppressWarnings("unused") InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return false;
+			}
+		}
+		return file.isFile() && file.length() > 0;
+	}
+
+	private class MeasurementListenerImpl extends UnicastRemoteObject implements MeasurementListener {
 
 		/**
 		 * Serial version UID.
 		 */
-		private static final long	serialVersionUID	= -3162707630761616684L;
+		private static final long serialVersionUID = -3162707630761616684L;
 
 		/**
 		 * Constructor.
 		 * 
 		 * @throws RemoteException
 		 */
-		private MeasurementListenerImpl() throws RemoteException
-		{
+		private MeasurementListenerImpl() throws RemoteException {
 			super();
-		}		
+		}
 
 		@Override
-		public void measurementStructureModified() throws RemoteException 
-		{
+		public void measurementStructureModified() throws RemoteException {
 			refreshMeasurementTree();
 		}
 
@@ -730,57 +800,63 @@ class MeasurementControl
 		public void measurementStateChanged(MeasurementState oldState, MeasurementState newState)
 				throws RemoteException {
 			setState(newState);
+			// A measurement is finished and torn down when it reaches UNINITIALIZED. The
+			// transition is
+			// checked rather than the state itself, so that opening a control window on an
+			// already
+			// finished measurement does not re-trigger post-processing. READY is excluded
+			// because a
+			// freshly constructed measurement may pass through it.
+			if (newState == MeasurementState.UNINITIALIZED
+					&& oldState != MeasurementState.UNINITIALIZED
+					&& oldState != MeasurementState.READY) {
+				runAutomaticPostProcessors();
+			}
 		}
 
 		@Override
 		public void measurementError(Exception e) throws RemoteException {
 			ClientSystem.err.println("Error in measurement " + measurement.getName() + " occured.", e);
-			
+
 		}
 	}
-	
+
 	public void refreshMeasurementTree() {
-        if(measurement != null)
-            measurementTree.setMeasurement(measurement);
-    }
-	
-	private class StartProcessorMenuItem extends JMenuItem implements ActionListener
-	{
+		if (measurement != null)
+			measurementTree.setMeasurement(measurement);
+	}
+
+	private class StartProcessorMenuItem extends JMenuItem implements ActionListener {
 		/**
 		 * Serial Version UID.
 		 */
-		private static final long	serialVersionUID	= -1089398454827661984L;
+		private static final long serialVersionUID = -1089398454827661984L;
 		private final AddonMetadata addonMetadata;
-		StartProcessorMenuItem(AddonMetadata addonMetadata)
-		{
+
+		StartProcessorMenuItem(AddonMetadata addonMetadata) {
 			super(addonMetadata.getName());
 			this.addonMetadata = addonMetadata;
 			addActionListener(this);
 		}
+
 		@Override
-		public void actionPerformed(ActionEvent arg0)
-		{
-			if(measurement == null)
+		public void actionPerformed(ActionEvent arg0) {
+			if (measurement == null)
 				return;
-			
+
 			MeasurementFileLocations measurementFileLocations;
-			try
-			{
+			try {
 				measurementFileLocations = measurement.getSaver().getLastMeasurementFileLocations();
-			}
-			catch(RemoteException e)
-			{
+			} catch (RemoteException e) {
 				ClientSystem.err.println("Could not obtain measurement save options from measurement.", e);
 				return;
 			}
-			try
-			{
-				AddonUI<?> addon = ClientAddonProviderImpl.getProvider().createPostProcessorUI(addonMetadata, measurementFileLocations);
+			try {
+				AddonUI<?> addon = ClientAddonProviderImpl.getProvider().createPostProcessorUI(addonMetadata,
+						measurementFileLocations);
 				YouScopeFrame frame = addon.toFrame();
 				frame.setVisible(true);
-			}
-			catch(AddonException e)
-			{
+			} catch (AddonException e) {
 				ClientSystem.err.println("Could not start measurement post processor.", e);
 			}
 		}
