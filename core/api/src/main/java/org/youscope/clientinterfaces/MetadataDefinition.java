@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - update API to support defaultValue and placeholders
  ******************************************************************************/
 package org.youscope.clientinterfaces;
 
@@ -21,14 +22,15 @@ import com.thoughtworks.xstream.annotations.XStreamImplicit;
 import com.thoughtworks.xstream.annotations.XStreamInclude;
 
 /**
- * An immutable class representing a metadata property, it's known possible values, and properties like if it is mandatory
+ * An immutable class representing a metadata property, it's known possible
+ * values, and properties like if it is mandatory
+ * 
  * @author Moritz Lang
  *
  */
 @XStreamAlias("metadata-definition")
 @XStreamInclude(MetadataDefinition.Type.class)
-public class MetadataDefinition implements Serializable, Iterable<String>, Comparable<MetadataDefinition>
-{
+public class MetadataDefinition implements Serializable, Iterable<String>, Comparable<MetadataDefinition> {
 
 	/**
 	 * Serial Version UID.
@@ -36,37 +38,40 @@ public class MetadataDefinition implements Serializable, Iterable<String>, Compa
 	private static final long serialVersionUID = 4671146611312781626L;
 
 	/**
-	 * The type of a property, i.e. if it must be part of all measurement metadata, or if it is optional.
+	 * The type of a property, i.e. if it must be part of all measurement metadata,
+	 * or if it is optional.
+	 * 
 	 * @author mlang
 	 *
 	 */
 	@XStreamAlias("Type")
-	public enum Type
-	{
+	public enum Type {
 		/**
-		 * Indicates that this property is mandatory, that is, must be included in all measurements.
+		 * Indicates that this property is mandatory, that is, must be included in all
+		 * measurements.
 		 */
 		@XStreamAlias("mandatory")
 		MANDATORY,
 		/**
-		 * Indicates that this property is not mandatory, but should be by default included in all measurements.
+		 * Indicates that this property is not mandatory, but should be by default
+		 * included in all measurements.
 		 */
 		@XStreamAlias("default")
 		DEFAULT,
 		/**
-		 * Indicates that this property is neither mandatory nor by default included in the measurement.
+		 * Indicates that this property is neither mandatory nor by default included in
+		 * the measurement.
 		 */
 		@XStreamAlias("optional")
 		OPTIONAL;
-		
+
 		@Override
-		public String toString()
-		{
+		public String toString() {
 			return this.name().toLowerCase();
 		}
 	}
-	
-	@XStreamImplicit(itemFieldName="value")
+
+	@XStreamImplicit(itemFieldName = "value")
 	private final String[] knownValues;
 	@XStreamAlias("custom-values")
 	@XStreamAsAttribute
@@ -77,150 +82,291 @@ public class MetadataDefinition implements Serializable, Iterable<String>, Compa
 	@XStreamAsAttribute
 	private final String name;
 	/**
-	 * Constructor.
-	 * @param name The name of this property.
-	 * @param customValuesAllowed true if user can define additional values for this property not in the list of knownValues.
-	 * @param type The type of this property, i.e. if it is mandatory to be part of all measurement metadata or not.
-	 * @param knownValues Array of known, non-null values the user can choose from, or null if no known values exist. Must be non-empty if customValuesAllowed is false.
-	 * @throws IllegalArgumentException Thrown if knownValues contain null values, or if customValuesAllowed is false and no known value is provided.
+	 * Value which is pre-selected (drop-down) or pre-filled (free text) when this
+	 * metadata property is
+	 * added to a measurement, or null if no default is configured.
+	 * Serialized as the XML attribute {@code default-value}.
 	 */
-	public MetadataDefinition(String name, Type type, boolean customValuesAllowed, String... knownValues) throws IllegalArgumentException
-	{
-		if(knownValues != null)
-		{
-			for(String knownValue : knownValues)
-			{
-				if(knownValue == null)
+	@XStreamAlias("default-value")
+	@XStreamAsAttribute
+	private String defaultValue = null;
+
+	/**
+	 * Grey hint text shown in an empty free-text field, e.g. {@code "e.g. BY4741"}.
+	 * Purely a UI hint: it
+	 * is never stored as a metadata value. Ignored for drop-downs and whenever a
+	 * value is present.
+	 * Serialized as the XML attribute {@code placeholder}.
+	 */
+	@XStreamAlias("placeholder")
+	@XStreamAsAttribute
+	private String placeholder = null;
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param name                The name of this property.
+	 * @param customValuesAllowed true if user can define additional values for this
+	 *                            property not in the list of knownValues.
+	 * @param type                The type of this property, i.e. if it is mandatory
+	 *                            to be part of all measurement metadata or not.
+	 * @param knownValues         Array of known, non-null values the user can
+	 *                            choose from, or null if no known values exist.
+	 *                            Must be non-empty if customValuesAllowed is false.
+	 * 
+	 * @throws IllegalArgumentException Thrown if knownValues contain null values,
+	 *                                  or if customValuesAllowed is false and no
+	 *                                  known value is provided.
+	 */
+	public MetadataDefinition(String name, Type type, boolean customValuesAllowed, String... knownValues)
+			throws IllegalArgumentException {
+
+		if (knownValues != null) {
+			for (String knownValue : knownValues) {
+				if (knownValue == null)
 					throw new IllegalArgumentException("knownValues must not contain null values");
 			}
 		}
-		if(!customValuesAllowed && (knownValues == null || knownValues.length < 1))
-			throw new IllegalArgumentException("If property does not allow for user values, at least one possible value to choose from must be provided.");
-		if(name == null || name.length() < 1)
+		if (!customValuesAllowed && (knownValues == null || knownValues.length < 1))
+			throw new IllegalArgumentException(
+					"If property does not allow for user values, at least one possible value to choose from must be provided.");
+		if (name == null || name.length() < 1)
 			throw new IllegalArgumentException("Name must be non-null and at least one character long.");
 		this.knownValues = knownValues == null ? new String[0] : knownValues;
 		this.customValuesAllowed = customValuesAllowed;
 		this.type = type;
 		this.name = name;
-		
+
 	}
-	
+
 	/**
-	 * Convenience constructor to generate a property with an array of known values between minVal and maxVal. The values generated correspond to the values returned by {@link #generateValueRange(int, int, String, String)}.
-	 * @param name The name of this property.
-	 * @param customValuesAllowed true if user can define additional values for this property not in the list of knownValues.
-	 * @param type The type of this property, i.e. if it is mandatory to be part of all measurement metadata or not.
-	 * @param minVal minimal value of the array.
-	 * @param maxVal maximal value of the array.
-	 * @param prefix String to prepend to value. Set to null to not prepend any String.
-	 * @param postfix String to append to value. Set to null to not append any String.
+	 * Constructor for a metadata definition with a default value and/or a
+	 * placeholder.
+	 * 
+	 * @param name                The name of this property.
+	 * @param type                The type of this property.
+	 * @param customValuesAllowed true if the user can define additional values.
+	 * @param knownValues         Array of known values, or null.
+	 * @param defaultValue        Value pre-selected respectively pre-filled when
+	 *                            the property is
+	 *                            added to a measurement, or null for none.
+	 * @param placeholder         Grey hint text for free-text fields, or null for
+	 *                            none. Never stored
+	 *                            as a metadata value.
+	 * 
+	 * @throws IllegalArgumentException Thrown under the same conditions as the
+	 *                                  constructor above.
+	 */
+	public MetadataDefinition(String name, Type type, boolean customValuesAllowed, String[] knownValues,
+			String defaultValue, String placeholder) throws IllegalArgumentException {
+		this(name, type, customValuesAllowed, knownValues);
+		setDefaultValue(defaultValue);
+		setPlaceholder(placeholder);
+	}
+
+	/**
+	 * Convenience constructor to generate a property with an array of known values
+	 * between minVal and maxVal. The values generated correspond to the values
+	 * returned by {@link #generateValueRange(int, int, String, String)}.
+	 * 
+	 * @param name                The name of this property.
+	 * @param customValuesAllowed true if user can define additional values for this
+	 *                            property not in the list of knownValues.
+	 * @param type                The type of this property, i.e. if it is mandatory
+	 *                            to be part of all measurement metadata or not.
+	 * @param minVal              minimal value of the array.
+	 * @param maxVal              maximal value of the array.
+	 * @param prefix              String to prepend to value. Set to null to not
+	 *                            prepend any String.
+	 * @param postfix             String to append to value. Set to null to not
+	 *                            append any String.
 	 * @throws IllegalArgumentException Thrown if minVal >= maxVal.
 	 */
-	public MetadataDefinition(String name, Type type, boolean customValuesAllowed, int minVal, int maxVal, String prefix, String postfix) throws IllegalArgumentException
-	{
-		
+	public MetadataDefinition(String name, Type type, boolean customValuesAllowed, int minVal, int maxVal,
+			String prefix, String postfix) throws IllegalArgumentException {
+
 		this(name, type, customValuesAllowed, generateValueRange(minVal, maxVal, prefix, postfix));
 	}
+
 	/**
-	 * Generates maxVal+minVal+1 Strings, where the first one is {@code prefix+Integer.toString(minVal)+postfix}, the second is {@code prefix+Integer.toString(minVal+1)+postfix}, and so on.
-	 * @param minVal minimal value of the array.
-	 * @param maxVal maximal value of the array.
-	 * @param prefix String to prepend to value. Set to null to not prepend any String.
-	 * @param postfix String to append to value. Set to null to not append any String.
+	 * Generates maxVal+minVal+1 Strings, where the first one is
+	 * {@code prefix+Integer.toString(minVal)+postfix}, the second is
+	 * {@code prefix+Integer.toString(minVal+1)+postfix}, and so on.
+	 * 
+	 * @param minVal  minimal value of the array.
+	 * @param maxVal  maximal value of the array.
+	 * @param prefix  String to prepend to value. Set to null to not prepend any
+	 *                String.
+	 * @param postfix String to append to value. Set to null to not append any
+	 *                String.
 	 * @return Array of strings representing the values between minVal and maxVal.
 	 * @throws IllegalArgumentException Thrown if minVal >= maxVal.
 	 */
-	public static String[] generateValueRange(int minVal, int maxVal, String prefix, String postfix) throws IllegalArgumentException
-	{
-		if(maxVal <= minVal)
+	public static String[] generateValueRange(int minVal, int maxVal, String prefix, String postfix)
+			throws IllegalArgumentException {
+		if (maxVal <= minVal)
 			throw new IllegalArgumentException("Minimal value must be smaller than maximal value.");
-		if(prefix == null)
+		if (prefix == null)
 			prefix = "";
-		if(postfix == null)
+		if (postfix == null)
 			postfix = "";
-		String[] values = new String[maxVal-minVal+1];
-		for(int i=0; i<values.length; i++)
-		{
-			values[i] = prefix+Integer.toString(i+minVal)+postfix;
+		String[] values = new String[maxVal - minVal + 1];
+		for (int i = 0; i < values.length; i++) {
+			values[i] = prefix + Integer.toString(i + minVal) + postfix;
 		}
 		return values;
 	}
+
 	/**
 	 * Returns the name of this property.
+	 * 
 	 * @return Name of property.
 	 */
-	public String getName()
-	{
+	public String getName() {
 		return name;
 	}
-	
+
 	@Override
-	public String toString()
-	{
+	public String toString() {
 		return name;
 	}
+
 	/**
-	 * Returns true if user can enter custom values for this property besides choosing one of the known values.
+	 * Returns true if user can enter custom values for this property besides
+	 * choosing one of the known values.
+	 * 
 	 * @return If user can enter custom values.
 	 */
-	public boolean isCustomValuesAllowed()
-	{
+	public boolean isCustomValuesAllowed() {
 		return customValuesAllowed;
 	}
+
 	/**
-	 * Returns the type of this property, i.e. if it is mandatory to include this property in all measurement metadata, or not.
+	 * Returns the type of this property, i.e. if it is mandatory to include this
+	 * property in all measurement metadata, or not.
+	 * 
 	 * @return Type of this measurement.
 	 */
-	public Type getType()
-	{
+	public Type getType() {
 		return type;
 	}
+
 	/**
-	 * Returns an array of all known values for this property the user can choose from.
+	 * Returns an array of all known values for this property the user can choose
+	 * from.
+	 * 
 	 * @return Known values for this property.
 	 */
-	public String[] getKnownValues()
-	{
-		if(knownValues == null)
+	public String[] getKnownValues() {
+		if (knownValues == null)
 			return new String[0];
 		String[] result = new String[knownValues.length];
 		System.arraycopy(knownValues, 0, result, 0, knownValues.length);
 		return result;
 	}
+
+	/**
+	 * Returns the configured default value of this metadata property, or null if
+	 * none is configured.
+	 * <p>
+	 * If custom values are not allowed and the configured default is not among the
+	 * known values, the
+	 * default is considered invalid and null is returned. Callers should then fall
+	 * back to the first
+	 * known value (the behaviour of YouScope before default values were
+	 * introduced).
+	 * </p>
+	 * 
+	 * @return Configured default value, or null.
+	 */
+	public String getDefaultValue() {
+		if (defaultValue == null || defaultValue.isEmpty())
+			return null;
+		if (customValuesAllowed || knownValues == null || knownValues.length == 0)
+			return defaultValue;
+		for (String knownValue : knownValues) {
+			if (defaultValue.equals(knownValue))
+				return defaultValue;
+		}
+		// Default is not an allowed value. Ignore it rather than producing an invalid
+		// property value.
+		return null;
+	}
+
+	/**
+	 * Returns true if a usable default value is configured, see
+	 * {@link #getDefaultValue()}.
+	 * 
+	 * @return True if a default value is configured.
+	 */
+	public boolean hasDefaultValue() {
+		return getDefaultValue() != null;
+	}
+
+	/**
+	 * Sets the default value of this metadata property, or null to remove it.
+	 * 
+	 * @param defaultValue Default value, or null.
+	 */
+	public void setDefaultValue(String defaultValue) {
+		this.defaultValue = (defaultValue == null || defaultValue.isEmpty()) ? null : defaultValue;
+	}
+
+	/**
+	 * Returns the placeholder (grey hint text) of this metadata property, or null
+	 * if none is configured.
+	 * The placeholder is a display hint only and is never stored as a metadata
+	 * value.
+	 * 
+	 * @return Configured placeholder, or null.
+	 */
+	public String getPlaceholder() {
+		return (placeholder == null || placeholder.isEmpty()) ? null : placeholder;
+	}
+
+	/**
+	 * Sets the placeholder (grey hint text) of this metadata property, or null to
+	 * remove it.
+	 * 
+	 * @param placeholder Placeholder, or null.
+	 */
+	public void setPlaceholder(String placeholder) {
+		this.placeholder = (placeholder == null || placeholder.isEmpty()) ? null : placeholder;
+	}
+
 	/**
 	 * Iterator over all known values.
 	 */
 	@Override
 	public Iterator<String> iterator() {
-		return new Iterator<String>()
-		{
+		return new Iterator<String>() {
 			private int currentIndex = 0;
+
 			@Override
 			public boolean hasNext() {
 				return currentIndex < knownValues.length;
 			}
 
 			@Override
-			public String next() 
-			{
-				if(hasNext())
+			public String next() {
+				if (!hasNext())
 					throw new NoSuchElementException();
 				return knownValues[currentIndex++];
 			}
 
 			@Override
-			public void remove() 
-			{
+			public void remove() {
 				throw new UnsupportedOperationException();
 			}
-	
+
 		};
 	}
+
 	@Override
 	public int compareTo(MetadataDefinition other) {
-		if(type == Type.MANDATORY && other.type != Type.MANDATORY)
+		if (type == Type.MANDATORY && other.type != Type.MANDATORY)
 			return -1;
-		else if(type != Type.MANDATORY && other.type == Type.MANDATORY)
+		else if (type != Type.MANDATORY && other.type == Type.MANDATORY)
 			return 1;
 		return name.compareTo(other.name);
 	}
