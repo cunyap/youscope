@@ -91,22 +91,6 @@ createExe {
 	variables = ['PATH=%EXEDIR%\\drivers64;%PATH%']
 }
 
-// 32 bit version of exe
-task createExe32(type: edu.sc.seis.launch4j.tasks.Launch4jLibraryTask) {
-    outfile = 'YouScope32.exe'
-    jreRuntimeBits = "32"
-    jvmOptions = ["-Dpython.console.encoding=UTF-8",
-              "-Djava.library.path=drivers32",
-              "--enable-native-access=ALL-UNNAMED",
-              "--add-opens=java.base/java.util=ALL-UNNAMED",
-              "--add-opens=java.base/java.lang=ALL-UNNAMED",
-              "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
-              "--add-opens=java.base/java.text=ALL-UNNAMED",
-              "--add-opens=java.base/java.math=ALL-UNNAMED",
-              "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED"]
-	variables = ['PATH=%EXEDIR%\\drivers32;%PATH%']
-}
-
 // Delete annoying start scripts. We are using exe's instead!
 startScripts {
     doLast {
@@ -285,6 +269,12 @@ task addMSVC {
     outputs.dir msvc
 }
 
+// Populated by CI from the Temurin JDK 21 installation.
+task bundledRuntime {
+    def runtime = file("${rootProject.projectDir}/runtime")
+    outputs.dir runtime
+}
+
 // Package distribution
 distributions {
     nsis {
@@ -300,11 +290,10 @@ distributions {
 			}
         }
         contents {
+            from(bundledRuntime) {
+                into 'runtime'
+            }
 			from(createExe)
-			{
-				into ''
-			}
-			from(createExe32)
 			{
 				into ''
 			}
@@ -368,24 +357,9 @@ nsis {
 	additionalPlugins = ['AccessControl']
 	variables = ['WIN64':'True']
 }
-task createInstaller32(type: com.github.langmo.gradlensis.GradleNsisTask) {
-	variables = ['WIN32':'True']
-}
-task createInstaller3264(type: com.github.langmo.gradlensis.GradleNsisTask) {
-	variables = ['WIN32':'True', 'WIN64':'True']
-}
-createInstaller.dependsOn installNsisDist
-createInstaller32.dependsOn installNsisDist
-createInstaller3264.dependsOn installNsisDist
+// 64-bit only. Compatibility alias for existing scripts.
 task createInstallers {
-	dependsOn ":createInstaller32"
-	dependsOn ":createInstaller"
-	dependsOn ":createInstaller3264"
+    dependsOn ":createInstaller"
 }
-def NSIS_GROUP = 'nsis'
-createInstaller32.group = createInstaller.group
-createInstaller32.description = createInstaller.description
-createInstaller3264.group = createInstaller.group
-createInstaller3264.description = createInstaller.description
 createInstallers.group = createInstaller.group
-createInstallers.description = "Creates both the 32bit, the 64bit, and the compined 32/64bit installers"
+createInstallers.description = "Creates the 64-bit YouScope installer"

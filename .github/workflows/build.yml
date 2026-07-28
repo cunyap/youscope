@@ -1,8 +1,11 @@
 name: YouScope CI
+
 on:
   push:
-    branches:
-      - master
+    branches: [master]
+
+permissions:
+  contents: write
 
 jobs:
   nightly:
@@ -11,72 +14,68 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # JDK 17+ is required for GraalPy plugin compilation and runtime.
-      # All existing plugins still compile at Java 1.7 source level.
-      - name: Set up JDK 21
+      - name: Install JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
+          distribution: temurin
 
-      # Verify libs/ contains GraalPy + BouncyCastle JARs committed to repo.
-      # If any are missing, download them now (fallback for fresh checkouts
-      # before the JARs are committed).
-      - name: Ensure GraalPy runtime JARs present in libs/
+      - name: Save JDK 21 location
+        shell: pwsh
+        run: '"JDK21_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+
+      - name: Set up default JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: temurin
+          cache: gradle
+
+      - name: Configure Gradle Java toolchains
         shell: pwsh
         run: |
-          $M = "https://repo1.maven.org/maven2"
-          $V = "24.1.0"
-          New-Item -ItemType Directory -Force -Path "libs" | Out-Null
-          $jars = @{
-            "polyglot-$V.jar"            = "$M/org/graalvm/polyglot/polyglot/$V/polyglot-$V.jar"
-            "python-language-$V.jar"     = "$M/org/graalvm/python/python-language/$V/python-language-$V.jar"
-            "python-resources-$V.jar"    = "$M/org/graalvm/python/python-resources/$V/python-resources-$V.jar"
-            "truffle-api-$V.jar"         = "$M/org/graalvm/truffle/truffle-api/$V/truffle-api-$V.jar"
-            "truffle-runtime-$V.jar"     = "$M/org/graalvm/truffle/truffle-runtime/$V/truffle-runtime-$V.jar"
-            "nativeimage-$V.jar"         = "$M/org/graalvm/sdk/nativeimage/$V/nativeimage-$V.jar"
-            "word-$V.jar"                = "$M/org/graalvm/sdk/word/$V/word-$V.jar"
-            "collections-$V.jar"         = "$M/org/graalvm/sdk/collections/$V/collections-$V.jar"
-            "regex-$V.jar"               = "$M/org/graalvm/regex/regex/$V/regex-$V.jar"
-            "icu4j-74.2.jar"             = "$M/com/ibm/icu/icu4j/74.2/icu4j-74.2.jar"
-            "icu4j-24.1.0.jar"           = "$M/org/graalvm/shadowed/icu4j/24.1.0/icu4j-24.1.0.jar"
-            "bcprov-jdk18on-1.78.1.jar"  = "$M/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.jar"
-            "bcpkix-jdk18on-1.78.1.jar"  = "$M/org/bouncycastle/bcpkix-jdk18on/1.78.1/bcpkix-jdk18on-1.78.1.jar"
-            "bcutil-jdk18on-1.78.1.jar"  = "$M/org/bouncycastle/bcutil-jdk18on/1.78.1/bcutil-jdk18on-1.78.1.jar"
-          }
-          foreach ($name in $jars.Keys) {
-            $dest = Join-Path "libs" $name
-            if (-not (Test-Path $dest)) {
-              Write-Host "Downloading $name"
-              Invoke-WebRequest -Uri $jars[$name] -OutFile $dest -UseBasicParsing
-            } else {
-              Write-Host "Present: $name"
-            }
-          }
+          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.gradle" | Out-Null
+          $jdk8 = $env:JAVA_HOME -replace '\\', '/'
+          $jdk21 = $env:JDK21_HOME -replace '\\', '/'
+          "org.gradle.java.installations.paths=$jdk8,$jdk21" |
+            Out-File -FilePath "$env:USERPROFILE\.gradle\gradle.properties" -Encoding ascii -Append
 
-      - name: Build with Gradle
-        run: ./gradlew createInstallers
+      - name: Verify Java environments
+        shell: pwsh
+        run: |
+          java -version
+          ./gradlew --version
+          & "$env:JDK21_HOME\bin\java.exe" -version
+          & "$env:JDK21_HOME\bin\javac.exe" -version
 
-      - name: Upload 64bit installer as artifact
+      - name: Prepare bundled JDK 21 runtime
+        shell: pwsh
+        run: |
+          $runtime = Join-Path $PWD "runtime"
+          if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $runtime | Out-Null
+          Copy-Item -Path "$env:JDK21_HOME\*" -Destination $runtime -Recurse -Force
+          if (-not (Test-Path "$runtime\bin\java.exe")) { throw "Bundled JDK 21 is incomplete" }
+
+      - name: Build 64-bit installer
+        shell: pwsh
+        run: ./gradlew --no-daemon createInstaller
+
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $installer = "build\distributions\YouScope_64bit_Installer.exe"
+          if (-not (Test-Path $installer)) { throw "Installer not found: $installer" }
+          Get-Item $installer | Format-List FullName, Length
+
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: YouScope_64bit_Installer.exe
+          name: YouScope_64bit_Installer
           path: build/distributions/YouScope_64bit_Installer.exe
+          if-no-files-found: error
 
-      - name: Upload 32bit installer as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: YouScope_32bit_Installer.exe
-          path: build/distributions/YouScope_32bit_Installer.exe
-
-      - name: Upload 32/64bit installer as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: YouScope_3264bit_Installer.exe
-          path: build/distributions/YouScope_3264bit_Installer.exe
-
-      - name: Create or Update Release
+      - name: Create nightly release
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -87,7 +86,7 @@ jobs:
           draft: false
           prerelease: true
 
-      - name: Upload 64bit installer to release
+      - name: Upload installer to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -95,24 +94,4 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: build/distributions/YouScope_64bit_Installer.exe
           asset_name: YouScope_Installer_${{ github.run_number }}-64bit.exe
-          asset_content_type: application/exe
-
-      - name: Upload 32bit installer to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/distributions/YouScope_32bit_Installer.exe
-          asset_name: YouScope_Installer_${{ github.run_number }}-32bit.exe
-          asset_content_type: application/exe
-
-      - name: Upload 32/64bit installer to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/distributions/YouScope_3264bit_Installer.exe
-          asset_name: YouScope_Installer_${{ github.run_number }}-3264bit.exe
-          asset_content_type: application/exe
+          asset_content_type: application/vnd.microsoft.portable-executable

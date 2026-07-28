@@ -1,14 +1,14 @@
 ;NSIS Installer for YouScope
-;Written by Moritz Lang
+;Written by Moritz Lang 
+;Andreas P. Cuny - uninstaller and new plugin support
 ;---------------------
 ;--- Configuration ---
 ;---------------------
 
-; Define either WIN64, WIN32 or both to define which installer is created (default: WIN64)
-!ifndef WIN64
-	!ifndef WIN32
-		!define WIN64
-	!endif
+; YouScope is distributed as a 64-bit application.
+; The installer contains its own JDK 21 runtime.
+!define WIN64
+
 !endif
 
 
@@ -23,27 +23,13 @@
 ;General
 ;Name and file
 Name "YouScope"
-!ifndef WIN64
-	OutFile "YouScope_32bit_Installer.exe"
-!else ifndef WIN32
-	OutFile "YouScope_64bit_Installer.exe"
-!else
-	OutFile "YouScope_3264bit_Installer.exe"
-!endif
+OutFile "YouScope_64bit_Installer.exe"
 
 ;Default installation folder
-!ifndef WIN64
-	InstallDir "$PROGRAMFILES32\YouScope2"
-!else
-	InstallDir "$PROGRAMFILES64\YouScope2"
-!endif
-  
+InstallDir "$PROGRAMFILES64\YouScope2"
+
 ;Get installation folder from registry if available
-!ifndef WIN64
-	InstallDirRegKey HKCU "Software\YouScope32" ""
-!else
-	InstallDirRegKey HKCU "Software\YouScope64" ""
-!endif
+InstallDirRegKey HKCU "Software\YouScope64" ""
 
 ;Request application privileges for Windows Vista/7
 RequestExecutionLevel admin
@@ -133,12 +119,12 @@ Section "-Main Program" SecMain
 	Delete "$INSTDIR\vcredist_x64.exe"
 			
 	FILE LICENSE
-	!ifdef WIN64
-		FILE YouScope64.exe
-	!endif
-	!ifdef WIN32
-		FILE YouScope32.exe
-	!endif
+	FILE YouScope64.exe
+
+    ; Private JDK 21. YouScope does not require a system Java installation.
+    SetOutPath "$INSTDIR\runtime"
+    FILE /r "runtime\*"
+    SetOutPath "$INSTDIR"
 	
 	AccessControl::GrantOnFile "$INSTDIR" "(BU)" "FullAccess" 
 	Pop $0
@@ -147,23 +133,27 @@ Section "-Main Program" SecMain
 	FILE "lib\*"
 
 	;Store installation folder
-	!ifndef WIN64
-		WriteRegStr HKCU "Software\YouScope32" "" $INSTDIR
-	!else
-		WriteRegStr HKCU "Software\YouScope64" "" $INSTDIR
-	!endif
-  	 
+    WriteRegStr HKCU "Software\YouScope64" "" $INSTDIR
+
+    WriteUninstaller "$INSTDIR\Uninstall.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "DisplayName" "YouScope - Microscope Control"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "DisplayIcon" "$INSTDIR\YouScope64.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "Publisher" "YouScope.org"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "DisplayVersion" "2.4.0"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "URLInfoAbout" "http://www.youscope.org"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope" "NoRepair" 1
+
 	; Add start menu entry
 	!insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 		;Create shortcuts
 		SetShellVarContext all
 		CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
-		!ifdef WIN64
-			CreateShortCut "$SMPROGRAMS\$StartMenuFolder\YouScope64.lnk" "$INSTDIR\YouScope64.exe"
-		!endif
-		!ifdef WIN32
-			CreateShortCut "$SMPROGRAMS\$StartMenuFolder\YouScope32.lnk" "$INSTDIR\YouScope32.exe"
-		!endif
+		CreateShortCut "$SMPROGRAMS\$StartMenuFolder\YouScope64.lnk" "$INSTDIR\YouScope64.exe"
+        CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 	!insertmacro MUI_STARTMENU_WRITE_END
 
 SectionEnd
@@ -197,19 +187,10 @@ SectionEnd
 Section "!Device Drivers" SecDeviceDrivers
 	SectionIn 1 2 3
   
-	!ifdef WIN64
 		SetOutPath "$INSTDIR\drivers64"
 		FILE /r "drivers64\*"
 		SetOutPath "$INSTDIR\drivers64\nemesys"
 		RegDLL "$INSTDIR\drivers64\nemesys\NemesysDotCom.dll"
-	!endif
-	!ifdef WIN32
-		SetOutPath "$INSTDIR\drivers32"
-		FILE /r "drivers32\*"
-		!ifndef WIN64
-			SetOutPath "$INSTDIR\drivers32\nemesys"
-			RegDLL "$INSTDIR\drivers32\nemesys\NemesysDotCom.dll"
-		!endif
 	!endif
 SectionEnd
 
@@ -602,14 +583,16 @@ SectionGroup "Misc" SecOptional
 	SectionEnd
 
 	;--------------------------------
-	;Installer Jython
-	Section "Jython" SecJython
-	  	SetOutPath "$INSTDIR\plugins"
-	  	SectionIn 1 3 4
+	; GraalPy / Python 3 scripting.
+    ; Runtime dependencies are resolved and copied by Gradle into lib/.
+	Section "GraalPy Scripting (Python 3)" SecGraalPy
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-graalpy-scripting.jar"
 
-	  	;Files:
-  		FILE "plugins\jython-standalone-2.7.0.jar"
-		FILE "plugins\LICENSE_jython-standalone-2.7.0.txt"
+      SetOutPath "$INSTDIR"
+      FILE /nonfatal "setup_graalpy_venv.bat"
+      FILE /nonfatal "setup_graalpy_venv.ps1"
 	SectionEnd
 
 	;--------------------------------
@@ -744,6 +727,45 @@ Section "Example Scripts" SecExampleScripts
 	FILE /r "scripts\"  
 SectionEnd
 
+
+;--------------------------------
+; Uninstaller
+Section "Uninstall"
+    RMDir /r "$INSTDIR\runtime"
+    RMDir /r "$INSTDIR\drivers64"
+    RMDir /r "$INSTDIR\lib"
+    RMDir /r "$INSTDIR\plugins"
+    RMDir /r "$INSTDIR\documentation"
+	; Remove Python environments
+    RMDir /r "$INSTDIR\graalpy-venv"
+    RMDir /r "$INSTDIR\cpython-env"
+    RMDir /r "$INSTDIR\graalpy-standalone"
+    RMDir /r "$INSTDIR\uv"
+
+    Delete "$INSTDIR\YouScope64.exe"
+    Delete "$INSTDIR\LICENSE"
+    Delete "$INSTDIR\YSConfig_demo.cfg"
+    Delete "$INSTDIR\setup_graalpy_venv.bat"
+    Delete "$INSTDIR\setup_graalpy_venv.ps1"
+
+    ; Do not recursively remove scripts or $INSTDIR: these may contain
+    ; measurements, configuration, user scripts, or Python environments.
+    Delete "$INSTDIR\Uninstall.exe"
+
+    !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
+    SetShellVarContext all
+    Delete "$SMPROGRAMS\$StartMenuFolder\YouScope64.lnk"
+    Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
+    RMDir "$SMPROGRAMS\$StartMenuFolder"
+
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope"
+    DeleteRegKey HKCU "Software\YouScope64"
+
+    RMDir "$INSTDIR"
+
+    MessageBox MB_OK "YouScope has been uninstalled. User-created data remaining in the installation directory was preserved."
+SectionEnd
+
 ;--------------------------------
 ;Descriptions
 	;Language strings
@@ -790,7 +812,7 @@ SectionEnd
 	
 	LangString DESC_SecOptional ${LANG_ENGLISH} "Optional functionality."
 	LangString DESC_SecMatlab ${LANG_ENGLISH} "Enabling Matlab(TM) scripting. An installation of Matlab is needed for this plugin."
-	LangString DESC_SecJython ${LANG_ENGLISH} "Enabling Jython scripting."
+	LangString DESC_SecGraalPy ${LANG_ENGLISH} "Python 3 scripting through GraalPy. YouScope includes the required JDK 21 runtime."
 	LangString DESC_SecImageFormats ${LANG_ENGLISH} "Possibility to save images in various image formats like tiff."
 
 	LangString DESC_SecDocumentation ${LANG_ENGLISH} "In program documentation of the YouScope tools and measurement types."
@@ -880,7 +902,7 @@ SectionEnd
 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecOptional} $(DESC_SecOptional) 	
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecMatlab} $(DESC_SecMatlab)
-		!insertmacro MUI_DESCRIPTION_TEXT ${SecJython} $(DESC_SecJython)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecGraalPy} $(DESC_SecGraalPy)
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecImageFormats} $(DESC_SecImageFormats)
 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecDocumentation} $(DESC_SecDocumentation) 

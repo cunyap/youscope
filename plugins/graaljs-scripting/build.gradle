@@ -22,11 +22,12 @@ compileJava.doFirst {
 }
 
 afterEvaluate {
+    def jvm7 = 7
     configurations.apiElements.attributes {
-        attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 7)
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, jvm7)
     }
     configurations.runtimeElements.attributes {
-        attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 7)
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, jvm7)
     }
 }
 
