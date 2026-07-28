@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - update API supporting additional magnification
  ******************************************************************************/
 /**
  * 
@@ -36,26 +37,25 @@ import org.youscope.common.microscope.MicroscopeException;
 
 /**
  * Class to write the current microscope configuration to a config file.
+ * 
  * @author Moritz Lang
  * 
  */
-class ConfigFileWriter extends ConfigFileManipulator
-{
-	private final MicroscopeInternal	microscope;
-	private final ChannelManagerImpl	channelManager;
-	private final PixelSizeManagerImpl	pixelSizeManager;
+class ConfigFileWriter extends ConfigFileManipulator {
+	private final MicroscopeInternal microscope;
+	private final ChannelManagerImpl channelManager;
+	private final PixelSizeManagerImpl pixelSizeManager;
 
-	public ConfigFileWriter(MicroscopeInternal microscope, ChannelManagerImpl channelManager, PixelSizeManagerImpl pixelSizeManager)
-	{
+	public ConfigFileWriter(MicroscopeInternal microscope, ChannelManagerImpl channelManager,
+			PixelSizeManagerImpl pixelSizeManager) {
 		this.microscope = microscope;
 		this.channelManager = channelManager;
 		this.pixelSizeManager = pixelSizeManager;
 	}
 
-	public void writeConfigFile(Writer outputWriter, @SuppressWarnings("unused") int accessID) throws MicroscopeConfigurationException
-	{
-		try(BufferedWriter writer = new BufferedWriter(outputWriter);)
-		{
+	public void writeConfigFile(Writer outputWriter, @SuppressWarnings("unused") int accessID)
+			throws MicroscopeConfigurationException {
+		try (BufferedWriter writer = new BufferedWriter(outputWriter);) {
 
 			writeHeader(writer);
 			writeEmptyLine(writer);
@@ -90,66 +90,60 @@ class ConfigFileWriter extends ConfigFileManipulator
 			writeEmptyLine(writer);
 			writePixelSizeSettings(writer);
 			writeEmptyLine(writer);
-		}
-		catch(Exception e)
-		{
+		} catch (Exception e) {
 			throw new MicroscopeConfigurationException(e);
 		}
 	}
 
-	private static void writeIdentification(BufferedWriter writer) throws IOException
-	{
+	private static void writeIdentification(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Identification of how and for which machines this configuration was created.");
 		writeComment(writer, "Do not remove or edit the following lines.");
-		writeIdentTokens(writer, ConfigFileIdentification.IDENT_GENERATOR, ConfigFileIdentification.THIS_GENERATOR.name, ConfigFileIdentification.THIS_GENERATOR.version);
-		for(ConfigFileGenerator compatibleGenerator : ConfigFileIdentification.COMPATIBLE_GENERATORS)
-		{
-			writeIdentTokens(writer, ConfigFileIdentification.IDENT_COMPATIBLE, compatibleGenerator.name, compatibleGenerator.version);
+		writeIdentTokens(writer, ConfigFileIdentification.IDENT_GENERATOR, ConfigFileIdentification.THIS_GENERATOR.name,
+				ConfigFileIdentification.THIS_GENERATOR.version);
+		for (ConfigFileGenerator compatibleGenerator : ConfigFileIdentification.COMPATIBLE_GENERATORS) {
+			writeIdentTokens(writer, ConfigFileIdentification.IDENT_COMPATIBLE, compatibleGenerator.name,
+					compatibleGenerator.version);
 		}
 	}
 
-	private static void writeIdentTokens(BufferedWriter writer, String ident, String... tokens) throws IOException
-	{
+	private static void writeIdentTokens(BufferedWriter writer, String ident, String... tokens) throws IOException {
 		writer.write("#@" + ident);
-		for(int i = 0; i < tokens.length; i++)
-		{
+		for (int i = 0; i < tokens.length; i++) {
 			writer.write(',' + tokens[i]);
 		}
 		writeEmptyLine(writer);
 	}
 
-	private static void writeCommand(BufferedWriter writer, String[] command, String... tokens) throws ArrayIndexOutOfBoundsException, IOException
-	{
+	private static void writeCommand(BufferedWriter writer, String[] command, String... tokens)
+			throws ArrayIndexOutOfBoundsException, IOException {
 		int tokenIndex = 0;
 		String[] filledCommand = new String[command.length];
-		for(int i = 0; i < command.length; i++)
-		{
-			if(command[i] != null)
+		for (int i = 0; i < command.length; i++) {
+			if (command[i] != null)
 				filledCommand[i] = command[i];
-			else
-			{
-				if(tokenIndex >= tokens.length)
-					throw new ArrayIndexOutOfBoundsException("Not enough tokens for command.\n" + getCommandVersusTokensLayout(command, tokens));
+			else {
+				if (tokenIndex >= tokens.length)
+					throw new ArrayIndexOutOfBoundsException(
+							"Not enough tokens for command.\n" + getCommandVersusTokensLayout(command, tokens));
 				filledCommand[i] = tokens[tokenIndex];
 				tokenIndex++;
 			}
 		}
-		if(tokenIndex < tokens.length)
-			throw new ArrayIndexOutOfBoundsException("To many tokens for command.\n" + getCommandVersusTokensLayout(command, tokens));
+		if (tokenIndex < tokens.length)
+			throw new ArrayIndexOutOfBoundsException(
+					"To many tokens for command.\n" + getCommandVersusTokensLayout(command, tokens));
 		writeTokens(writer, filledCommand);
 	}
 
-	private static String getCommandVersusTokensLayout(String[] command, String[] tokens)
-	{
+	private static String getCommandVersusTokensLayout(String[] command, String[] tokens) {
 		String returnValue = "Suplied Layout: ";
 		boolean first = true;
-		for(String c : command)
-		{
-			if(first)
+		for (String c : command) {
+			if (first)
 				first = false;
 			else
 				returnValue += ",";
-			if(c != null)
+			if (c != null)
 				returnValue += c;
 			else
 				returnValue += "*";
@@ -158,9 +152,8 @@ class ConfigFileWriter extends ConfigFileManipulator
 
 		returnValue += "Suplied Layout: ";
 		first = true;
-		for(String c : tokens)
-		{
-			if(first)
+		for (String c : tokens) {
+			if (first)
 				first = false;
 			else
 				returnValue += ",";
@@ -170,95 +163,90 @@ class ConfigFileWriter extends ConfigFileManipulator
 
 	}
 
-	private void writePixelSizeSettings(BufferedWriter writer) throws IOException
-	{
+	private void writePixelSizeSettings(BufferedWriter writer) throws IOException {
 		boolean firstConfig = true;
-		for(PixelSizeImpl pixelSize : pixelSizeManager.getPixelSizes())
-		{
-			if(firstConfig)
-			{
+		for (PixelSizeImpl pixelSize : pixelSizeManager.getPixelSizes()) {
+			if (firstConfig) {
 				firstConfig = false;
-			}
-			else
-			{
+			} else {
 				writeEmptyLine(writer);
 			}
 			writeComment(writer, "Pixel Size setting " + pixelSize.getPixelSizeID() + ".");
-			for(DeviceSetting setting : pixelSize.getPixelSizeSettings())
-			{
-				writeCommand(writer, COMMAND_CONFIG_PIXEL_SIZE, pixelSize.getPixelSizeID(), setting.getDevice(), setting.getProperty(), setting.getStringValue());
+			for (DeviceSetting setting : pixelSize.getPixelSizeSettings()) {
+				writeCommand(writer, COMMAND_CONFIG_PIXEL_SIZE, pixelSize.getPixelSizeID(), setting.getDevice(),
+						setting.getProperty(), setting.getStringValue());
 			}
-			writeCommand(writer, COMMAND_PIXEL_SIZE, pixelSize.getPixelSizeID(), Double.toString(pixelSize.getPixelSize()));
+			writeCommand(writer, COMMAND_PIXEL_SIZE, pixelSize.getPixelSizeID(),
+					Double.toString(pixelSize.getPixelSize()));
+			// Optional magnification components. Written only when all three are present,
+			// so a pixel
+			// size configured the old way (single value) produces a byte-for-byte unchanged
+			// file. Old
+			// YouScope versions ignore commands they do not recognise, so this is backwards
+			// compatible.
+			if (pixelSize.hasMagnificationComponents()) {
+				writeCommand(writer, COMMAND_PIXEL_SIZE_CAMERA_PITCH, pixelSize.getPixelSizeID(),
+						Double.toString(pixelSize.getCameraPixelPitchMicrons().doubleValue()));
+				writeCommand(writer, COMMAND_PIXEL_SIZE_OBJECTIVE_MAG, pixelSize.getPixelSizeID(),
+						Double.toString(pixelSize.getObjectiveMagnification().doubleValue()));
+				writeCommand(writer, COMMAND_PIXEL_SIZE_ADDITIONAL_MAG, pixelSize.getPixelSizeID(),
+						Double.toString(pixelSize.getAdditionalMagnification().doubleValue()));
+			}
 		}
 	}
 
-	private void writeChannels(BufferedWriter writer) throws IOException
-	{
+	private void writeChannels(BufferedWriter writer) throws IOException {
 		boolean firstChannel = true;
-		for(String channelGroupID : channelManager.getChannelGroupIDs())
-		{
-			for(ChannelImpl channel : channelManager.getChannels(channelGroupID))
-			{
-				if(firstChannel)
-				{
+		for (String channelGroupID : channelManager.getChannelGroupIDs()) {
+			for (ChannelImpl channel : channelManager.getChannels(channelGroupID)) {
+				if (firstChannel) {
 					firstChannel = false;
-				}
-				else
-				{
+				} else {
 					writeEmptyLine(writer);
 				}
 
 				// YouScope supports on and off settings for channels, MicroManager not.
-				// To stay compatible, we add an "_on", resp. "_off" behind the channel name, iff
+				// To stay compatible, we add an "_on", resp. "_off" behind the channel name,
+				// iff
 				// there exists channel off settings (otherwise not).
 				boolean useSuffix = channel.getChannelOffSettings().length > 0;
 				String channelOnID = channel.getChannelID() + (useSuffix ? "_on" : "");
 				String channelOffID = channel.getChannelID() + (useSuffix ? "_off" : "");
 
 				writeComment(writer, "Channel " + channelGroupID + "." + channel.getChannelID());
-				for(DeviceSetting setting : channel.getChannelOnSettings())
-				{
-					writeCommand(writer, COMMAND_CHANNEL, channelGroupID, channelOnID, setting.getDevice(), setting.getProperty(), setting.getStringValue());
+				for (DeviceSetting setting : channel.getChannelOnSettings()) {
+					writeCommand(writer, COMMAND_CHANNEL, channelGroupID, channelOnID, setting.getDevice(),
+							setting.getProperty(), setting.getStringValue());
 				}
-				for(DeviceSetting setting : channel.getChannelOffSettings())
-				{
-					writeCommand(writer, COMMAND_CHANNEL, channelGroupID, channelOffID, setting.getDevice(), setting.getProperty(), setting.getStringValue());
+				for (DeviceSetting setting : channel.getChannelOffSettings()) {
+					writeCommand(writer, COMMAND_CHANNEL, channelGroupID, channelOffID, setting.getDevice(),
+							setting.getProperty(), setting.getStringValue());
 				}
 				String shutterID = channel.getShutter();
-				if(shutterID == null)
-				{
+				if (shutterID == null) {
 					writeCommand(writer, COMMAND_CHANNEL_AUTOSHUTTER, channelGroupID, channelOnID, "0");
-				}
-				else
-				{
+				} else {
 					writeCommand(writer, COMMAND_CHANNEL_AUTOSHUTTER, channelGroupID, channelOnID, "1");
 					writeCommand(writer, COMMAND_CHANNEL_AUTOSHUTTER_DEVICE, channelGroupID, channelOnID, shutterID);
 				}
-				if(channel.getChannelTimeout() > 0)
-				{
-					writeCommand(writer, COMMAND_CHANNEL_DELAY, channelGroupID, channelOnID, Integer.toString(channel.getChannelTimeout()));
+				if (channel.getChannelTimeout() > 0) {
+					writeCommand(writer, COMMAND_CHANNEL_DELAY, channelGroupID, channelOnID,
+							Integer.toString(channel.getChannelTimeout()));
 				}
 			}
 		}
 	}
 
-	private void writeLabels(BufferedWriter writer) throws IOException
-	{
+	private void writeLabels(BufferedWriter writer) throws IOException {
 		boolean firstDevice = true;
-		for(StateDeviceInternal device : microscope.getStateDevices())
-		{
+		for (StateDeviceInternal device : microscope.getStateDevices()) {
 			boolean firstLabel = true;
 			String[] labels = device.getStateLabels();
-			for(int i = 0; i < labels.length; i++)
-			{
-				if(firstLabel)
-				{
-					if(firstDevice)
-					{
+			for (int i = 0; i < labels.length; i++) {
+				if (firstLabel) {
+					if (firstDevice) {
 						firstDevice = false;
-					}
-					else
-					{
+					} else {
 						writeEmptyLine(writer);
 					}
 					firstLabel = false;
@@ -269,91 +257,69 @@ class ConfigFileWriter extends ConfigFileManipulator
 		}
 	}
 
-	private void writeSynchroDevices(BufferedWriter writer) throws IOException
-	{
+	private void writeSynchroDevices(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Devices to which imaging process is synchronized.");
-		for(String deviceID : microscope.getMicroscopeConfiguration().getImageSynchronizationDevices())
-		{
+		for (String deviceID : microscope.getMicroscopeConfiguration().getImageSynchronizationDevices()) {
 			writeCommand(writer, COMMAND_IMAGE_SYNCHRO, deviceID);
 		}
 	}
 
-	private void writeStandardDevices(BufferedWriter writer) throws IOException
-	{
+	private void writeStandardDevices(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Standard devices (\"Roles\").");
-		try
-		{
+		try {
 			DeviceInternal device = microscope.getAutoFocusDevice();
 			writeCommand(writer, COMMAND_STANDARD_AUTO_FOCUS, device.getDeviceID());
-		}
-		catch(@SuppressWarnings("unused") DeviceException e)
-		{
+		} catch (@SuppressWarnings("unused") DeviceException e) {
 			// Do nothing, standard device is just not defined.
 		}
 
-		try
-		{
+		try {
 			DeviceInternal device = microscope.getCameraDevice();
 			writeCommand(writer, COMMAND_STANDARD_CAMERA, device.getDeviceID());
-		}
-		catch(@SuppressWarnings("unused") DeviceException e)
-		{
+		} catch (@SuppressWarnings("unused") DeviceException e) {
 			// Do nothing, standard device is just not defined.
 		}
 
-		try
-		{
+		try {
 			DeviceInternal device = microscope.getShutterDevice();
 			writeCommand(writer, COMMAND_STANDARD_SHUTTER, device.getDeviceID());
-		}
-		catch(@SuppressWarnings("unused") DeviceException e)
-		{
+		} catch (@SuppressWarnings("unused") DeviceException e) {
 			// Do nothing, standard device is just not defined.
 		}
 
-		try
-		{
+		try {
 			DeviceInternal device = microscope.getFocusDevice();
 			writeCommand(writer, COMMAND_STANDARD_FOCUS, device.getDeviceID());
-		}
-		catch(@SuppressWarnings("unused") DeviceException e)
-		{
+		} catch (@SuppressWarnings("unused") DeviceException e) {
 			// Do nothing, standard device is just not defined.
 		}
 
-		try
-		{
+		try {
 			DeviceInternal device = microscope.getStageDevice();
 			writeCommand(writer, COMMAND_STANDARD_STAGE, device.getDeviceID());
-		}
-		catch(@SuppressWarnings("unused") DeviceException e)
-		{
+		} catch (@SuppressWarnings("unused") DeviceException e) {
 			// Do nothing, standard device is just not defined.
 		}
 	}
 
-	private void writeDelays(BufferedWriter writer) throws IOException
-	{
+	private void writeDelays(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Explicit delays (in ms).");
-		for(DeviceInternal device : microscope.getDevices())
-		{
-			if(device.getExplicitDelay() > 0)
-			{
+		for (DeviceInternal device : microscope.getDevices()) {
+			if (device.getExplicitDelay() > 0) {
 				writeCommand(writer, COMMAND_DELAY, device.getDeviceID(), Double.toString(device.getExplicitDelay()));
 			}
 		}
 	}
 
-	private void writeDevices(BufferedWriter writer) throws IOException, MicroscopeDriverException, InterruptedException, MicroscopeException
-	{
+	private void writeDevices(BufferedWriter writer)
+			throws IOException, MicroscopeDriverException, InterruptedException, MicroscopeException {
 		writeComment(writer, "Devices declaration.");
 		// Get devices.
 		DeviceInternal[] devices = microscope.getDevices();
 		// Sort the devices in the order as they were initialized.
 		Arrays.sort(devices, new DeviceInitializationTimeComparator());
 		// Write the device names and drivers.
-		for(DeviceInternal device : devices)
-		{
+		for (DeviceInternal device : devices) {
 			writeCommand(writer, COMMAND_DEVICE, device.getDeviceID(), device.getLibraryID(), device.getDriverID());
 		}
 
@@ -361,25 +327,21 @@ class ConfigFileWriter extends ConfigFileManipulator
 
 		// Write the pre-initialization settings
 		writeComment(writer, "Pre-initialization settings.");
-		for(DeviceInternal device : devices)
-		{
+		for (DeviceInternal device : devices) {
 			String deviceID = device.getDeviceID();
-			for(PropertyInternal property : device.getProperties())
-			{
+			for (PropertyInternal property : device.getProperties()) {
 				String propertyID = property.getPropertyID();
-				if(property.isPreInitializationProperty())
-				{
+				if (property.isPreInitializationProperty()) {
 					writeCommand(writer, COMMAND_PROPERTY, deviceID, propertyID, property.getValue());
 				}
 			}
 		}
-		
+
 		// Hub references
 		writeComment(writer, "Hubs/Parent devices.");
-		for(DeviceInternal device : devices)
-		{
+		for (DeviceInternal device : devices) {
 			HubDeviceInternal hub = device.getHub();
-			if(hub==null)
+			if (hub == null)
 				continue;
 			String hubID = hub.getDeviceID();
 			String deviceID = device.getDeviceID();
@@ -389,95 +351,84 @@ class ConfigFileWriter extends ConfigFileManipulator
 
 	/**
 	 * Comparator to sort the devices depending on their initialization time.
-	 * For some specific devices it is important that they are initialized in the right order. Since we do not know the right order,
-	 * we just use the order of initialization, since we know that this order works (otherwise, the initialization would have failed).
+	 * For some specific devices it is important that they are initialized in the
+	 * right order. Since we do not know the right order,
+	 * we just use the order of initialization, since we know that this order works
+	 * (otherwise, the initialization would have failed).
+	 * 
 	 * @author Moritz Lang
 	 * 
 	 */
-	private class DeviceInitializationTimeComparator implements Comparator<DeviceInternal>
-	{
+	private class DeviceInitializationTimeComparator implements Comparator<DeviceInternal> {
 		@Override
-		public int compare(DeviceInternal o1, DeviceInternal o2)
-		{
+		public int compare(DeviceInternal o1, DeviceInternal o2) {
 			return o1.getInitializationTime().compareTo(o2.getInitializationTime());
 		}
 	}
 
-	private static void writeUninitialize(BufferedWriter writer) throws IOException
-	{
+	private static void writeUninitialize(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Reset the microscope.");
 		writeComment(writer, "Do not remove or edit this line, or change its location.");
 		writeCommand(writer, COMMAND_UNINITIALIZE);
 	}
 
-	private static void writeInitialize(BufferedWriter writer) throws IOException
-	{
+	private static void writeInitialize(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Initialize the microscope.");
 		writeComment(writer, "Do not remove or edit this line, or change its location.");
 		writeCommand(writer, COMMAND_INITIALIZE);
 	}
 
-	private static void writeComment(BufferedWriter writer, String comment) throws IOException
-	{
+	private static void writeComment(BufferedWriter writer, String comment) throws IOException {
 		writer.write("# " + comment);
 		writer.newLine();
 	}
 
-	private void writeCommunicationTimeout(BufferedWriter writer) throws IOException
-	{
+	private void writeCommunicationTimeout(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Communication timeout (ms).");
-		writeCommand(writer, COMMAND_COMMUNICATION_TIMEOUT, Integer.toString(microscope.getMicroscopeConfiguration().getCommunicationTimeout()));
+		writeCommand(writer, COMMAND_COMMUNICATION_TIMEOUT,
+				Integer.toString(microscope.getMicroscopeConfiguration().getCommunicationTimeout()));
 	}
 
-	private void writeImageBufferSize(BufferedWriter writer) throws IOException
-	{
+	private void writeImageBufferSize(BufferedWriter writer) throws IOException {
 		int imageBufferSize;
-		try
-		{
+		try {
 			imageBufferSize = microscope.getMicroscopeConfiguration().getImageBufferSize();
-		}
-		catch(@SuppressWarnings("unused") UnsupportedOperationException e)
-		{
+		} catch (@SuppressWarnings("unused") UnsupportedOperationException e) {
 			imageBufferSize = -1;
 		}
-		if(imageBufferSize >= 0)
-		{
+		if (imageBufferSize >= 0) {
 			writeEmptyLine(writer);
 			writeComment(writer, "Image Buffer Size (MB).");
 			writeCommand(writer, COMMAND_IMAGE_BUFFER_SIZE, Integer.toString(imageBufferSize));
 		}
 	}
 
-	private void writeAxesStages(BufferedWriter writer) throws IOException
-	{
+	private void writeAxesStages(BufferedWriter writer) throws IOException {
 		StageDeviceInternal[] stages = microscope.getStageDevices();
-		if(stages.length <= 0)
+		if (stages.length <= 0)
 			return;
 		writeComment(writer, "Axes direction settings of stages.");
-		for(StageDeviceInternal stage : stages)
-		{
+		for (StageDeviceInternal stage : stages) {
 			writeComment(writer, "Stage " + stage.getDeviceID() + ".");
 			writeCommand(writer, COMMAND_AXIS_CONFIGURATION_X, stage.getDeviceID(), stage.isTransposeX() ? "1" : "0");
 			writeCommand(writer, COMMAND_AXIS_CONFIGURATION_Y, stage.getDeviceID(), stage.isTransposeY() ? "1" : "0");
 
 			// Save stage unit multiplier.
-			if(stage.getUnitMagnifier() != 1.0)
-			{
-				writeCommand(writer, COMMAND_STAGE_UNITS, stage.getDeviceID(), Double.toString(stage.getUnitMagnifier()));
+			if (stage.getUnitMagnifier() != 1.0) {
+				writeCommand(writer, COMMAND_STAGE_UNITS, stage.getDeviceID(),
+						Double.toString(stage.getUnitMagnifier()));
 			}
 		}
 	}
 
-	private void writeAxesCameras(BufferedWriter writer) throws IOException
-	{
+	private void writeAxesCameras(BufferedWriter writer) throws IOException {
 		CameraDeviceInternal[] cameras = microscope.getCameraDevices();
-		if(cameras.length <= 0)
+		if (cameras.length <= 0)
 			return;
 		writeComment(writer, "Axes direction settings of cameras.");
 		boolean first = true;
-		for(CameraDeviceInternal camera : cameras)
-		{
-			if(first)
+		for (CameraDeviceInternal camera : cameras) {
+			if (first)
 				first = false;
 			else
 				writeEmptyLine(writer);
@@ -488,59 +439,52 @@ class ConfigFileWriter extends ConfigFileManipulator
 		}
 	}
 
-	private void writeSystemStartup(BufferedWriter writer) throws IOException
-	{
+	private void writeSystemStartup(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Startup settings (executed when config file loads).");
-		for(DeviceSetting setting : microscope.getMicroscopeConfiguration().getSystemStartupSettings())
-		{
-			writeCommand(writer, COMMAND_SYSTEM_STARTUP, setting.getDevice(), setting.getProperty(), setting.getStringValue());
+		for (DeviceSetting setting : microscope.getMicroscopeConfiguration().getSystemStartupSettings()) {
+			writeCommand(writer, COMMAND_SYSTEM_STARTUP, setting.getDevice(), setting.getProperty(),
+					setting.getStringValue());
 		}
 	}
 
-	private void writeSystemShutdown(BufferedWriter writer) throws IOException
-	{
+	private void writeSystemShutdown(BufferedWriter writer) throws IOException {
 		writeComment(writer, "Shutdown settings (executed when config file loads).");
-		for(DeviceSetting setting : microscope.getMicroscopeConfiguration().getSystemShutdownSettings())
-		{
-			writeCommand(writer, COMMAND_SYSTEM_SHUTDOWN, setting.getDevice(), setting.getProperty(), setting.getStringValue());
+		for (DeviceSetting setting : microscope.getMicroscopeConfiguration().getSystemShutdownSettings()) {
+			writeCommand(writer, COMMAND_SYSTEM_SHUTDOWN, setting.getDevice(), setting.getProperty(),
+					setting.getStringValue());
 		}
 	}
 
-	private static void writeTokens(BufferedWriter writer, String... tokens) throws IOException
-	{
-		for(int i = 0; i < tokens.length; i++)
-		{
-			if(i > 0)
+	private static void writeTokens(BufferedWriter writer, String... tokens) throws IOException {
+		for (int i = 0; i < tokens.length; i++) {
+			if (i > 0)
 				writer.write(',');
 			writer.write(tokens[i]);
 		}
 		writeEmptyLine(writer);
 	}
 
-	private static void writeHeader(BufferedWriter writer) throws IOException
-	{
+	private static void writeHeader(BufferedWriter writer) throws IOException {
 		String[] header = new String[] {
-				"############################################################", 
-				"# Microscope Configuration File                            #", 
-				"# Generated by YouScope "+YouScopeVersion.getDeveloperVersion()+"                                #", 
-				"# Compatible with Micro-Manager 1.4/2.0.0                  #", 
-				"# Created: " + new Date().toString(), 
-				"# Visit www.youscope.org                                   #", 
-				"############################################################"};
-		while(header[4].length() < header[0].length() - 1)
-		{
+				"############################################################",
+				"# Microscope Configuration File                            #",
+				"# Generated by YouScope " + YouScopeVersion.getDeveloperVersion()
+						+ "                                #",
+				"# Compatible with Micro-Manager 1.4/2.0.0                  #",
+				"# Created: " + new Date().toString(),
+				"# Visit www.youscope.org                                   #",
+				"############################################################" };
+		while (header[4].length() < header[0].length() - 1) {
 			header[4] += " ";
 		}
 		header[4] += "#";
-		for(String line : header)
-		{
+		for (String line : header) {
 			writer.write(line);
 			writer.newLine();
 		}
 	}
 
-	private static void writeEmptyLine(BufferedWriter writer) throws IOException
-	{
+	private static void writeEmptyLine(BufferedWriter writer) throws IOException {
 		writer.newLine();
 	}
 }

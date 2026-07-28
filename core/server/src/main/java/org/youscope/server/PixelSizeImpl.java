@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - update API supporting additional magnification
  ******************************************************************************/
 /**
  * 
@@ -25,205 +26,292 @@ import org.youscope.common.microscope.PixelSize;
 import org.youscope.common.microscope.SettingException;
 
 /**
- * For a given set of device settings, this class stores information about the corresponding pixel size of the camera.
+ * For a given set of device settings, this class stores information about the
+ * corresponding pixel size of the camera.
+ * 
  * @author Moritz Lang
  * 
  */
-class PixelSizeImpl implements MicroscopeConfigurationListener, Comparable<PixelSizeImpl>
-{
-	private final String					pixelSizeID;
-	private final Vector<DeviceSetting>	pixelSizeSettings	= new Vector<DeviceSetting>();
-	private double							pixelSize			= 6.45;
-	private final MicroscopeInternal		microscope;
+class PixelSizeImpl implements MicroscopeConfigurationListener, Comparable<PixelSizeImpl> {
+    private final String pixelSizeID;
+    private final Vector<DeviceSetting> pixelSizeSettings = new Vector<DeviceSetting>();
+    private double pixelSize = 6.45;
+    // Optional magnification components; null means "unknown". When all three are
+    // set, pixelSize is
+    // derived from them. See the PixelSize interface for the contract.
+    private Double cameraPixelPitchMicrons = null;
+    private Double objectiveMagnification = null;
+    private Double additionalMagnification = null;
+    private final MicroscopeInternal microscope;
 
-	public PixelSizeImpl(String pixelSizeID, MicroscopeInternal microscope)
-	{
-		this.pixelSizeID = new String(pixelSizeID);
-		this.microscope = microscope;
-	}
+    public PixelSizeImpl(String pixelSizeID, MicroscopeInternal microscope) {
+        this.pixelSizeID = new String(pixelSizeID);
+        this.microscope = microscope;
+    }
 
-	public String getPixelSizeID()
-	{
-		return pixelSizeID;
-	}
+    public String getPixelSizeID() {
+        return pixelSizeID;
+    }
 
-	public DeviceSetting[] getPixelSizeSettings()
-	{
-		// Clone every element...
-		DeviceSetting[] newArray = new DeviceSetting[pixelSizeSettings.size()];
-		for(int i = 0; i < newArray.length; i++)
-		{
-			newArray[i] = new DeviceSetting(pixelSizeSettings.elementAt(i));
-		}
+    public DeviceSetting[] getPixelSizeSettings() {
+        // Clone every element...
+        DeviceSetting[] newArray = new DeviceSetting[pixelSizeSettings.size()];
+        for (int i = 0; i < newArray.length; i++) {
+            newArray[i] = new DeviceSetting(pixelSizeSettings.elementAt(i));
+        }
 
-		return newArray;
-	}
+        return newArray;
+    }
 
-	public double getPixelSize()
-	{
-		return pixelSize;
-	}
+    public double getPixelSize() {
+        return pixelSize;
+    }
 
-	@Override
-	public void deviceRemoved(String deviceID)
-	{
-		for(int i = 0; i < pixelSizeSettings.size(); i++)
-		{
-			DeviceSetting setting = pixelSizeSettings.elementAt(i);
-			if(setting.getDevice().equals(deviceID))
-			{
-				pixelSizeSettings.remove(setting);
-				i--;
-			}
-		}
-	}
+    @Override
+    public void deviceRemoved(String deviceID) {
+        for (int i = 0; i < pixelSizeSettings.size(); i++) {
+            DeviceSetting setting = pixelSizeSettings.elementAt(i);
+            if (setting.getDevice().equals(deviceID)) {
+                pixelSizeSettings.remove(setting);
+                i--;
+            }
+        }
+    }
 
-	public void setPixelSizeSettings(DeviceSetting[] newSettings, int accessID) throws MicroscopeLockedException, SettingException
-	{
-		microscope.lockExclusiveWrite(accessID);
-		try
-		{
+    public void setPixelSizeSettings(DeviceSetting[] newSettings, int accessID)
+            throws MicroscopeLockedException, SettingException {
+        microscope.lockExclusiveWrite(accessID);
+        try {
 
-			SettingsValidator.areSettingsValid(newSettings, true, microscope, accessID);
-			pixelSizeSettings.clear();
-			for(DeviceSetting setting : newSettings)
-			{
-				pixelSizeSettings.add(new DeviceSetting(setting));
-			}
-		}
-		finally
-		{
-			microscope.unlockExclusiveWrite(accessID);
-		}
+            SettingsValidator.areSettingsValid(newSettings, true, microscope, accessID);
+            pixelSizeSettings.clear();
+            for (DeviceSetting setting : newSettings) {
+                pixelSizeSettings.add(new DeviceSetting(setting));
+            }
+        } finally {
+            microscope.unlockExclusiveWrite(accessID);
+        }
 
-		ServerSystem.out.println("Settings of pixel size configuration " + pixelSizeID + " changed.");
-	}
+        ServerSystem.out.println("Settings of pixel size configuration " + pixelSizeID + " changed.");
+    }
 
-	public void addPixelSizeSetting(DeviceSetting setting, int accessID) throws MicroscopeLockedException, SettingException
-	{
-		microscope.lockExclusiveWrite(accessID);
-		try
-		{
-			SettingsValidator.isSettingValid(setting, true, microscope, accessID);
-			pixelSizeSettings.add(setting);
-		}
-		finally
-		{
-			microscope.unlockExclusiveWrite(accessID);
-		}
+    public void addPixelSizeSetting(DeviceSetting setting, int accessID)
+            throws MicroscopeLockedException, SettingException {
+        microscope.lockExclusiveWrite(accessID);
+        try {
+            SettingsValidator.isSettingValid(setting, true, microscope, accessID);
+            pixelSizeSettings.add(setting);
+        } finally {
+            microscope.unlockExclusiveWrite(accessID);
+        }
 
-		ServerSystem.out.println("Added settings \"" + setting.toString() + "\" to pixel size configuration " + pixelSizeID + ".");
-	}
+        ServerSystem.out.println(
+                "Added settings \"" + setting.toString() + "\" to pixel size configuration " + pixelSizeID + ".");
+    }
 
-	public void setPixelSize(double pixelSize, int accessID) throws MicroscopeLockedException
-	{
-		microscope.lockExclusiveWrite(accessID);
-		try
-		{
-			this.pixelSize = pixelSize;
-		}
-		finally
-		{
-			microscope.unlockExclusiveWrite(accessID);
-		}
+    public void setPixelSize(double pixelSize, int accessID) throws MicroscopeLockedException {
+        microscope.lockExclusiveWrite(accessID);
+        try {
+            this.pixelSize = pixelSize;
+        } finally {
+            microscope.unlockExclusiveWrite(accessID);
+        }
 
-		ServerSystem.out.println("Pixel size of " + pixelSizeID + " set to " + Double.toString(pixelSize) + " microns.");
-	}
+        ServerSystem.out
+                .println("Pixel size of " + pixelSizeID + " set to " + Double.toString(pixelSize) + " microns.");
+    }
 
-	@Override
-	public void microscopeUninitialized()
-	{
-		pixelSizeSettings.clear();
-		pixelSize = 6.45;
-	}
+    public Double getCameraPixelPitchMicrons() {
+        return cameraPixelPitchMicrons;
+    }
 
-	@Override
-	public void labelChanged(DeviceSetting oldLabel, DeviceSetting newLabel)
-	{
-		for(int i = 0; i < pixelSizeSettings.size(); i++)
-		{
-			if(pixelSizeSettings.elementAt(i).equals(oldLabel))
-				pixelSizeSettings.setElementAt(newLabel, i);
-		}
-	}
+    public Double getObjectiveMagnification() {
+        return objectiveMagnification;
+    }
 
-	@Override
-	public int compareTo(PixelSizeImpl o)
-	{
-		if(o == null)
-			return -1;
-		return getPixelSizeID().compareToIgnoreCase(o.getPixelSizeID());
-	}
+    public Double getAdditionalMagnification() {
+        return additionalMagnification;
+    }
 
-	private class RMIInterface extends UnicastRemoteObject implements PixelSize
-	{
-		/**
-		 * Serial Version UID.
-		 */
-		private static final long	serialVersionUID	= -297042545568227183L;
-		private final int			accessID;
+    public boolean hasMagnificationComponents() {
+        return cameraPixelPitchMicrons != null && objectiveMagnification != null
+                && additionalMagnification != null;
+    }
 
-		/**
-		 * Constructor.
-		 * @param accessID The microscope access ID used by this RMI interface.
-		 * @throws RemoteException
-		 */
-		RMIInterface(int accessID) throws RemoteException
-		{
-			super();
-			this.accessID = accessID;
-		}
+    public void setCameraPixelPitchMicrons(Double pitchMicrons, int accessID) throws MicroscopeLockedException {
+        microscope.lockExclusiveWrite(accessID);
+        try {
+            this.cameraPixelPitchMicrons = pitchMicrons;
+            recomputeDerivedPixelSize();
+        } finally {
+            microscope.unlockExclusiveWrite(accessID);
+        }
+    }
 
-		@Override
-		public String getPixelSizeID() throws RemoteException
-		{
-			return PixelSizeImpl.this.getPixelSizeID();
-		}
+    public void setObjectiveMagnification(Double magnification, int accessID) throws MicroscopeLockedException {
+        microscope.lockExclusiveWrite(accessID);
+        try {
+            this.objectiveMagnification = magnification;
+            recomputeDerivedPixelSize();
+        } finally {
+            microscope.unlockExclusiveWrite(accessID);
+        }
+    }
 
-		@Override
-		public DeviceSetting[] getPixelSizeSettings() throws RemoteException
-		{
-			return PixelSizeImpl.this.getPixelSizeSettings();
-		}
+    public void setAdditionalMagnification(Double magnification, int accessID) throws MicroscopeLockedException {
+        microscope.lockExclusiveWrite(accessID);
+        try {
+            this.additionalMagnification = magnification;
+            recomputeDerivedPixelSize();
+        } finally {
+            microscope.unlockExclusiveWrite(accessID);
+        }
+    }
 
-		@Override
-		public void setPixelSizeSettings(DeviceSetting[] newSettings) throws MicroscopeLockedException, SettingException, RemoteException
-		{
-			PixelSizeImpl.this.setPixelSizeSettings(newSettings, accessID);
-		}
+    /**
+     * When all three components are known and the magnifications are non-zero, sets
+     * pixelSize to
+     * cameraPitch / (objectiveMag * additionalMag). Otherwise leaves the
+     * directly-set value untouched:
+     * a half-specified set of components must never overwrite a value the user
+     * entered by hand.
+     */
+    private void recomputeDerivedPixelSize() {
+        if (cameraPixelPitchMicrons == null || objectiveMagnification == null || additionalMagnification == null)
+            return;
+        double totalMagnification = objectiveMagnification.doubleValue() * additionalMagnification.doubleValue();
+        if (totalMagnification == 0)
+            return;
+        pixelSize = cameraPixelPitchMicrons.doubleValue() / totalMagnification;
+        ServerSystem.out.println("Pixel size of " + pixelSizeID + " derived from components: "
+                + Double.toString(pixelSize) + " microns.");
+    }
 
-		@Override
-		public void addPixelSizeSetting(DeviceSetting setting) throws MicroscopeLockedException, SettingException, RemoteException
-		{
-			PixelSizeImpl.this.addPixelSizeSetting(setting, accessID);
-		}
+    @Override
+    public void microscopeUninitialized() {
+        pixelSizeSettings.clear();
+        pixelSize = 6.45;
+        cameraPixelPitchMicrons = null;
+        objectiveMagnification = null;
+        additionalMagnification = null;
+    }
 
-		@Override
-		public double getPixelSize() throws RemoteException
-		{
-			return PixelSizeImpl.this.getPixelSize();
-		}
+    @Override
+    public void labelChanged(DeviceSetting oldLabel, DeviceSetting newLabel) {
+        for (int i = 0; i < pixelSizeSettings.size(); i++) {
+            if (pixelSizeSettings.elementAt(i).equals(oldLabel))
+                pixelSizeSettings.setElementAt(newLabel, i);
+        }
+    }
 
-		@Override
-		public void setPixelSize(double pixelSize) throws MicroscopeLockedException, SettingException, RemoteException
-		{
-			PixelSizeImpl.this.setPixelSize(pixelSize, accessID);
-		}
-	}
+    @Override
+    public int compareTo(PixelSizeImpl o) {
+        if (o == null)
+            return -1;
+        return getPixelSizeID().compareToIgnoreCase(o.getPixelSizeID());
+    }
 
-	/**
-	 * Returns the RMI interface of this class used by client applications.
-	 * @param accessID The access ID to the microscope used by the RMI interface.
-	 * @throws RemoteException
-	 */
-	PixelSize getRMIInterface(int accessID) throws RemoteException
-	{
-		return new RMIInterface(accessID);
-	}
+    private class RMIInterface extends UnicastRemoteObject implements PixelSize {
+        /**
+         * Serial Version UID.
+         */
+        private static final long serialVersionUID = -297042545568227183L;
+        private final int accessID;
 
-	@Override
-	public void deviceAdded(String deviceID) throws RemoteException 
-	{
-		// do nothing
-	}
+        /**
+         * Constructor.
+         * 
+         * @param accessID The microscope access ID used by this RMI interface.
+         * @throws RemoteException
+         */
+        RMIInterface(int accessID) throws RemoteException {
+            super();
+            this.accessID = accessID;
+        }
+
+        @Override
+        public String getPixelSizeID() throws RemoteException {
+            return PixelSizeImpl.this.getPixelSizeID();
+        }
+
+        @Override
+        public DeviceSetting[] getPixelSizeSettings() throws RemoteException {
+            return PixelSizeImpl.this.getPixelSizeSettings();
+        }
+
+        @Override
+        public void setPixelSizeSettings(DeviceSetting[] newSettings)
+                throws MicroscopeLockedException, SettingException, RemoteException {
+            PixelSizeImpl.this.setPixelSizeSettings(newSettings, accessID);
+        }
+
+        @Override
+        public void addPixelSizeSetting(DeviceSetting setting)
+                throws MicroscopeLockedException, SettingException, RemoteException {
+            PixelSizeImpl.this.addPixelSizeSetting(setting, accessID);
+        }
+
+        @Override
+        public double getPixelSize() throws RemoteException {
+            return PixelSizeImpl.this.getPixelSize();
+        }
+
+        @Override
+        public void setPixelSize(double pixelSize) throws MicroscopeLockedException, SettingException, RemoteException {
+            PixelSizeImpl.this.setPixelSize(pixelSize, accessID);
+        }
+
+        @Override
+        public Double getCameraPixelPitchMicrons() throws RemoteException {
+            return PixelSizeImpl.this.getCameraPixelPitchMicrons();
+        }
+
+        @Override
+        public void setCameraPixelPitchMicrons(Double pitchMicrons)
+                throws MicroscopeLockedException, SettingException, RemoteException {
+            PixelSizeImpl.this.setCameraPixelPitchMicrons(pitchMicrons, accessID);
+        }
+
+        @Override
+        public Double getObjectiveMagnification() throws RemoteException {
+            return PixelSizeImpl.this.getObjectiveMagnification();
+        }
+
+        @Override
+        public void setObjectiveMagnification(Double magnification)
+                throws MicroscopeLockedException, SettingException, RemoteException {
+            PixelSizeImpl.this.setObjectiveMagnification(magnification, accessID);
+        }
+
+        @Override
+        public Double getAdditionalMagnification() throws RemoteException {
+            return PixelSizeImpl.this.getAdditionalMagnification();
+        }
+
+        @Override
+        public void setAdditionalMagnification(Double magnification)
+                throws MicroscopeLockedException, SettingException, RemoteException {
+            PixelSizeImpl.this.setAdditionalMagnification(magnification, accessID);
+        }
+
+        @Override
+        public boolean hasMagnificationComponents() throws RemoteException {
+            return PixelSizeImpl.this.hasMagnificationComponents();
+        }
+    }
+
+    /**
+     * Returns the RMI interface of this class used by client applications.
+     * 
+     * @param accessID The access ID to the microscope used by the RMI interface.
+     * @throws RemoteException
+     */
+    PixelSize getRMIInterface(int accessID) throws RemoteException {
+        return new RMIInterface(accessID);
+    }
+
+    @Override
+    public void deviceAdded(String deviceID) throws RemoteException {
+        // do nothing
+    }
 }
