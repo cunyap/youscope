@@ -1,6 +1,6 @@
 ;NSIS Installer for YouScope
-;Written by Moritz Lang 
-;Andreas P. Cuny - uninstaller and new plugin support
+;Written by Moritz Lang and
+;Andreas P. Cuny 
 ;---------------------
 ;--- Configuration ---
 ;---------------------
@@ -8,11 +8,6 @@
 ; YouScope is distributed as a 64-bit application.
 ; The installer contains its own JDK 21 runtime.
 !define WIN64
-
-!endif
-
-
-
 
 
 ;--------------------------------
@@ -37,6 +32,9 @@ RequestExecutionLevel admin
 ;--------------------------------
 ;Variables
 Var StartMenuFolder
+; Guards the "run Python setup now?" prompt so it is shown at most once even if
+; several Python-dependent sections (GraalPy, Cellpose, StarDist) are selected.
+Var RunPythonSetupAsked
 
 ;--------
 ; Config
@@ -77,6 +75,30 @@ BrandingText "YouScope - The Microscope Control Software"
 ;--------------------------------
 ;Languages
 !insertmacro MUI_LANGUAGE "English"
+
+;--------------------------------
+; Download-at-install helper (requires the NSIS "Inetc" plugin on the build
+; machine installed in build.yml). Used for any JAR that is not committed
+; to youscope/libs because of a redistribution-incompatible license or because it is too large to ship.
+;
+;   ${DownloadLib} "https://host/path/foo.jar" "foo.jar"
+;
+; Downloads into $INSTDIR\lib. On failure it warns but continues, so an offline
+; install still yields a working core program.
+!define BASE_LIB_URL "https://github.com/cunyap/youscope/tree/master/libs"
+
+!macro DownloadLibMacro Url FileName
+    SetOutPath "$INSTDIR\lib"
+    IfFileExists "$INSTDIR\lib\${FileName}" +6 0
+    DetailPrint "Downloading ${FileName} ..."
+    inetc::get /CAPTION "Downloading ${FileName}" /RESUME "" \
+        "${Url}" "$INSTDIR\lib\${FileName}" /END
+    Pop $0
+    StrCmp $0 "OK" +2 0
+    MessageBox MB_OK|MB_ICONEXCLAMATION \
+        "Could not download ${FileName} ($0).$\nSome optional features may be disabled.$\nYou can place the file in $INSTDIR\lib manually later."
+!macroend
+!define DownloadLib "!insertmacro DownloadLibMacro"
 
 
 ;--------------------------------
@@ -191,7 +213,6 @@ Section "!Device Drivers" SecDeviceDrivers
 		FILE /r "drivers64\*"
 		SetOutPath "$INSTDIR\drivers64\nemesys"
 		RegDLL "$INSTDIR\drivers64\nemesys\NemesysDotCom.dll"
-	!endif
 SectionEnd
 
 ;--------------------------------
@@ -584,7 +605,13 @@ SectionGroup "Misc" SecOptional
 
 	;--------------------------------
 	; GraalPy / Python 3 scripting.
-    ; Runtime dependencies are resolved and copied by Gradle into lib/.
+	; All GraalPy/Truffle runtime JARs (polyglot, truffle-*, python-*, icu4j,
+	; word, collections, regex, nativeimage, js-language) are committed to
+	; youscope/libs and copied into lib/ by Gradle. They ship inside the
+	; installer via the "FILE lib\*" line in SecMain. No per-JAR FILE lines
+	; are needed here. The heavy *Python packages* (numpy, cellpose, stardist,
+	; torch, tensorflow, scipy) are not bundled; they are fetched at first run
+	; by setup_graalpy_venv.ps1 (see the prompt at the end of SecGraalPy).
 	Section "GraalPy Scripting (Python 3)" SecGraalPy
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
@@ -593,6 +620,63 @@ SectionGroup "Misc" SecOptional
       SetOutPath "$INSTDIR"
       FILE /nonfatal "setup_graalpy_venv.bat"
       FILE /nonfatal "setup_graalpy_venv.ps1"
+
+      ; Grant write access to $INSTDIR so the (non-admin) user can later create
+      ; the venvs under Program Files without elevation.
+      AccessControl::GrantOnFile "$INSTDIR" "(BU)" "FullAccess"
+      Pop $0
+
+      ; Offer to run the Python environment setup now. This downloads GraalPy,
+      ; a CPython 3.11 env and the DL stack (~2-4 GB). Cellpose and
+      ; StarDist below depend on this environment, so it is also offered if the
+      ; user only selected those.
+      StrCmp $RunPythonSetupAsked "1" skip_setup_prompt 0
+      StrCpy $RunPythonSetupAsked "1"
+      MessageBox MB_YESNO|MB_ICONQUESTION \
+          "GraalPy scripting was installed.$\n$\n\
+To use Python packages (numpy, cellpose, stardist, scikit-image, torch, \
+tensorflow) the Python environment must be created. This downloads roughly \
+2-4 GB and takes 10-30 minutes.$\n$\n\
+Run the Python setup now? (Recommended and needs an internet connection.)$\n$\n\
+You can also run it later from:$\n$INSTDIR\setup_graalpy_venv.ps1" \
+          IDNO skip_setup_prompt
+      ExecWait 'powershell -ExecutionPolicy Bypass -NoProfile -File "$INSTDIR\setup_graalpy_venv.ps1"'
+      skip_setup_prompt:
+	SectionEnd
+
+	;--------------------------------
+	; GraalJS / JavaScript scripting (GraalVM JS, Java interop).
+	; js-language-24.1.0.jar + polyglot/truffle already ship via lib\*.
+	Section "GraalJS Scripting (JavaScript)" SecGraalJs
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-graaljs-scripting.jar"
+	SectionEnd
+
+	;--------------------------------
+	; Cellpose deep-learning cell segmentation (uses the CPython env + torch).
+	Section "Cellpose Cell Segmentation" SecCellpose
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-cellpose.jar"
+	SectionEnd
+
+	;--------------------------------
+	; StarDist star-convex nucleus segmentation (uses the CPython env + tensorflow).
+	Section "StarDist Nucleus Segmentation" SecStarDist
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-stardist.jar"
+	SectionEnd
+
+	;--------------------------------
+	; FAIR data export (OME-Zarr / OME-TIFF, metadata).
+	; Runtime deps (zarr-java, blosc, zstd-jni, jackson, snakeyaml, minio,
+	; ome-*, formats-*) are all committed to libs and ship via lib\*.
+	Section "FAIR Data Export" SecFairExport
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-fair-export.jar"
 	SectionEnd
 
 	;--------------------------------
@@ -658,6 +742,13 @@ SectionGroup "Misc" SecOptional
   
   		;Files:
   		FILE "plugins\youscope-dark-skin.jar"  
+	SectionEnd
+	Section "FlatLaf Skin (Modern)" SecFlatLafSkin
+		SetOutPath "$INSTDIR\plugins"
+  		SectionIn 1 4
+  
+  		;Files:
+  		FILE "plugins\youscope-flatlaf-skin.jar"  
 	SectionEnd
 	;Section "Red Skin" SecRedSkin
 	;	SetOutPath "$INSTDIR\plugins"
@@ -812,7 +903,11 @@ SectionEnd
 	
 	LangString DESC_SecOptional ${LANG_ENGLISH} "Optional functionality."
 	LangString DESC_SecMatlab ${LANG_ENGLISH} "Enabling Matlab(TM) scripting. An installation of Matlab is needed for this plugin."
-	LangString DESC_SecGraalPy ${LANG_ENGLISH} "Python 3 scripting through GraalPy. YouScope includes the required JDK 21 runtime."
+	LangString DESC_SecGraalPy ${LANG_ENGLISH} "Python 3 scripting through GraalPy. YouScope includes the required JDK 21 runtime. Offers to download the Python package environment (numpy, cellpose, stardist, torch, tensorflow) on first install."
+	LangString DESC_SecGraalJs ${LANG_ENGLISH} "JavaScript scripting through GraalJS, with full Java interop. Uses the bundled JDK 21 runtime; no extra download required."
+	LangString DESC_SecCellpose ${LANG_ENGLISH} "Deep-learning cell segmentation (Cellpose). Requires the GraalPy Python environment and PyTorch, which are downloaded by the Python setup script."
+	LangString DESC_SecStarDist ${LANG_ENGLISH} "Star-convex nucleus segmentation (StarDist). Requires the GraalPy Python environment and TensorFlow, which are downloaded by the Python setup script."
+	LangString DESC_SecFairExport ${LANG_ENGLISH} "Export measurements as FAIR datasets (OME-Zarr / OME-TIFF) with rich metadata. All required libraries ship with the installer."
 	LangString DESC_SecImageFormats ${LANG_ENGLISH} "Possibility to save images in various image formats like tiff."
 
 	LangString DESC_SecDocumentation ${LANG_ENGLISH} "In program documentation of the YouScope tools and measurement types."
@@ -849,6 +944,7 @@ SectionEnd
 	LangString DESC_SecStandardSaveSettings ${LANG_ENGLISH} "Standard settings how measurement is saved to disk." 
 	LangString DESC_SecSystemSkin ${LANG_ENGLISH} "Default skin, in agreement to operating system look-and-feel." 
 	LangString DESC_SecDarkSkin ${LANG_ENGLISH} "A dark skin for dark rooms." 
+	LangString DESC_SecFlatLafSkin ${LANG_ENGLISH} "A modern, flat cross-platform look-and-feel (FlatLaf) with light and dark variants." 
 	;LangString DESC_SecRedSkin ${LANG_ENGLISH} "A red skin, good for the eyes in dark rooms." 
 
 	LangString DESC_SecTravelingSalesman ${LANG_ENGLISH} "Traveling salesman optimizers for path through microplate." 
@@ -903,6 +999,10 @@ SectionEnd
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecOptional} $(DESC_SecOptional) 	
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecMatlab} $(DESC_SecMatlab)
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecGraalPy} $(DESC_SecGraalPy)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecGraalJs} $(DESC_SecGraalJs)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecCellpose} $(DESC_SecCellpose)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecStarDist} $(DESC_SecStarDist)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecFairExport} $(DESC_SecFairExport)
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecImageFormats} $(DESC_SecImageFormats)
 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecDocumentation} $(DESC_SecDocumentation) 
@@ -938,6 +1038,7 @@ SectionEnd
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecStandardSaveSettings} $(DESC_SecStandardSaveSettings)
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecSystemSkin} $(DESC_SecSystemSkin)
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecDarkSkin} $(DESC_SecDarkSkin)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecFlatLafSkin} $(DESC_SecFlatLafSkin)
 		;!insertmacro MUI_DESCRIPTION_TEXT ${SecRedSkin} $(DESC_SecRedSkin)
 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecTravelingSalesman} $(DESC_SecTravelingSalesman)

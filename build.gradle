@@ -7,7 +7,6 @@ plugins {
 	id 'application'
 	id 'eclipse'
 	id 'edu.sc.seis.launch4j' version '2.4.6'
-	id "com.github.langmo.gradlensis" version "0.1.0"
 }
 
 application {
@@ -351,12 +350,37 @@ installNsisDist {
 	}
 }
 
-nsis {
-	configuration = file("${rootProject.projectDir}/resources/nsis/YouScope.nsi")
-	runIn =  file("${rootProject.buildDir}/install/nsis/")
-	additionalPlugins = ['AccessControl']
-	variables = ['WIN64':'True']
+def nsisSrc   = file("${rootProject.projectDir}/resources/nsis")   // YouScope.nsi + YouScope.ico + splash.bmp
+def nsisStage = file("${rootProject.buildDir}/install/nsis")
+
+tasks.register('createInstaller', Exec) {
+    group = 'distribution'
+    description = 'Builds the 64-bit YouScope installer with the system makensis.'
+    dependsOn 'installNsisDist'
+
+    doFirst {
+        // Colocate the .nsi and its bare-path assets (YouScope.ico, splash.bmp)
+        // with the staged lib/, plugins/, runtime/ so that OutFile, MUI_ICON and
+        // the FILE "lib\*" / "plugins\*.jar" lines all resolve against this dir.
+        copy {
+            from nsisSrc
+            into nsisStage
+        }
+    }
+
+    def makensis = System.getenv('MAKENSIS') ?: 'makensis'
+    workingDir nsisStage
+    commandLine makensis, '/V3', 'YouScope.nsi'
+
+    doLast {
+        copy {
+            from file("${nsisStage}/YouScope_64bit_Installer.exe")
+            into layout.buildDirectory.dir('distributions')
+        }
+        println "Installer -> ${buildDir}/distributions/YouScope_64bit_Installer.exe"
+    }
 }
+
 // 64-bit only. Compatibility alias for existing scripts.
 task createInstallers {
     dependsOn ":createInstaller"

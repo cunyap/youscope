@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # JDK 21: bundled as the YouScope runtime and used as a compile toolchain
+      # for the plugins that need the GraalPy / Truffle 24.1 polyglot API
+      # (graalpy, graaljs, cellpose, stardist).
       - name: Install JDK 21
         uses: actions/setup-java@v4
         with:
@@ -24,6 +27,11 @@ jobs:
         shell: pwsh
         run: '"JDK21_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
 
+      # JDK 8 is the JVM that runs Gradle. This is deliberate: Gradle 7.6.4
+      # supports running on JDK 8-19 only (Note running Gradle itself on JDK 21
+      # needs Gradle 8.5+). The main YouScope code compiles to 1.8; JDK 21 is
+      # applied per-module as a toolchain in build.gradle for the polyglot
+      # plugins. 
       - name: Set up default JDK 8
         uses: actions/setup-java@v4
         with:
@@ -57,6 +65,62 @@ jobs:
           Copy-Item -Path "$env:JDK21_HOME\*" -Destination $runtime -Recurse -Force
           if (-not (Test-Path "$runtime\bin\java.exe")) { throw "Bundled JDK 21 is incomplete" }
 
+      # NSIS: install makensis + the plugins the .nsi uses.
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis --no-progress -y
+          $nsis = "C:\Program Files (x86)\NSIS"
+          if (-not (Test-Path "$nsis\makensis.exe")) { throw "makensis.exe not found after install" }
+          "NSIS_HOME=$nsis"             | Out-File -FilePath $env:GITHUB_ENV  -Encoding utf8 -Append
+          "MAKENSIS=$nsis\makensis.exe" | Out-File -FilePath $env:GITHUB_ENV  -Encoding utf8 -Append
+          "$nsis"                       | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install NSIS plugins (AccessControl, Inetc)
+        shell: pwsh
+        run: |
+          $nsis    = $env:NSIS_HOME
+          $ansi    = Join-Path $nsis "Plugins\x86-ansi"
+          $unicode = Join-Path $nsis "Plugins\x86-unicode"
+          New-Item -ItemType Directory -Force -Path $ansi,$unicode | Out-Null
+
+          # Preferred: DLLs vendored in the repo (fully reproducible, no network).
+          # Commit AccessControl.dll + inetc.dll under installer\nsis-plugins\.
+          $vendored = Join-Path $PWD "installer\nsis-plugins"
+          if (Test-Path $vendored) {
+            Copy-Item "$vendored\*.dll" $ansi    -Force
+            Copy-Item "$vendored\*.dll" $unicode -Force
+            Write-Host "Using vendored NSIS plugins from $vendored"
+          } else {
+            Write-Host "No vendored plugins; downloading AccessControl + Inetc"
+            $plugins = @(
+              @{ n = 'AccessControl'; u = 'https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip' },
+              @{ n = 'Inetc';         u = 'https://nsis.sourceforge.io/mediawiki/images/c/c9/Inetc.zip' }
+            )
+            foreach ($p in $plugins) {
+              $zip = Join-Path $env:TEMP "$($p.n).zip"
+              $dst = Join-Path $env:TEMP $p.n
+              Invoke-WebRequest -Uri $p.u -OutFile $zip -UseBasicParsing
+              Expand-Archive $zip -DestinationPath $dst -Force
+              Get-ChildItem $dst -Recurse -Directory |
+                Where-Object { $_.Name -eq 'x86-ansi' } |
+                ForEach-Object { Copy-Item "$($_.FullName)\*" $ansi -Force }
+              Get-ChildItem $dst -Recurse -Directory |
+                Where-Object { $_.Name -eq 'x86-unicode' } |
+                ForEach-Object { Copy-Item "$($_.FullName)\*" $unicode -Force }
+              # AccessControl / older archives keep a single ANSI dll in Plugins\
+              Get-ChildItem $dst -Recurse -Filter '*.dll' |
+                Where-Object { $_.Directory.Name -notin @('x86-ansi','x86-unicode') } |
+                ForEach-Object { Copy-Item $_.FullName $ansi -Force }
+            }
+          }
+          Write-Host "ANSI plugins:";    Get-ChildItem $ansi    -Filter *.dll | Select-Object -ExpandProperty Name
+          Write-Host "Unicode plugins:"; Get-ChildItem $unicode -Filter *.dll | Select-Object -ExpandProperty Name
+
+      # Build. createInstaller must call the SYSTEM makensis (env:MAKENSIS),
+      # not the gradlensis auto-download. See createInstaller.gradle.snippet:
+      # replace the com.github.langmo.gradlensis task with a plain Exec task.
+      # ---------------------------------------------------------------------
       - name: Build 64-bit installer
         shell: pwsh
         run: ./gradlew --no-daemon createInstaller
@@ -75,23 +139,13 @@ jobs:
           path: build/distributions/YouScope_64bit_Installer.exe
           if-no-files-found: error
 
+      # softprops/action-gh-release creates the release and uploads
+      # the asset in one step.
       - name: Create nightly release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly-${{ github.run_number }}
-          release_name: Nightly Build ${{ github.run_number }}
+          name: Nightly Build ${{ github.run_number }}
           draft: false
           prerelease: true
-
-      - name: Upload installer to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/distributions/YouScope_64bit_Installer.exe
-          asset_name: YouScope_Installer_${{ github.run_number }}-64bit.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
+          files: build/distributions/YouScope_64bit_Installer.exe

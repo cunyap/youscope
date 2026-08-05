@@ -19,7 +19,10 @@ param(
     [string]$GraalPyVersion = "24.1.2",
     [string]$CpythonVersion = "3.11",
     [switch]$SkipGraalPy    = $false,
-    [switch]$SkipCpython    = $false
+    [switch]$SkipCpython    = $false,
+    [switch]$SkipTorch      = $false,   # cellpose backend; ~200 MB CPU / ~2.5 GB CUDA
+    [switch]$SkipTensorflow = $false,   # stardist backend; ~400 MB
+    [switch]$Gpu            = $false    # install CUDA builds of torch (Windows: torch only)
 )
 
 $ErrorActionPreference = "Continue"
@@ -143,9 +146,27 @@ if (-not $SkipGraalPy) {
             if ($LASTEXITCODE -eq 0) { Write-Host " OK" -ForegroundColor Green }
             else { Write-Host " WARN" -ForegroundColor Yellow }
         }
+
+        # Packages that need pre-built wheels (skip silently if unavailable)
+        # pillow/matplotlib need C extensions and only works if a wheel exists
+        Write-Host "    imageio (wheel only)..." -NoNewline
+        $r3 = & $VenvPip install imageio --only-binary ":all:" -q --no-warn-script-location 2>&1
+        if ($LASTEXITCODE -eq 0) { Write-Host " OK" -ForegroundColor Green }
+        else { Write-Host " skipped (no wheel for GraalPy -- use CPython env)" -ForegroundColor Yellow }
+
+        Write-Host "    matplotlib (wheel only)..." -NoNewline
+        $r4 = & $VenvPip install matplotlib --only-binary ":all:" -q --no-warn-script-location 2>&1
+        if ($LASTEXITCODE -eq 0) { Write-Host " OK" -ForegroundColor Green }
+        else { Write-Host " skipped (no wheel for GraalPy -- use CPython env)" -ForegroundColor Yellow }
+
+        Write-Host "    pybis..." -NoNewline
+        $r5 = & $VenvPip install pybis -q --no-warn-script-location 2>&1
+        if ($LASTEXITCODE -eq 0) { Write-Host " OK" -ForegroundColor Green }
+        else { Write-Host " WARN" -ForegroundColor Yellow }
+
         Write-Host ""
-        Write-Host "  GraalPy venv packages: numpy 1.26.4, tifffile, requests" -ForegroundColor Green
-        Write-Host "  matplotlib/imageio/pillow/pybis -> cpython-env only (see STEP 3)" -ForegroundColor Cyan
+        Write-Host "  NOTE: matplotlib/imageio/pillow are available in cpython-env." -ForegroundColor Cyan
+        Write-Host "  Use run_in_cpython() or save/display via CPython bridge scripts." -ForegroundColor Cyan
     }
 }
 
@@ -163,21 +184,62 @@ if (-not $SkipCpython -and (Test-Path $UvExe)) {
 
     $CpPython = Join-Path $CpEnvDir "Scripts\python.exe"
     if (Test-Path $CpPython) {
-        Write-Host "  Installing packages via uv pip..."
-        # uv pip is 10-100x faster than pip
-        $pkgs = @("cellpose","scikit-image","tifffile","imageio","matplotlib",
-                  "pillow","zarr","ome-zarr","pybis","numpy","opencv-python-headless")
-        foreach ($pkg in $pkgs) {
-            Write-Host "    $pkg..." -NoNewline
-            $r = & $UvExe pip install $pkg --python $CpPython -q 2>&1
-            if ($LASTEXITCODE -eq 0) { Write-Host " OK" -ForegroundColor Green }
-            else { Write-Host " WARN" -ForegroundColor Yellow }
+
+        # Helper: install one (or more) packages, optionally from a custom index.
+        function Install-CpPkg {
+            param([string[]]$Spec, [string]$Label = "", [string]$IndexUrl = "")
+            if (-not $Label) { $Label = ($Spec -join ' ') }
+            Write-Host "    $Label..." -NoNewline
+            $uvArgs = @("pip","install") + $Spec + @("--python",$CpPython,"-q")
+            if ($IndexUrl) { $uvArgs += @("--index-url",$IndexUrl) }
+            $out = & $UvExe @uvArgs 2>&1
+            if ($LASTEXITCODE -eq 0) { Write-Host " OK" -ForegroundColor Green; return $true }
+            else { Write-Host " WARN" -ForegroundColor Yellow; Write-Host "      $($out | Select-Object -Last 1)" -ForegroundColor DarkYellow; return $false }
         }
 
-        # Verify cellpose
-        $cpCheck = & $CpPython -c "import importlib.metadata; print(importlib.metadata.version('cellpose'))" 2>&1
-        if ($LASTEXITCODE -eq 0) { Write-OK "cellpose $cpCheck" }
-        else { Write-Warn "cellpose not importable: $cpCheck" }
+        Write-Host "  Installing base scientific stack via uv pip..."
+        Install-CpPkg @("numpy","scipy","scikit-image","tifffile","imageio",
+                        "matplotlib","pillow","zarr","ome-zarr","pybis",
+                        "opencv-python-headless") "base sci stack"
+
+        # PyTorch (Cellpose backend)
+        if (-not $SkipTorch) {
+            if ($Gpu) {
+                Write-Host "  Installing PyTorch (CUDA 12.1, ~2.5 GB)..."
+                Install-CpPkg @("torch","torchvision") "torch (cuda12.1)" `
+                    "https://download.pytorch.org/whl/cu121"
+            } else {
+                Write-Host "  Installing PyTorch (CPU, ~200 MB)..."
+                Install-CpPkg @("torch","torchvision") "torch (cpu)" `
+                    "https://download.pytorch.org/whl/cpu"
+            }
+        } else { Write-Warn "PyTorch skipped (-SkipTorch); Cellpose will not run" }
+
+        # TensorFlow (StarDist backend)
+        # Note: Native Windows TensorFlow is CPU-only for versions > 2.10; GPU needs WSL2.
+        if (-not $SkipTensorflow) {
+            Write-Host "  Installing TensorFlow (~400 MB)..."
+            Install-CpPkg @("tensorflow") "tensorflow"
+        } else { Write-Warn "TensorFlow skipped (-SkipTensorflow); StarDist will not run" }
+
+        # Segmentation frameworks
+        # cellpose pulls torch (already installed above); stardist pulls csbdeep + tensorflow.
+        Write-Host "  Installing segmentation frameworks..."
+        Install-CpPkg @("cellpose") "cellpose"
+        if (-not $SkipTensorflow) { Install-CpPkg @("stardist","csbdeep") "stardist" }
+        else { Write-Warn "stardist skipped (needs TensorFlow)" }
+
+        # Verify key imports
+        function Test-CpImport {
+            param([string]$Module, [string]$VersionExpr)
+            $v = & $CpPython -c "import importlib.metadata as m; print(m.version('$Module'))" 2>&1
+            if ($LASTEXITCODE -eq 0) { Write-OK "$Module $v" } else { Write-Warn "$Module not available" }
+        }
+        Test-CpImport "cellpose"
+        Test-CpImport "stardist"
+        Test-CpImport "torch"
+        Test-CpImport "tensorflow"
+        Test-CpImport "scipy"
     }
 }
 
@@ -185,7 +247,7 @@ if (-not $SkipCpython -and (Test-Path $UvExe)) {
 Write-Step "STEP 4: Writing config"
 $cpExe = Join-Path $CpEnvDir "Scripts\python.exe"
 $lines = @(
-    "# YouScope Python config - auto-generated by setup_graalpy_venv.ps1",
+    "# YouScope Python config auto-generated by setup_graalpy_venv.ps1",
     "graalpy_venv=$VenvDir",
     "cpython_executable=$cpExe",
     "uv_executable=$UvExe",
@@ -206,8 +268,11 @@ Write-Host "  Packages   : numpy 1.26.4, tifffile, requests, pybis"
 Write-Host ""
 if (Test-Path $CpEnvDir) {
     Write-Host "CPython env  : $CpEnvDir (via uv)" -ForegroundColor Green
-    Write-Host "  For        : cellpose, scikit-image, OpenCV, torch"
-    Write-Host "  Packages   : cellpose, scikit-image, numpy, tifffile, ome-zarr, pybis"
+    Write-Host "  For        : cellpose (torch), stardist (tensorflow), scikit-image, OpenCV"
+    Write-Host "  Packages   : cellpose, stardist, csbdeep, torch, tensorflow, scipy,"
+    Write-Host "               scikit-image, numpy, tifffile, imageio, matplotlib, ome-zarr, pybis"
+    if ($SkipTorch)      { Write-Host "  (torch skipped -- Cellpose disabled)"      -ForegroundColor Yellow }
+    if ($SkipTensorflow) { Write-Host "  (tensorflow skipped -- StarDist disabled)" -ForegroundColor Yellow }
 }
 Write-Host ""
 Write-Host "Add more CPython packages (fast):" -ForegroundColor Cyan
@@ -218,4 +283,4 @@ Write-Host "  $VenvPip install <pkg>"
 Write-Host ""
 Write-Host "Test in YouScope scripting console (GraalPy):" -ForegroundColor Cyan
 Write-Host "  import numpy; print(numpy.__version__)"
-Write-Host '  result = run_cellpose(img)  # uses CPython bridge'
+Write-Host "  result = run_cellpose(img)  # uses CPython bridge"

@@ -22,6 +22,8 @@ import javax.swing.JPanel;
 
 import org.youscope.addon.AddonException;
 import org.youscope.addon.postprocessing.AutomaticPostProcessorFactory;
+import org.youscope.addon.postprocessing.ConfigurablePostProcessorFactory;
+import org.youscope.addon.postprocessing.ConfigurablePostProcessorFactory.ConfigurationPanel;
 import org.youscope.addon.postprocessing.PostProcessorAddonFactory;
 import org.youscope.common.measurement.MeasurementConfiguration;
 
@@ -58,6 +60,7 @@ public class AutomaticPostProcessingPanel extends JPanel {
 	private final ArrayList<JCheckBox> fields = new ArrayList<JCheckBox>();
 	private final ArrayList<String> typeIdentifiers = new ArrayList<String>();
 	private final ArrayList<String> unknownTypeIdentifiers = new ArrayList<String>();
+	private final ArrayList<ConfigurationPanel> configuredPanels = new ArrayList<ConfigurationPanel>();
 
 	/**
 	 * Constructor. The panel is populated from the installed post-processors
@@ -67,7 +70,9 @@ public class AutomaticPostProcessingPanel extends JPanel {
 		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 		setOpaque(false);
 
-		add(new JLabel("Run automatically when the measurement finishes:"));
+		JLabel header = new JLabel("Run automatically when the measurement finishes:");
+		header.setAlignmentX(LEFT_ALIGNMENT);
+		add(header);
 
 		ServiceLoader<PostProcessorAddonFactory> factories = ServiceLoader.load(PostProcessorAddonFactory.class,
 				AutomaticPostProcessingPanel.class.getClassLoader());
@@ -78,6 +83,23 @@ public class AutomaticPostProcessingPanel extends JPanel {
 			for (String typeIdentifier : factory.getSupportedTypeIdentifiers()) {
 				if (!automaticFactory.isSupportingAutomaticExecution(typeIdentifier))
 					continue;
+				// If the factory contributes its own configuration panel for this identifier
+				// (options to
+				// be chosen with the protocol), embed that panel instead of a bare checkbox.
+				if (factory instanceof ConfigurablePostProcessorFactory) {
+					ConfigurablePostProcessorFactory configurable = (ConfigurablePostProcessorFactory) factory;
+					if (configurable.isConfigurable(typeIdentifier)) {
+						ConfigurationPanel panel = configurable.createConfigurationPanel(typeIdentifier);
+						if (panel != null) {
+							configuredPanels.add(panel);
+							java.awt.Component component = panel.getComponent();
+							if (component instanceof javax.swing.JComponent)
+								((javax.swing.JComponent) component).setAlignmentX(LEFT_ALIGNMENT);
+							add(component);
+							continue;
+						}
+					}
+				}
 				String name;
 				String description;
 				try {
@@ -89,6 +111,7 @@ public class AutomaticPostProcessingPanel extends JPanel {
 				}
 				JCheckBox field = new JCheckBox(name, false);
 				field.setOpaque(false);
+				field.setAlignmentX(LEFT_ALIGNMENT);
 				if (description != null)
 					field.setToolTipText("<html><div style=\"width:400px\">" + description.replace("\n", "<br />")
 							+ "</div></html>");
@@ -97,8 +120,11 @@ public class AutomaticPostProcessingPanel extends JPanel {
 				add(field);
 			}
 		}
-		if (fields.isEmpty())
-			add(new JLabel("<html><i>No automatic post-processors are installed.</i></html>"));
+		if (fields.isEmpty() && configuredPanels.isEmpty()) {
+			JLabel emptyLabel = new JLabel("<html><i>No automatic post-processors are installed.</i></html>");
+			emptyLabel.setAlignmentX(LEFT_ALIGNMENT);
+			add(emptyLabel);
+		}
 	}
 
 	/**
@@ -110,7 +136,7 @@ public class AutomaticPostProcessingPanel extends JPanel {
 	 * @return True if the panel contains at least one checkbox.
 	 */
 	public boolean hasChoices() {
-		return !fields.isEmpty();
+		return !fields.isEmpty() || !configuredPanels.isEmpty();
 	}
 
 	/**
@@ -127,6 +153,8 @@ public class AutomaticPostProcessingPanel extends JPanel {
 			if (!typeIdentifiers.contains(typeIdentifier))
 				unknownTypeIdentifiers.add(typeIdentifier);
 		}
+		for (ConfigurationPanel panel : configuredPanels)
+			panel.loadData(configuration);
 	}
 
 	/**
@@ -144,5 +172,10 @@ public class AutomaticPostProcessingPanel extends JPanel {
 		}
 		selected.addAll(unknownTypeIdentifiers);
 		configuration.setAutomaticPostProcessors(selected.toArray(new String[selected.size()]));
+		// Contributed panels persist their own identifiers (with encoded options),
+		// preserving whatever
+		// this panel just wrote.
+		for (ConfigurationPanel panel : configuredPanels)
+			panel.saveData(configuration);
 	}
 }
