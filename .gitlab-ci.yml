@@ -24,7 +24,7 @@ build_installer:
     - |
       $ErrorActionPreference = 'Stop'
 
-      # --- Provision toolchain (skip these if your runner already has them) ---
+      # Provision toolchain
       choco install temurin21 --no-progress -y
       choco install temurin8  --no-progress -y
       choco install nsis      --no-progress -y
@@ -44,7 +44,7 @@ build_installer:
       $env:MAKENSIS  = "$env:NSIS_HOME\makensis.exe"
       if (-not (Test-Path $env:MAKENSIS)) { throw "makensis.exe not found" }
 
-      # --- Gradle Java toolchains (main -> 1.7/1.8, polyglot plugins -> JDK 21) ---
+      # Gradle Java toolchains (main -> 1.7/1.8, polyglot plugins -> JDK 21)
       New-Item -ItemType Directory -Force -Path $env:GRADLE_USER_HOME | Out-Null
       $jdk8  = $env:JAVA_HOME  -replace '\\','/'
       $jdk21 = $env:JDK21_HOME -replace '\\','/'
@@ -54,14 +54,14 @@ build_installer:
       java -version
       & "$env:JDK21_HOME\bin\javac.exe" -version
 
-      # --- Bundled JDK 21 runtime ---
+      # Bundled JDK 21 runtime
       $runtime = Join-Path $PWD "runtime"
       if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
       New-Item -ItemType Directory -Force -Path $runtime | Out-Null
       Copy-Item "$env:JDK21_HOME\*" $runtime -Recurse -Force
       if (-not (Test-Path "$runtime\bin\java.exe")) { throw "Bundled JDK 21 incomplete" }
 
-      # --- NSIS AccessControl plugin (vendored; no download) ---
+      # NSIS AccessControl plugin (vendored; no download) 
       $ansi    = Join-Path $env:NSIS_HOME "Plugins\x86-ansi"
       $unicode = Join-Path $env:NSIS_HOME "Plugins\x86-unicode"
       New-Item -ItemType Directory -Force -Path $ansi,$unicode | Out-Null
@@ -72,7 +72,7 @@ build_installer:
       Copy-Item "$vendored\x86-ansi\*.dll"    $ansi    -Force
       Copy-Item "$vendored\x86-unicode\*.dll" $unicode -Force
 
-      # --- Build the installer ---
+      # Build the installer
       .\gradlew.bat --no-daemon createInstaller
 
       $installer = "build\distributions\YouScope_64bit_Installer.exe"
@@ -84,12 +84,12 @@ build_installer:
       - build/distributions/YouScope_64bit_Installer.exe
     expire_in: 4 weeks
 
-# Optional: publish a GitLab Release when you push a tag. Runs the release-cli on
+# Optional: publish a GitLab Release when pushing a tag. Runs the release-cli on
 # a small Linux image and attaches the installer built above as a linked asset.
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
-  tags: [linux]            # a Linux runner for the release-cli
+  tags: [ubuntu:24.04]            
   rules:
     - if: '$CI_COMMIT_TAG'
   needs:
