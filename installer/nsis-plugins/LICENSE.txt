@@ -1,0 +1,5 @@
+LICENSE
+-------
+
+This work is dual-licensed under The MIT License and the GNU General Public License, version 2.0.
+See https://github.com/idleberg/atom-nsis-plugins for details.

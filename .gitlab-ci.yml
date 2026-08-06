@@ -1,5 +1,3 @@
-# YouScope installer build for GitLab (mirrors build.yml).
-
 stages:
   - build
   - release
@@ -9,10 +7,13 @@ variables:
 
 build_installer:
   stage: build
-  tags: [windows]          
+  tags:
+    - windows
+
   rules:
     - if: '$CI_COMMIT_BRANCH'
     - if: '$CI_COMMIT_TAG'
+
   cache:
     key:
       files:
@@ -20,11 +21,59 @@ build_installer:
         - settings.gradle
     paths:
       - .gradle/
+
   script:
     - |
       $ErrorActionPreference = 'Stop'
 
-      # Install Chocolatey if it is not already available
+      function Invoke-NativeChecked {
+        param(
+          [Parameter(Mandatory = $true)]
+          [string]$FilePath,
+
+          [Parameter(Mandatory = $false)]
+          [string[]]$Arguments = @()
+        )
+
+        Write-Host "Running: $FilePath $($Arguments -join ' ')"
+
+        & $FilePath @Arguments
+
+        if ($LASTEXITCODE -ne 0) {
+          throw "'$FilePath' failed with exit code $LASTEXITCODE"
+        }
+      }
+
+      function Install-ChocoPackage {
+        param(
+          [Parameter(Mandatory = $true)]
+          [string]$PackageName,
+
+          [int]$Attempts = 3
+        )
+
+        for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+          Write-Host "Installing Chocolatey package '$PackageName' (attempt $attempt/$Attempts)"
+
+          & choco install $PackageName `
+            --yes `
+            --no-progress `
+            --limit-output
+
+          if ($LASTEXITCODE -eq 0) {
+            return
+          }
+
+          if ($attempt -lt $Attempts) {
+            Write-Warning "Chocolatey failed for '$PackageName' with exit code $LASTEXITCODE. Retrying..."
+            Start-Sleep -Seconds 20
+          }
+        }
+
+        throw "Chocolatey failed to install '$PackageName' after $Attempts attempts"
+      }
+
+      # Install Chocolatey if it is not already available.
       if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
         Set-ExecutionPolicy Bypass -Scope Process -Force
 
@@ -37,85 +86,236 @@ build_installer:
           )
         )
 
-        # Make choco available in this GitLab job immediately
-        $env:Path += ';C:\ProgramData\chocolatey\bin'
+        # Chocolatey may have been installed during this process, so add it
+        # explicitly to the current job's PATH.
+        $env:Path = "C:\ProgramData\chocolatey\bin;$env:Path"
       }
 
-      choco --version
-
-      # Provision toolchain
-      choco install temurin21 --no-progress -y
-      choco install temurin8  --no-progress -y
-      choco install nsis      --no-progress -y
-
-      function Find-Jdk($pattern) {
-        Get-ChildItem 'C:\Program Files\Eclipse Adoptium' -Directory |
-          Where-Object Name -like $pattern | Sort-Object Name -Descending |
-          Select-Object -First 1 -ExpandProperty FullName
+      if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
+        throw "Chocolatey is not available after installation"
       }
+
+      Invoke-NativeChecked 'choco.exe' @('--version')
+
+      # The default Chocolatey web-request timeout is short enough to cause
+      # failures on slower CI runners.
+      Invoke-NativeChecked 'choco.exe' @(
+        'config',
+        'set',
+        '--name=webRequestTimeoutSeconds',
+        '--value=300'
+      )
+
+      # Provision the Java and NSIS toolchain.
+      Install-ChocoPackage 'temurin21'
+      Install-ChocoPackage 'temurin8'
+      Install-ChocoPackage 'nsis'
+
+      function Find-Jdk {
+        param(
+          [Parameter(Mandatory = $true)]
+          [string]$Pattern
+        )
+
+        $roots = @(
+          'C:\Program Files\Eclipse Adoptium',
+          'C:\Program Files\Java'
+        )
+
+        foreach ($root in $roots) {
+          if (Test-Path $root) {
+            $result = Get-ChildItem $root -Directory -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -like $Pattern } |
+              Sort-Object Name -Descending |
+              Select-Object -First 1
+
+            if ($result) {
+              return $result.FullName
+            }
+          }
+        }
+
+        return $null
+      }
+
       $env:JDK21_HOME = Find-Jdk 'jdk-21*'
-      $env:JAVA_HOME  = Find-Jdk 'jdk-8*'        # Gradle 7.6.4 runs on JDK 8
-      if (-not $env:JDK21_HOME) { throw "JDK 21 not found" }
-      if (-not $env:JAVA_HOME)  { throw "JDK 8 not found" }
-      $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+      $env:JAVA_HOME  = Find-Jdk 'jdk-8*'
 
-      $env:NSIS_HOME = "C:\Program Files (x86)\NSIS"
-      $env:MAKENSIS  = "$env:NSIS_HOME\makensis.exe"
-      if (-not (Test-Path $env:MAKENSIS)) { throw "makensis.exe not found" }
-
-      # Gradle Java toolchains (main -> 1.7/1.8, polyglot plugins -> JDK 21)
-      New-Item -ItemType Directory -Force -Path $env:GRADLE_USER_HOME | Out-Null
-      $jdk8  = $env:JAVA_HOME  -replace '\\','/'
-      $jdk21 = $env:JDK21_HOME -replace '\\','/'
-      "org.gradle.java.installations.paths=$jdk8,$jdk21" |
-        Out-File "$env:GRADLE_USER_HOME\gradle.properties" -Encoding ascii
-
-      java -version
-      & "$env:JDK21_HOME\bin\javac.exe" -version
-
-      # Bundled JDK 21 runtime
-      $runtime = Join-Path $PWD "runtime"
-      if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
-      New-Item -ItemType Directory -Force -Path $runtime | Out-Null
-      Copy-Item "$env:JDK21_HOME\*" $runtime -Recurse -Force
-      if (-not (Test-Path "$runtime\bin\java.exe")) { throw "Bundled JDK 21 incomplete" }
-
-      # NSIS AccessControl plugin (vendored; no download) 
-      $ansi    = Join-Path $env:NSIS_HOME "Plugins\x86-ansi"
-      $unicode = Join-Path $env:NSIS_HOME "Plugins\x86-unicode"
-      New-Item -ItemType Directory -Force -Path $ansi,$unicode | Out-Null
-      $vendored = Join-Path $PWD "installer\nsis-plugins"
-      if (-not (Test-Path "$vendored\x86-ansi\AccessControl.dll")) {
-        throw "AccessControl.dll not vendored. Run installer\nsis-plugins\fetch-nsis-plugins.ps1 and commit."
+      if (-not $env:JDK21_HOME) {
+        throw "JDK 21 not found"
       }
-      Copy-Item "$vendored\x86-ansi\*.dll"    $ansi    -Force
-      Copy-Item "$vendored\x86-unicode\*.dll" $unicode -Force
 
-      # Build the installer
-      .\gradlew.bat --no-daemon createInstaller
+      if (-not $env:JAVA_HOME) {
+        throw "JDK 8 not found"
+      }
 
-      $installer = "build\distributions\YouScope_64bit_Installer.exe"
-      if (-not (Test-Path $installer)) { throw "Installer not produced: $installer" }
-      Get-Item $installer | Format-List FullName, Length
+      $env:Path = "$env:JAVA_HOME\bin;$env:JDK21_HOME\bin;$env:Path"
+
+      Write-Host "JAVA_HOME=$env:JAVA_HOME"
+      Write-Host "JDK21_HOME=$env:JDK21_HOME"
+
+      Invoke-NativeChecked "$env:JAVA_HOME\bin\java.exe" @('-version')
+      Invoke-NativeChecked "$env:JDK21_HOME\bin\javac.exe" @('-version')
+
+      # Locate makensis.exe. Depending on the NSIS package version it may be
+      # directly below NSIS or below NSIS\Bin.
+      $makensisItem = Get-ChildItem `
+        'C:\Program Files (x86)\NSIS',
+        'C:\Program Files\NSIS' `
+        -Filter 'makensis.exe' `
+        -Recurse `
+        -File `
+        -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+
+      if (-not $makensisItem) {
+        throw "makensis.exe not found after NSIS installation"
+      }
+
+      $env:MAKENSIS = $makensisItem.FullName
+
+      if ($makensisItem.Directory.Name -ieq 'Bin') {
+        $env:NSIS_HOME = $makensisItem.Directory.Parent.FullName
+      }
+      else {
+        $env:NSIS_HOME = $makensisItem.Directory.FullName
+      }
+
+      $env:Path = "$($makensisItem.Directory.FullName);$env:Path"
+
+      Write-Host "NSIS_HOME=$env:NSIS_HOME"
+      Write-Host "MAKENSIS=$env:MAKENSIS"
+
+      Invoke-NativeChecked $env:MAKENSIS @('/VERSION')
+
+      # Configure Gradle Java toolchains.
+      New-Item `
+        -ItemType Directory `
+        -Force `
+        -Path $env:GRADLE_USER_HOME |
+        Out-Null
+
+      $jdk8 = $env:JAVA_HOME -replace '\\', '/'
+      $jdk21 = $env:JDK21_HOME -replace '\\', '/'
+
+      "org.gradle.java.installations.paths=$jdk8,$jdk21" |
+        Out-File `
+          "$env:GRADLE_USER_HOME\gradle.properties" `
+          -Encoding ascii
+
+      # Bundle the JDK 21 runtime.
+      $runtime = Join-Path $PWD 'runtime'
+
+      if (Test-Path $runtime) {
+        Remove-Item $runtime -Recurse -Force
+      }
+
+      New-Item `
+        -ItemType Directory `
+        -Force `
+        -Path $runtime |
+        Out-Null
+
+      Copy-Item `
+        "$env:JDK21_HOME\*" `
+        $runtime `
+        -Recurse `
+        -Force
+
+      if (-not (Test-Path "$runtime\bin\java.exe")) {
+        throw "Bundled JDK 21 is incomplete"
+      }
+
+      # Install the manually vendored AccessControl plugin.
+      # The archive's i386 DLLs are intentionally stored in the repository as
+      # x86-ansi and x86-unicode for NSIS's plugin directory layout.
+      $vendored = Join-Path $PWD 'installer\nsis-plugins'
+      $vendoredAnsi = Join-Path $vendored 'x86-ansi'
+      $vendoredUnicode = Join-Path $vendored 'x86-unicode'
+
+      $vendoredAnsiDll = Join-Path $vendoredAnsi 'AccessControl.dll'
+      $vendoredUnicodeDll = Join-Path $vendoredUnicode 'AccessControl.dll'
+
+      if (-not (Test-Path $vendoredAnsiDll)) {
+        throw "Missing vendored ANSI plugin: $vendoredAnsiDll"
+      }
+
+      if (-not (Test-Path $vendoredUnicodeDll)) {
+        throw "Missing vendored Unicode plugin: $vendoredUnicodeDll"
+      }
+
+      $nsisAnsi = Join-Path $env:NSIS_HOME 'Plugins\x86-ansi'
+      $nsisUnicode = Join-Path $env:NSIS_HOME 'Plugins\x86-unicode'
+
+      New-Item `
+        -ItemType Directory `
+        -Force `
+        -Path $nsisAnsi, $nsisUnicode |
+        Out-Null
+
+      Copy-Item `
+        $vendoredAnsiDll `
+        (Join-Path $nsisAnsi 'AccessControl.dll') `
+        -Force
+
+      Copy-Item `
+        $vendoredUnicodeDll `
+        (Join-Path $nsisUnicode 'AccessControl.dll') `
+        -Force
+
+      if (-not (Test-Path (Join-Path $nsisAnsi 'AccessControl.dll'))) {
+        throw "ANSI AccessControl.dll was not copied to NSIS"
+      }
+
+      if (-not (Test-Path (Join-Path $nsisUnicode 'AccessControl.dll'))) {
+        throw "Unicode AccessControl.dll was not copied to NSIS"
+      }
+
+      Write-Host "Installed AccessControl plugins:"
+      Get-Item `
+        (Join-Path $nsisAnsi 'AccessControl.dll'),
+        (Join-Path $nsisUnicode 'AccessControl.dll') |
+        Format-List FullName, Length
+
+      # Build the installer.
+      & .\gradlew.bat --no-daemon createInstaller
+
+      if ($LASTEXITCODE -ne 0) {
+        throw "Gradle installer build failed with exit code $LASTEXITCODE"
+      }
+
+      $installer = 'build\distributions\YouScope_64bit_Installer.exe'
+
+      if (-not (Test-Path $installer)) {
+        throw "Installer was not produced: $installer"
+      }
+
+      Get-Item $installer |
+        Format-List FullName, Length
+
   artifacts:
     name: "YouScope_64bit_Installer_$CI_PIPELINE_IID"
     paths:
       - build/distributions/YouScope_64bit_Installer.exe
     expire_in: 4 weeks
 
-# Optional: publish a GitLab Release when pushing a tag. Runs the release-cli on
-# a small Linux image and attaches the installer built above as a linked asset.
+
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
-  tags: [ubuntu:24.04]            
+  tags:
+    - ubuntu:24.04
+
   rules:
     - if: '$CI_COMMIT_TAG'
+
   needs:
     - job: build_installer
       artifacts: true
+
   script:
     - echo "Publishing release for $CI_COMMIT_TAG"
+
   release:
     tag_name: '$CI_COMMIT_TAG'
     name: 'YouScope $CI_COMMIT_TAG'
