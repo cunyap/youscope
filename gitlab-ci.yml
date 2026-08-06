@@ -1,0 +1,103 @@
+# YouScope installer build for GitLab (mirrors build.yml).
+
+stages:
+  - build
+  - release
+
+variables:
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+
+build_installer:
+  stage: build
+  tags: [windows]          
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+  cache:
+    key:
+      files:
+        - build.gradle
+        - settings.gradle
+    paths:
+      - .gradle/
+  script:
+    - |
+      $ErrorActionPreference = 'Stop'
+
+      # --- Provision toolchain (skip these if your runner already has them) ---
+      choco install temurin21 --no-progress -y
+      choco install temurin8  --no-progress -y
+      choco install nsis      --no-progress -y
+
+      function Find-Jdk($pattern) {
+        Get-ChildItem 'C:\Program Files\Eclipse Adoptium' -Directory |
+          Where-Object Name -like $pattern | Sort-Object Name -Descending |
+          Select-Object -First 1 -ExpandProperty FullName
+      }
+      $env:JDK21_HOME = Find-Jdk 'jdk-21*'
+      $env:JAVA_HOME  = Find-Jdk 'jdk-8*'        # Gradle 7.6.4 runs on JDK 8
+      if (-not $env:JDK21_HOME) { throw "JDK 21 not found" }
+      if (-not $env:JAVA_HOME)  { throw "JDK 8 not found" }
+      $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+
+      $env:NSIS_HOME = "C:\Program Files (x86)\NSIS"
+      $env:MAKENSIS  = "$env:NSIS_HOME\makensis.exe"
+      if (-not (Test-Path $env:MAKENSIS)) { throw "makensis.exe not found" }
+
+      # --- Gradle Java toolchains (main -> 1.7/1.8, polyglot plugins -> JDK 21) ---
+      New-Item -ItemType Directory -Force -Path $env:GRADLE_USER_HOME | Out-Null
+      $jdk8  = $env:JAVA_HOME  -replace '\\','/'
+      $jdk21 = $env:JDK21_HOME -replace '\\','/'
+      "org.gradle.java.installations.paths=$jdk8,$jdk21" |
+        Out-File "$env:GRADLE_USER_HOME\gradle.properties" -Encoding ascii
+
+      java -version
+      & "$env:JDK21_HOME\bin\javac.exe" -version
+
+      # --- Bundled JDK 21 runtime ---
+      $runtime = Join-Path $PWD "runtime"
+      if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
+      New-Item -ItemType Directory -Force -Path $runtime | Out-Null
+      Copy-Item "$env:JDK21_HOME\*" $runtime -Recurse -Force
+      if (-not (Test-Path "$runtime\bin\java.exe")) { throw "Bundled JDK 21 incomplete" }
+
+      # --- NSIS AccessControl plugin (vendored; no download) ---
+      $ansi    = Join-Path $env:NSIS_HOME "Plugins\x86-ansi"
+      $unicode = Join-Path $env:NSIS_HOME "Plugins\x86-unicode"
+      New-Item -ItemType Directory -Force -Path $ansi,$unicode | Out-Null
+      $vendored = Join-Path $PWD "installer\nsis-plugins"
+      if (-not (Test-Path "$vendored\x86-ansi\AccessControl.dll")) {
+        throw "AccessControl.dll not vendored. Run installer\nsis-plugins\fetch-nsis-plugins.ps1 and commit."
+      }
+      Copy-Item "$vendored\x86-ansi\*.dll"    $ansi    -Force
+      Copy-Item "$vendored\x86-unicode\*.dll" $unicode -Force
+
+      # --- Build the installer ---
+      .\gradlew.bat --no-daemon createInstaller
+
+      $installer = "build\distributions\YouScope_64bit_Installer.exe"
+      if (-not (Test-Path $installer)) { throw "Installer not produced: $installer" }
+      Get-Item $installer | Format-List FullName, Length
+  artifacts:
+    name: "YouScope_64bit_Installer_$CI_PIPELINE_IID"
+    paths:
+      - build/distributions/YouScope_64bit_Installer.exe
+    expire_in: 4 weeks
+
+# Optional: publish a GitLab Release when you push a tag. Runs the release-cli on
+# a small Linux image and attaches the installer built above as a linked asset.
+create_release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  tags: [linux]            # a Linux runner for the release-cli
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  needs:
+    - job: build_installer
+      artifacts: true
+  script:
+    - echo "Publishing release for $CI_COMMIT_TAG"
+  release:
+    tag_name: '$CI_COMMIT_TAG'
+    name: 'YouScope $CI_COMMIT_TAG'
+    description: 'Automated YouScope build for $CI_COMMIT_TAG'
