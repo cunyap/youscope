@@ -24,6 +24,25 @@ build_installer:
     - |
       $ErrorActionPreference = 'Stop'
 
+      # Install Chocolatey if it is not already available
+      if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+
+        [System.Net.ServicePointManager]::SecurityProtocol =
+          [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+
+        Invoke-Expression (
+          (New-Object System.Net.WebClient).DownloadString(
+            'https://community.chocolatey.org/install.ps1'
+          )
+        )
+
+        # Make choco available in this GitLab job immediately
+        $env:Path += ';C:\ProgramData\chocolatey\bin'
+      }
+
+      choco --version
+
       # Provision toolchain
       choco install temurin21 --no-progress -y
       choco install temurin8  --no-progress -y
