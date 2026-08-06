@@ -1,31 +1,41 @@
 /*
- * This gradle configuration compiles and packages YouScope.
+ * This Gradle configuration compiles and packages YouScope.
  */
 
-// Gradle plugins
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.tasks.AbstractCopyTask
+
 plugins {
-	id 'application'
-	id 'eclipse'
-	id 'edu.sc.seis.launch4j' version '2.4.6'
+    id 'application'
+    id 'eclipse'
+    id 'edu.sc.seis.launch4j' version '2.4.6'
 }
 
 application {
-	executableDir = ''
-	mainClassName = 'org.youscope.starter.Starter'
-	applicationDefaultJvmArgs = ['-Djava.library.path=drivers64', '-Dpython.console.encoding=UTF-8']
+    executableDir = ''
+    mainClassName = 'org.youscope.starter.Starter'
+
+    applicationDefaultJvmArgs = [
+        '-Djava.library.path=drivers64',
+        '-Dpython.console.encoding=UTF-8'
+	]
 }
+
 allprojects {
-    tasks.withType(JavaExec) {
-        workingDir = new File("distribution")
-    }
-    tasks.withType(Copy) {
+    tasks.withType(AbstractCopyTask).configureEach {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
-    tasks.withType(Tar) {
+
+    tasks.withType(Tar).configureEach {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
-    tasks.withType(Zip) {
+
+    tasks.withType(Zip).configureEach {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
+    tasks.withType(JavaExec).configureEach {
+        workingDir = new File(rootProject.projectDir, 'distribution')
     }
 }
 
@@ -36,228 +46,317 @@ task emptyTask{
 // Configuration to create the exe files for YouScope
 // See https://github.com/TheBoegl/gradle-launch4j for details
 launch4j {
-   dontWrapJar = true
-   headerType = 'gui'
-   jar = "lib/youscope.jar"
-   errTitle = 'YouScope'
-   copyConfigurable = rootProject.tasks.emptyTask.outputs.files
-   
-   cmdLine = ""
-   chdir = '.'
-   priority = 'normal'
-   downloadUrl = "http://java.com/download"
-   supportUrl = 'http://www.youscope.org'
-   stayAlive = false
-   restartOnCrash = false
-   manifest = ""
-   icon = "${rootProject.projectDir}/resources/windows/YouScope.ico"
-   classpath = ['lib/youscope.jar']
-   mainClassName = "org.youscope.starter.Starter"
-   
-   bundledJre64Bit = false
-   bundledJreAsFallback = false
-   jreMinVersion = "17.0.0" 
-   initialHeapSize = 256
-   initialHeapPercent = 10
-   maxHeapSize = 1024
-   maxHeapPercent = 50
-  
-   splashFileName = "${rootProject.projectDir}/resources/windows/splash.bmp"
-   splashWaitForWindows = true
-   splashTimeout = 60
-   splashTimeoutError = true
-    
-   fileDescription = 'YouScope - Microscope Control Environment'
-   copyright = 'Andreas P. Cuny & Moritz Lang, info@youscope.org'
-   productName = "YouScope - Microscope Control Environment"
-   companyName = "YouScope.org"
-   internalName = "YouScope"
-   language = "ENGLISH_US"
-}
-// 64 bit version of exe
-createExe {
-    outfile = 'YouScope64.exe'
-    jreRuntimeBits = "64"
-    jvmOptions = ["-Dpython.console.encoding=UTF-8",
-              "-Djava.library.path=drivers64",
-              "--enable-native-access=ALL-UNNAMED",
-              "--add-opens=java.base/java.util=ALL-UNNAMED",
-              "--add-opens=java.base/java.lang=ALL-UNNAMED",
-              "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
-              "--add-opens=java.base/java.text=ALL-UNNAMED",
-              "--add-opens=java.base/java.math=ALL-UNNAMED",
-              "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED"]
-	variables = ['PATH=%EXEDIR%\\drivers64;%PATH%']
+    dontWrapJar = true
+    headerType = 'gui'
+
+    jar = 'lib/youscope.jar'
+    errTitle = 'YouScope'
+    copyConfigurable = rootProject.tasks.emptyTask.outputs.files
+
+    cmdLine = ''
+    chdir = '.'
+    priority = 'normal'
+    downloadUrl = 'https://adoptium.net/'
+    supportUrl = 'https://www.youscope.org'
+    stayAlive = false
+    restartOnCrash = false
+    manifest = ''
+
+    icon = "${rootProject.projectDir}/resources/windows/YouScope.ico"
+    classpath = ['lib/youscope.jar']
+    mainClassName = 'org.youscope.starter.Starter'
+
+    /*
+     * runtime is relative to YouScope64.exe.
+     *
+     * bundledJreAsFallback=false means the release executable does not
+     * silently depend on Java being installed on the user's machine.
+     */
+    bundledJrePath = 'runtime'
+    bundledJre64Bit = true
+    bundledJreAsFallback = false
+    jreMinVersion = '21.0.0'
+
+    initialHeapSize = 256
+    initialHeapPercent = 10
+    maxHeapSize = 1024
+    maxHeapPercent = 50
+
+    splashFileName = "${rootProject.projectDir}/resources/windows/splash.bmp"
+    splashWaitForWindows = true
+    splashTimeout = 60
+    splashTimeoutError = true
+
+    fileDescription = 'YouScope - Microscope Control Environment'
+    copyright = 'Andreas P. Cuny & Moritz Lang, info@youscope.org'
+    productName = 'YouScope - Microscope Control Environment'
+    companyName = 'YouScope.org'
+    internalName = 'YouScope'
+    language = 'ENGLISH_US'
 }
 
-// Delete annoying start scripts. We are using exe's instead!
+/*
+ * Generate the 64-bit YouScope executable.
+ *
+ */
+createExe {
+    outfile = 'YouScope64.exe'
+    jreRuntimeBits = '64'
+
+    jvmOptions = [
+        '-Dpython.console.encoding=UTF-8',
+        '-Djava.library.path=drivers64',
+        '--enable-native-access=ALL-UNNAMED',
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED',
+        '--add-opens=java.base/java.text=ALL-UNNAMED',
+        '--add-opens=java.base/java.math=ALL-UNNAMED',
+        '--add-opens=java.desktop/java.awt.font=ALL-UNNAMED'
+    ]
+
+    variables = [
+        'PATH=%EXEDIR%\\drivers64;%PATH%'
+    ]
+}
+
+/*
+ * Delete the generated start scripts.
+ * YouScope is launched through YouScope64.exe instead.
+ */
 startScripts {
     doLast {
         delete windowsScript
-		delete unixScript
+        delete unixScript
     }
 }
 
-// global variables
-ext.archivesBaseName = "youscope"
+/*
+ * Global project variables.
+ */
+ext.archivesBaseName = 'youscope'
 ext.version = '2.4.0'
 
-// Basic subprojects of youscope
-project(':core')
-{
-	subprojects {
-		apply plugin: 'java'
-		group = 'org.youscope'
-		version = rootProject.version
-		repositories {
-		   flatDir {
-			   dirs '../../libs'
-		   }
-		}
-		jar.archiveName = "${rootProject.archivesBaseName}-${project.name}.${jar.extension}"
-		
-		jar.doFirst{
-			manifest{
-				def manif = "${projectDir}/src/main/resources/META-INF/MANIFEST.MF"
-				if (new File(manif).exists()) {
-					from file(manif)
-				}
-				else
-				{
-					attributes(
-						'Class-Path'	 : configurations.compile.collect { it.getName() }.join(' ')
-					)
-				}
-				attributes(
-					'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
-					'Build-Version'  : rootProject.ext.version,
-					'Created-By'     : "Gradle ${gradle.gradleVersion}",
-					'Build-Jdk'      : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
-					'Build-OS'       : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
-				)
-			}
-		}
-	}
-}
-// root project
-jar.doFirst{
-	manifest{
-			def manif = "${projectDir}/src/main/resources/META-INF/MANIFEST.MF"
-			if (new File(manif).exists()) {
-				from file(manif)
-			}
-			else
-			{
-				attributes(
-					'Class-Path'	 : configurations.compile.collect { it.getName() }.join(' ')
-				)
-			}
-			attributes(
-				'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
-				'Build-Version'  : rootProject.ext.version,
-				'Created-By'     : "Gradle ${gradle.gradleVersion}",
-				'Build-Jdk'      : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
-				'Build-OS'       : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
-			)
-		}
+/*
+ * Core subprojects.
+ */
+project(':core') {
+    subprojects {
+        apply plugin: 'java'
+
+        group = 'org.youscope'
+        version = rootProject.version
+
+        repositories {
+            flatDir {
+                dirs '../../libs'
+            }
+        }
+
+        jar.archiveName =
+            "${rootProject.archivesBaseName}-${project.name}.${jar.extension}"
+
+        jar.doFirst {
+            manifest {
+                def manif =
+                    "${projectDir}/src/main/resources/META-INF/MANIFEST.MF"
+
+                if (new File(manif).exists()) {
+                    from file(manif)
+                }
+                else {
+                    attributes(
+                        'Class-Path': configurations.compile.collect {
+                            it.getName()
+                        }.join(' ')
+                    )
+                }
+
+                attributes(
+                    'Build-Timestamp':
+                        new java.text.SimpleDateFormat(
+                            "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                        ).format(new Date()),
+                    'Build-Version': rootProject.ext.version,
+                    'Created-By': "Gradle ${gradle.gradleVersion}",
+                    'Build-Jdk':
+                        "${System.properties['java.version']} " +
+                        "(${System.properties['java.vendor']} " +
+                        "${System.properties['java.vm.version']})",
+                    'Build-OS':
+                        "${System.properties['os.name']} " +
+                        "${System.properties['os.arch']} " +
+                        "${System.properties['os.version']}"
+                )
+            }
+        }
+    }
 }
 
+/*
+ * Root project.
+ */
+jar.doFirst {
+    manifest {
+        def manif =
+            "${projectDir}/src/main/resources/META-INF/MANIFEST.MF"
 
-project(':core:api')
-{
-	dependencies {
+        if (new File(manif).exists()) {
+            from file(manif)
+        }
+        else {
+            attributes(
+                'Class-Path': configurations.compile.collect {
+                    it.getName()
+                }.join(' ')
+            )
+        }
+
+        attributes(
+            'Build-Timestamp':
+                new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                ).format(new Date()),
+            'Build-Version': rootProject.ext.version,
+            'Created-By': "Gradle ${gradle.gradleVersion}",
+            'Build-Jdk':
+                "${System.properties['java.version']} " +
+                "(${System.properties['java.vendor']} " +
+                "${System.properties['java.vm.version']})",
+            'Build-OS':
+                "${System.properties['os.name']} " +
+                "${System.properties['os.arch']} " +
+                "${System.properties['os.version']}"
+        )
+    }
+}
+
+/*
+ * Core dependencies.
+ */
+project(':core:api') {
+    dependencies {
         implementation name: 'xstream-1.4.2'
-    }	
-}
-project(':core:server')
-{
-	dependencies {
-        implementation project(':core:api')
-		implementation name: 'xstream-1.4.2'
-    }
-}
-project(':core:client')
-{
-	dependencies {
-        implementation project(':core:api')
-		implementation name: 'xstream-1.4.2'
-		implementation name: 'jcommon-1.0.17'
-		implementation name: 'jfreechart-1.0.14'
-		implementation name: 'zxing-core-1.7'
-		implementation name: 'zxing-j2se-1.7'
-		runtimeOnly name: 'fugue-icons-2.6.4'
     }
 }
 
-// Plugin subprojects of youscope
-project(':plugins')
-{
-	subprojects {
-		apply plugin: 'java'
-		group = 'org.youscope'
-		version = rootProject.version
-		repositories {
-		   flatDir {
-			   dirs '../../libs'
-		   }
-		}
-		jar.archiveName = "${rootProject.archivesBaseName}-${project.name}.${jar.extension}"
-		
-		dependencies {
-			implementation project(':core:api')
-			implementation name: 'xstream-1.4.2'
-		}
-		
-		jar.doFirst{
-			manifest{
-				def manif = "${projectDir}/src/main/resources/META-INF/MANIFEST.MF"
-				if (new File(manif).exists()) {
-					from file(manif)
-				}
-				else
-				{
-					attributes(
-						'Class-Path'	 : '../lib/youscope-common.jar ../lib/youscope-addon.jar ../lib/xstream-1.4.2.jar'
-					)
-				}
-				attributes(
-					'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
-					'Build-Version'  : rootProject.ext.version,
-					'Created-By'     : "Gradle ${gradle.gradleVersion}",
-					'Build-Jdk'      : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
-					'Build-OS'       : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
-				)
-			}
-		}
-	}
+project(':core:server') {
+    dependencies {
+        implementation project(':core:api')
+        implementation name: 'xstream-1.4.2'
+    }
 }
 
+project(':core:client') {
+    dependencies {
+        implementation project(':core:api')
+        implementation name: 'xstream-1.4.2'
+        implementation name: 'jcommon-1.0.17'
+        implementation name: 'jfreechart-1.0.14'
+        implementation name: 'zxing-core-1.7'
+        implementation name: 'zxing-j2se-1.7'
+        runtimeOnly name: 'fugue-icons-2.6.4'
+    }
+}
+
+/*
+ * Plugin subprojects.
+ */
+project(':plugins') {
+    subprojects {
+        apply plugin: 'java'
+
+        group = 'org.youscope'
+        version = rootProject.version
+
+        repositories {
+            flatDir {
+                dirs '../../libs'
+            }
+        }
+
+        jar.archiveName =
+            "${rootProject.archivesBaseName}-${project.name}.${jar.extension}"
+
+        dependencies {
+            implementation project(':core:api')
+            implementation name: 'xstream-1.4.2'
+        }
+
+        jar.doFirst {
+            manifest {
+                def manif =
+                    "${projectDir}/src/main/resources/META-INF/MANIFEST.MF"
+
+                if (new File(manif).exists()) {
+                    from file(manif)
+                }
+                else {
+                    attributes(
+                        'Class-Path':
+                            '../lib/youscope-common.jar ' +
+                            '../lib/youscope-addon.jar ' +
+                            '../lib/xstream-1.4.2.jar'
+                    )
+                }
+
+                attributes(
+                    'Build-Timestamp':
+                        new java.text.SimpleDateFormat(
+                            "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+                        ).format(new Date()),
+                    'Build-Version': rootProject.ext.version,
+                    'Created-By': "Gradle ${gradle.gradleVersion}",
+                    'Build-Jdk':
+                        "${System.properties['java.version']} " +
+                        "(${System.properties['java.vendor']} " +
+                        "${System.properties['java.vm.version']})",
+                    'Build-OS':
+                        "${System.properties['os.name']} " +
+                        "${System.properties['os.arch']} " +
+                        "${System.properties['os.version']}"
+                )
+            }
+        }
+    }
+}
+
+/*
+ * The source is Java 7-compatible.
+ *
+ * Gradle itself runs with JDK 8 in this project, while the generated
+ * application runtime is JDK 21 (GraalPy).
+ */
 allprojects {
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         sourceCompatibility = '1.7'
         targetCompatibility = '1.7'
-    } 
+    }
 }
 
+/*
+ * Root-project runtime dependencies.
+ */
 dependencies {
-	repositories {
-	   flatDir {
-		   dirs 'libs'
-	   }
-	}
+    repositories {
+        flatDir {
+            dirs 'libs'
+        }
+    }
+
     runtimeOnly project(':core:server')
     runtimeOnly project(':core:client')
-	project(':plugins')
-	{
-		subprojects {
-			runtimeOnly project(':plugins:' + project.name)
-		}
-	}
+
+    project(':plugins') {
+        subprojects {
+            runtimeOnly project(":plugins:${project.name}")
+        }
+    }
 }
 
-///////////////////////////////////
-// Define distribution structure
-///////////////////////////////////
+/*
+ * Build inputs used by the distribution.
+ */
 task externalLibs {
     def libs = file("${rootProject.projectDir}/libs")
     outputs.dir libs
@@ -268,122 +367,224 @@ task addMSVC {
     outputs.dir msvc
 }
 
-// Populated by CI from the Temurin JDK 21 installation.
+/*
+ * The CI job populates this directory by copying the JDK 21 installation.
+ *
+ * Expected result:
+ *
+ *   runtime/bin/java.exe
+ */
 task bundledRuntime {
     def runtime = file("${rootProject.projectDir}/runtime")
     outputs.dir runtime
 }
 
-// Package distribution
+/*
+ * Create the NSIS staging distribution.
+ */
 distributions {
     nsis {
-		distributionBaseName = 'nsis'
-		// copy everything which is in the /distribution folder.
-		contents {
-            from 'distribution'
-        }
+        distributionBaseName = 'nsis'
+
+        /*
+         * The generated Launch4j executable is added below through
+         * from(createExe).
+         */
         contents {
-            from(addMSVC)
-			{
-				into 'msvc'
-			}
+            from('distribution') {
+                exclude 'YouScope64.exe'
+            }
         }
+
+        contents {
+            from(addMSVC) {
+                into 'msvc'
+            }
+        }
+
         contents {
             from(bundledRuntime) {
                 into 'runtime'
             }
-			from(createExe)
-			{
-				into ''
-			}
-			from(externalLibs) {
+
+            from(createExe) {
+                into ''
+            }
+
+            from(externalLibs) {
                 into 'lib'
             }
-			project(':') {
-				from(jar) {
-					into 'lib'
-				}
-			}
-			project(':core:api') {
-				from(jar) {
-					into 'lib'
-				}
-			}
-			project(':core:client') {
-				from(jar) {
-					into 'lib'
-				}
-			}
-			project(':core:server') {
-				from(jar) {
-					into 'lib'
-				}
-			}
-			project(':plugins') {
-				subprojects {
-					from(jar) {
-						into 'plugins'
-					}
-				}
-			}
+
+            project(':') {
+                from(jar) {
+                    into 'lib'
+                }
+            }
+
+            project(':core:api') {
+                from(jar) {
+                    into 'lib'
+                }
+            }
+
+            project(':core:client') {
+                from(jar) {
+                    into 'lib'
+                }
+            }
+
+            project(':core:server') {
+                from(jar) {
+                    into 'lib'
+                }
+            }
+
+            project(':plugins') {
+                subprojects {
+                    from(jar) {
+                        into 'plugins'
+                    }
+                }
+            }
         }
     }
 }
 
-// work around for bugs in installNsisDist on github
+/*
+ * Install the NSIS distribution into build/install/nsis.
+ *
+ * NSIS itself is installed by CI, not by Gradle. Gradle only stages the
+ * files and later invokes the makensis executable supplied through MAKENSIS.
+ */
 installNsisDist {
-	def installDir = file("${rootProject.buildDir}/install/nsis")
-	def msvcDir = new File(installDir, "msvc")
-	def libDir = new File(installDir, "lib")
-	def binDir = new File(installDir, "bin")
-	// make the wrongly required directories before they are checked for
-	doFirst {
-		mkdir installDir
-		mkdir msvcDir
-		mkdir libDir
-		mkdir binDir
-	}
-	// remove them after the check
-	doLast {
-		println "Installing distribution to $installDir."
-		binDir.deleteDir()
-	}
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    def installDir = file("${rootProject.buildDir}/install/nsis")
+    def msvcDir = new File(installDir, 'msvc')
+    def libDir = new File(installDir, 'lib')
+    def binDir = new File(installDir, 'bin')
+
+    /*
+     * Workaround for the distribution-plugin directory checks.
+     */
+    doFirst {
+        mkdir installDir
+        mkdir msvcDir
+        mkdir libDir
+        mkdir binDir
+    }
+
+    /*
+     * The distribution plugin creates a bin directory that is not needed
+     * because the generated YouScope64.exe is placed at the distribution root.
+     */
+    doLast {
+        println "Installing distribution to ${installDir}."
+        binDir.deleteDir()
+
+        def launcher = new File(installDir, 'YouScope64.exe')
+        def bundledJava = new File(installDir, 'runtime/bin/java.exe')
+
+        if (!launcher.exists()) {
+            throw new GradleException(
+                "Generated launcher is missing: ${launcher}"
+            )
+        }
+
+        if (!bundledJava.exists()) {
+            throw new GradleException(
+                "Bundled Java runtime is missing: ${bundledJava}"
+            )
+        }
+
+        println "Launcher: ${launcher}"
+        println "Bundled Java: ${bundledJava}"
+    }
 }
 
-def nsisSrc   = file("${rootProject.projectDir}/resources/nsis")   // YouScope.nsi + YouScope.ico + splash.bmp
+/*
+ * NSIS input and staging directories.
+ */
+def nsisSrc = file("${rootProject.projectDir}/resources/nsis")
 def nsisStage = file("${rootProject.buildDir}/install/nsis")
 
+/*
+ * Build the final NSIS installer.
+ *
+ * MAKENSIS is supplied by the CI environment. For a local build, either put
+ * makensis.exe on PATH or define MAKENSIS explicitly.
+ */
 tasks.register('createInstaller', Exec) {
     group = 'distribution'
-    description = 'Builds the 64-bit YouScope installer with the system makensis.'
+    description = 'Builds the 64-bit YouScope installer with makensis.'
+
     dependsOn 'installNsisDist'
 
     doFirst {
-        // Colocate the .nsi and its bare-path assets (YouScope.ico, splash.bmp)
-        // with the staged lib/, plugins/, runtime/ so that OutFile, MUI_ICON and
-        // the FILE "lib\*" / "plugins\*.jar" lines all resolve against this dir.
+        def launcher = file("${nsisStage}/YouScope64.exe")
+        def bundledJava = file("${nsisStage}/runtime/bin/java.exe")
+        def installerScript = file("${nsisStage}/YouScope.nsi")
+
+        if (!launcher.exists()) {
+            throw new GradleException(
+                "Missing launcher before NSIS invocation: ${launcher}"
+            )
+        }
+
+        if (!bundledJava.exists()) {
+            throw new GradleException(
+                "Missing bundled Java runtime before NSIS invocation: " +
+                "${bundledJava}"
+            )
+        }
+
         copy {
             from nsisSrc
             into nsisStage
         }
+
+        if (!installerScript.exists()) {
+            throw new GradleException(
+                "Missing NSIS script: ${installerScript}"
+            )
+        }
     }
 
     def makensis = System.getenv('MAKENSIS') ?: 'makensis'
+
     workingDir nsisStage
     commandLine makensis, '/V3', 'YouScope.nsi'
 
     doLast {
+        def generatedInstaller =
+            file("${nsisStage}/YouScope_64bit_Installer.exe")
+
+        if (!generatedInstaller.exists()) {
+            throw new GradleException(
+                "NSIS did not create ${generatedInstaller}"
+            )
+        }
+
         copy {
-            from file("${nsisStage}/YouScope_64bit_Installer.exe")
+            from generatedInstaller
             into layout.buildDirectory.dir('distributions')
         }
-        println "Installer -> ${buildDir}/distributions/YouScope_64bit_Installer.exe"
+
+        println(
+            "Installer -> " +
+            "${layout.buildDirectory.get().asFile}/distributions/" +
+            "YouScope_64bit_Installer.exe"
+        )
     }
 }
 
-// 64-bit only. Compatibility alias for existing scripts.
+/*
+ * Compatibility alias for existing scripts.
+ */
 task createInstallers {
-    dependsOn ":createInstaller"
+    dependsOn ':createInstaller'
 }
+
 createInstallers.group = createInstaller.group
-createInstallers.description = "Creates the 64-bit YouScope installer"
+createInstallers.description =
+    'Creates the 64-bit YouScope installer'
