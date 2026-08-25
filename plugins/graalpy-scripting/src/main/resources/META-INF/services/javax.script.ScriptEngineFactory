@@ -1,3 +1,2 @@
 org.youscope.plugin.graalpy.GraalPyScriptEngineFactory
 org.youscope.plugin.graalpy.GraalPyJythonAliasEngineFactory
-org.youscope.plugin.graalpy.GraalJSScriptEngineFactory
