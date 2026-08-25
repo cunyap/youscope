@@ -1,0 +1,32 @@
+// plugins/cellprofiler-quantifier/build.gradle
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+compileJava.doFirst {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+afterEvaluate {
+    def jvm7 = 7
+    configurations.apiElements.attributes {
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, jvm7)
+    }
+    configurations.runtimeElements.attributes {
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, jvm7)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Reuses AnalysisBackendClient and base quantifier interfaces from cell-detection.
+    // Runs its own cellprofiler_server.py in a dedicated (cellprofiler_*) Python env.
+    implementation project(':plugins:cell-detection')
+}
