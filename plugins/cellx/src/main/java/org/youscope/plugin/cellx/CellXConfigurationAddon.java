@@ -69,7 +69,7 @@ class CellXConfigurationAddon extends ComponentAddonUIAdapter<CellXConfiguration
 				CellXConfiguration.class,
 				CellXAddon.class, "CellX Cell-Detection", new String[] { "Cell Detection" },
 				"Uses the CellX algorithm to segment cells, and returns the segmentation image and the cells' positions and properties.",
-				"icons/smiley-mr-green.png");
+				"icons/cellx-icon.png");
 	}
 
 	@Override
