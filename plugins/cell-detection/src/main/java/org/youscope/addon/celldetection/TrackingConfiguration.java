@@ -1,0 +1,50 @@
+/*******************************************************************************
+ * Copyright (c) 2026 Andreas P. Cuny.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors:
+ *     Andreas P. Cuny - initial API and implementation
+ ******************************************************************************/
+/**
+ * 
+ */
+package org.youscope.addon.celldetection;
+
+import org.youscope.common.configuration.ConfigurationException;
+import org.youscope.common.resource.ResourceConfiguration;
+import org.youscope.common.table.ColumnDefinition;
+
+import com.thoughtworks.xstream.annotations.XStreamAlias;
+
+/**
+ * Base configuration for a tracking addon.
+ *
+ * <p>
+ * {@link #getProducedColumns()} declares the column(s) a tracker adds so the
+ * composed detection table header is known at configuration time. All bundled
+ * trackers add a single flat {@code cell.track.id}.
+ */
+@XStreamAlias("tracking-configuration")
+public abstract class TrackingConfiguration extends ResourceConfiguration {
+	private static final long serialVersionUID = 7712512978102625714L;
+
+	/**
+	 * Column name for the persistent per-cell track id added by online trackers.
+	 */
+	public static final String TRACK_ID_COLUMN = "cell.track.id";
+
+	@Override
+	public void checkConfiguration() throws ConfigurationException {
+		/* nothing */ }
+
+	/** Columns this tracker adds to the table (default: {@code cell.track.id}). */
+	public ColumnDefinition<?>[] getProducedColumns() {
+		return new ColumnDefinition<?>[] {
+				ColumnDefinition.createIntegerColumnDefinition(TRACK_ID_COLUMN,
+						"Persistent track id assigned by the online tracker.", false)
+		};
+	}
+}
