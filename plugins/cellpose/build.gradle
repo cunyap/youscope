@@ -1,0 +1,32 @@
+// plugins/cellpose/build.gradle
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+compileJava.doFirst {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+afterEvaluate {
+    def jvm7 = 7
+    configurations.apiElements.attributes {
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, jvm7)
+    }
+    configurations.runtimeElements.attributes {
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, jvm7)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':plugins:cell-detection')
+    implementation project(':plugins:graalpy-scripting')
+    implementation "org.graalvm.polyglot:polyglot:24.1.0"
+}

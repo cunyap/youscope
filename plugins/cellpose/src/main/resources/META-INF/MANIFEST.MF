@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Class-Path: ../common/youscope-api.jar ../lib/xstream-1.4.2.jar youscope
+ -graalpy-scripting.jar youscope-cell-detection.jar ../lib/polyglot-24.1
+ .0.jar
+
