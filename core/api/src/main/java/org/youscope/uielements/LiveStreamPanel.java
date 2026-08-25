@@ -8,7 +8,7 @@
  * Contributors:
  *     Moritz Lang - initial API and implementation
  *     Elisa Garulli - initial Crosshair implementation
- *     Andreas P. Cuny - initial Mask & Crosshair implementation
+ *     Andreas P. Cuny - general Mask & Crosshair implementation
  ******************************************************************************/
 package org.youscope.uielements;
 
@@ -24,9 +24,11 @@ import java.rmi.RemoteException;
 import java.awt.AlphaComposite;
 import java.awt.Composite;
 import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Point2D;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
@@ -56,6 +58,7 @@ import org.youscope.serverinterfaces.YouScopeServer;
 
 /**
  * A panel to configure, start and stop a live stream.
+ * 
  * @author Moritz Lang
  *
  */
@@ -67,18 +70,17 @@ public class LiveStreamPanel extends ImagePanel {
 	private static final long serialVersionUID = 5555935386353363014L;
 	private final YouScopeClient client;
 	private final YouScopeServer server;
-	
+
 	private final ChannelControl channelControl;
 	private final StartStopControl startStopControl;
 	private final Object measurementControlLock = new Object();
 	private volatile Measurement measurement = null;
 	private volatile ImageHandler imageHandler = null;
 	private volatile boolean streamRunning = false;
-
 	private boolean isCrosshairDisplayed = false;
 	private boolean isCrosshairCentered = false;
-	private int crosshairX = -1;
-	private int crosshairY = -1;
+	private int crosshairImageX = -1;
+	private int crosshairImageY = -1;
 	private static final Color CROSSHAIR_COLOR = new Color(0, 181, 255);
 	private boolean isMaskDisplayed = false;
 	private boolean isCircMask = false;
@@ -86,48 +88,47 @@ public class LiveStreamPanel extends ImagePanel {
 	private boolean isInvertMask = false;
 	private int maskCircRadius = -1;
 	private int maskRectWidth = -1;
-	private int maskRectHeight = -1;	
+	private int maskRectHeight = -1;
 	private final Object fullScreenLock = new Object();
 	private JFrame fullScreenFrame = null;
 	private volatile boolean fullScreenOn = false;
-	
+
 	private boolean autostart = false;
+
 	/**
 	 * Constructor.
+	 * 
 	 * @param client YouScope client.
 	 * @param server YouScope server.
 	 */
-	public LiveStreamPanel(YouScopeClient client, YouScopeServer server) 
-	{
+	public LiveStreamPanel(YouScopeClient client, YouScopeServer server) {
 		super(client);
-		this.setOpaque(false); 
+		this.setOpaque(false);
 		setNoImageText("Press start to start imaging");
 		setTitle("LiveStream");
 		this.client = client;
-		this.server = server;	
+		this.server = server;
 		channelControl = new ChannelControl(client, server);
-		channelControl.addActionListener(new ActionListener()
-		{
+		channelControl.addActionListener(new ActionListener() {
 			@Override
-				public void actionPerformed(ActionEvent e) 
-				{
-					if(streamRunning)
-						startLiveStream();
-				}
+			public void actionPerformed(ActionEvent e) {
+				if (streamRunning)
+					startLiveStream();
+			}
 		});
 		startStopControl = new StartStopControl();
-		
+
 		setUserChoosesAutoAdjustContrast(true);
 		insertControl("Imaging", channelControl, 0);
 		addControl("Control", startStopControl);
-		
+
 		// Overlay Crosshair options
 		JPanel crosshairPanel = new JPanel();
 		crosshairPanel.setLayout(new BoxLayout(crosshairPanel, BoxLayout.Y_AXIS));
 
-		final JCheckBox crosshairCheckbox = new JCheckBox("Display Crosshair", false); 
+		final JCheckBox crosshairCheckbox = new JCheckBox("Display Crosshair", false);
 		crosshairPanel.add(crosshairCheckbox);
-		final JCheckBox crosshairCenteredCheckbox = new JCheckBox("Center Crosshair", true); 
+		final JCheckBox crosshairCenteredCheckbox = new JCheckBox("Center Crosshair", true);
 		crosshairPanel.add(crosshairCenteredCheckbox);
 
 		crosshairCheckbox.addActionListener(new ActionListener() {
@@ -151,8 +152,8 @@ public class LiveStreamPanel extends ImagePanel {
 			public void actionPerformed(ActionEvent e) {
 				isCrosshairCentered = crosshairCenteredCheckbox.isSelected();
 				if (isCrosshairCentered) {
-					crosshairX = -1;
-					crosshairY = -1;
+					crosshairImageX = -1;
+					crosshairImageY = -1;
 				}
 				repaint();
 			}
@@ -161,17 +162,27 @@ public class LiveStreamPanel extends ImagePanel {
 		addControl("Crosshair", crosshairPanel);
 
 		addMouseListener(new java.awt.event.MouseAdapter() {
-		    @Override
-		    public void mouseClicked(java.awt.event.MouseEvent e) {
-		        if (isCrosshairDisplayed) {
-		            crosshairX = e.getX();
-		            crosshairY = e.getY();
-		            repaint();
-		        }
-		    }
+			@Override
+			public void mouseClicked(java.awt.event.MouseEvent e) {
+				if (!isCrosshairDisplayed) {
+					return;
+				}
+				try {
+					AffineTransform t = getImageTransform();
+					if (t == null) {
+						return;
+					}
+					Point2D p = t.createInverse().transform(e.getPoint(), null);
+					crosshairImageX = (int) Math.round(p.getX());
+					crosshairImageY = (int) Math.round(p.getY());
+					repaint();
+				} catch (Exception ex) {
+					// ignore non-invertible / invalid cases
+				}
+			}
 		});
 
-		// Overlay Mask options panel 
+		// Overlay Mask options panel
 		JPanel overlayPanel = new JPanel();
 		overlayPanel.setLayout(new BoxLayout(overlayPanel, BoxLayout.Y_AXIS));
 
@@ -199,7 +210,6 @@ public class LiveStreamPanel extends ImagePanel {
 		overlayPanel.add(new JLabel("Height:"));
 		overlayPanel.add(rectHeightField);
 
-
 		circleCutoutCheckbox.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -207,13 +217,13 @@ public class LiveStreamPanel extends ImagePanel {
 				isCircMask = selected;
 				isRectMask = false;
 
-				if(isCircMask) {
+				if (isCircMask) {
 					circleRadiusField.setEnabled(true);
 					rectCutoutCheckbox.setSelected(false);
 					rectWidthField.setEnabled(false);
 					rectHeightField.setEnabled(false);
-					maskCircRadius = Integer.parseInt(circleRadiusField.getText());	
-				} else{
+					maskCircRadius = Integer.parseInt(circleRadiusField.getText());
+				} else {
 					circleRadiusField.setEnabled(false);
 				}
 				repaint();
@@ -226,7 +236,8 @@ public class LiveStreamPanel extends ImagePanel {
 				try {
 					maskCircRadius = Integer.parseInt(circleRadiusField.getText());
 					repaint();
-				} catch (NumberFormatException ex) {}
+				} catch (NumberFormatException ex) {
+				}
 			}
 		});
 
@@ -237,15 +248,15 @@ public class LiveStreamPanel extends ImagePanel {
 				isRectMask = selected;
 				isCircMask = false;
 
-				if(isRectMask) {
+				if (isRectMask) {
 					rectWidthField.setEnabled(true);
-				    rectHeightField.setEnabled(true);
+					rectHeightField.setEnabled(true);
 					circleCutoutCheckbox.setSelected(false);
 					circleRadiusField.setEnabled(false);
-					
+
 					maskRectWidth = Integer.parseInt(rectWidthField.getText());
 					maskRectHeight = Integer.parseInt(rectHeightField.getText());
-				} else{
+				} else {
 					rectWidthField.setEnabled(false);
 					rectHeightField.setEnabled(false);
 				}
@@ -259,7 +270,8 @@ public class LiveStreamPanel extends ImagePanel {
 				try {
 					maskRectWidth = Integer.parseInt(rectWidthField.getText());
 					repaint();
-				} catch (NumberFormatException ex) {}
+				} catch (NumberFormatException ex) {
+				}
 			}
 		});
 
@@ -269,7 +281,8 @@ public class LiveStreamPanel extends ImagePanel {
 				try {
 					maskRectHeight = Integer.parseInt(rectHeightField.getText());
 					repaint();
-				} catch (NumberFormatException ex) {}
+				} catch (NumberFormatException ex) {
+				}
 			}
 		});
 
@@ -300,58 +313,51 @@ public class LiveStreamPanel extends ImagePanel {
 		loadSettings(client.getPropertyProvider());
 
 	}
-	
+
 	/**
-	 * Set to true to show the LiveStream in full-screen mode. Set to fals again to stop full-sceen again.
+	 * Set to true to show the LiveStream in full-screen mode. Set to fals again to
+	 * stop full-sceen again.
+	 * 
 	 * @param fullScreen True to start, false to stop full-screen.
 	 */
-	public void setFullScreen(final boolean fullScreen)
-	{
-		synchronized(fullScreenLock)
-		{
-			if(fullScreen == fullScreenOn)
+	public void setFullScreen(final boolean fullScreen) {
+		synchronized (fullScreenLock) {
+			if (fullScreen == fullScreenOn)
 				return;
 			fullScreenOn = fullScreen;
 		}
-		
+
 		Runnable runner = new Runnable() {
-			
+
 			@Override
-			public void run() 
-			{
-				if(!fullScreen && fullScreenFrame != null)
-				{
+			public void run() {
+				if (!fullScreen && fullScreenFrame != null) {
 					GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()[0].setFullScreenWindow(null);
 					fullScreenFrame.setVisible(false);
 					fullScreenFrame.getContentPane().removeAll();
-					if(frame != null)
-					{
+					if (frame != null) {
 						frame.setContentPane(LiveStreamPanel.this);
 					}
-				}
-				else if(fullScreen)
-				{
-					if(frame != null)
-					{
-						frame.setContentPane(new JLabel("<html>LiveStream is currently<br />in full-screen mode</html>"));
+				} else if (fullScreen) {
+					if (frame != null) {
+						frame.setContentPane(
+								new JLabel("<html>LiveStream is currently<br />in full-screen mode</html>"));
 						try {
 							Thread.sleep(100);
 						} catch (@SuppressWarnings("unused") InterruptedException e) {
 							// do nothing.
 						}
 					}
-					if(fullScreenFrame == null)
-					{
+					if (fullScreenFrame == null) {
 						fullScreenFrame = new JFrame("LiveStream");
 						fullScreenFrame.setUndecorated(true);
 						fullScreenFrame.setLayout(new BorderLayout());
-						fullScreenFrame.addWindowListener(new WindowAdapter()
-						{
+						fullScreenFrame.addWindowListener(new WindowAdapter() {
 							@Override
 							public void windowClosed(WindowEvent arg0) {
 								setFullScreen(false);
 							}
-				
+
 							@Override
 							public void windowClosing(WindowEvent arg0) {
 								setFullScreen(false);
@@ -361,82 +367,90 @@ public class LiveStreamPanel extends ImagePanel {
 					fullScreenFrame.getContentPane().removeAll();
 					fullScreenFrame.getContentPane().add(LiveStreamPanel.this, BorderLayout.CENTER);
 					fullScreenFrame.setVisible(true);
-					
-					GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()[0].setFullScreenWindow(fullScreenFrame);
+
+					GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()[0]
+							.setFullScreenWindow(fullScreenFrame);
 				}
 				startStopControl.updateButtons();
 			}
 		};
-		if(SwingUtilities.isEventDispatchThread())
+		if (SwingUtilities.isEventDispatchThread())
 			runner.run();
 		else
 			SwingUtilities.invokeLater(runner);
 	}
-	
-	
+
 	@Override
-	public void saveSettings(PropertyProvider properties)
-	{
+	public void saveSettings(PropertyProvider properties) {
 		super.saveSettings(properties);
 		String camera = channelControl.getCamera();
-    	String channelGroup = channelControl.getChannelGroup();
-    	String channel = channelControl.getChannel();
-    	double exposure = channelControl.getExposure();
-    	int imagingPeriod = channelControl.getImagingPeriod();
-    	
-    	if(channel != null && channelGroup != null)
-    	{
-    		properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL, channel);
-    		properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL_GROUP, channelGroup);
-    	}
-    	if(camera != null)
-    		properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_CAMERA, camera);
-    	properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_EXPOSURE, exposure);
-    	properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_PERIOD, imagingPeriod);
+		String channelGroup = channelControl.getChannelGroup();
+		String channel = channelControl.getChannel();
+		double exposure = channelControl.getExposure();
+		int imagingPeriod = channelControl.getImagingPeriod();
+
+		if (channel != null && channelGroup != null) {
+			properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL, channel);
+			properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL_GROUP, channelGroup);
+		}
+		if (camera != null)
+			properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_CAMERA, camera);
+		properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_EXPOSURE, exposure);
+		properties.setProperty(StandardProperty.PROPERTY_STREAM_LAST_PERIOD, imagingPeriod);
 	}
+
 	@Override
-	public void loadSettings(PropertyProvider properties)
-	{
+	public void loadSettings(PropertyProvider properties) {
 		super.loadSettings(properties);
-		setAutoStartStream((Boolean) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_AUTOSTART));
-		
-		if((boolean) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_USE_DEFAULT_SETTINGS))
-		{
-			channelControl.setExposure((double)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_EXPOSURE));
-			channelControl.setImagingPeriod((int)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_PERIOD));
-			channelControl.setCamera((String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CAMERA));
-			channelControl.setChannel((String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CHANNEL_GROUP), 
-					(String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CHANNEL));
-		}
-		else
-		{
-			channelControl.setExposure((double)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_EXPOSURE));
-			channelControl.setImagingPeriod((int)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_PERIOD));
-			channelControl.setCamera((String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CAMERA));
-			channelControl.setChannel((String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL_GROUP), 
-					(String)client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL));
+		setAutoStartStream(
+				(Boolean) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_AUTOSTART));
+
+		if ((boolean) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_USE_DEFAULT_SETTINGS)) {
+			channelControl.setExposure((double) client.getPropertyProvider()
+					.getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_EXPOSURE));
+			channelControl.setImagingPeriod(
+					(int) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_PERIOD));
+			channelControl.setCamera(
+					(String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CAMERA));
+			channelControl.setChannel(
+					(String) client.getPropertyProvider()
+							.getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CHANNEL_GROUP),
+					(String) client.getPropertyProvider()
+							.getProperty(StandardProperty.PROPERTY_STREAM_DEFAULT_CHANNEL));
+		} else {
+			channelControl.setExposure(
+					(double) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_EXPOSURE));
+			channelControl.setImagingPeriod(
+					(int) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_PERIOD));
+			channelControl.setCamera(
+					(String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CAMERA));
+			channelControl.setChannel(
+					(String) client.getPropertyProvider()
+							.getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL_GROUP),
+					(String) client.getPropertyProvider().getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL));
 		}
 	}
-	
+
 	/**
-	 * Returns a frame listener which can be added to the frame to which this panel is added, taking care that the LiveStream automatically
-	 * stops when the frame closes (and, that it automatically starts when the frame opens, if autostart is set to true).
+	 * Returns a frame listener which can be added to the frame to which this panel
+	 * is added, taking care that the LiveStream automatically
+	 * stops when the frame closes (and, that it automatically starts when the frame
+	 * opens, if autostart is set to true).
+	 * 
 	 * @return Frame listener.
 	 */
 	@Override
-	public YouScopeFrameListener getFrameListener()
-	{
+	public YouScopeFrameListener getFrameListener() {
 		final YouScopeFrameListener superListener = super.getFrameListener();
 		return new YouScopeFrameListener() {
-			
+
 			@Override
-			public void frameOpened() 
-			{
+			public void frameOpened() {
 				superListener.frameOpened();
-				if(autostart)
+				if (autostart)
 					startLiveStream();
 			}
-			
+
 			@Override
 			public void frameClosed() {
 				stopLiveStream();
@@ -445,96 +459,85 @@ public class LiveStreamPanel extends ImagePanel {
 			}
 		};
 	}
-	
-	private class ImageHandler extends Thread
-    {
-    	private volatile ImageEvent<?> nextImage;
-    	private volatile boolean shouldRun = true;
-    	private class ImageListenerImpl extends UnicastRemoteObject implements ImageListener
-    	{
-    		/**
+
+	private class ImageHandler extends Thread {
+		private volatile ImageEvent<?> nextImage;
+		private volatile boolean shouldRun = true;
+
+		private class ImageListenerImpl extends UnicastRemoteObject implements ImageListener {
+			/**
 			 * Serial Version UID.
 			 */
-			private static final long	serialVersionUID	= -4135351939442377119L;
+			private static final long serialVersionUID = -4135351939442377119L;
 
 			/**
-    		 * Constructor
+			 * Constructor
+			 * 
 			 * @throws RemoteException
 			 */
-			protected ImageListenerImpl() throws RemoteException
-			{
+			protected ImageListenerImpl() throws RemoteException {
 				super();
 			}
 
 			@Override
-    		public void imageMade(ImageEvent<?> e) throws RemoteException
-    		{
-    			synchronized(ImageHandler.this)
-    			{
-    				nextImage = e;
-    				ImageHandler.this.notifyAll();
-    			}
-    		}
-    	}
-    	private volatile ImageListenerImpl listener = null;
-		
-		
-		synchronized void stopListening()
-		{
+			public void imageMade(ImageEvent<?> e) throws RemoteException {
+				synchronized (ImageHandler.this) {
+					nextImage = e;
+					ImageHandler.this.notifyAll();
+				}
+			}
+		}
+
+		private volatile ImageListenerImpl listener = null;
+
+		synchronized void stopListening() {
 			shouldRun = false;
 			this.notifyAll();
 		}
-		
-		ImageListener startListening() throws RemoteException
-		{
+
+		ImageListener startListening() throws RemoteException {
 			start();
-			if(listener == null)
+			if (listener == null)
 				listener = new ImageListenerImpl();
 			return listener;
 		}
-    	
+
 		@Override
-		public void run()
-		{
-			while(shouldRun)
-			{
+		public void run() {
+			while (shouldRun) {
 				// get image.
 				ImageEvent<?> image = null;
-				synchronized(this)
-				{
-					while(shouldRun && nextImage == null)
-					{
-						try
-						{
+				synchronized (this) {
+					while (shouldRun && nextImage == null) {
+						try {
 							this.wait();
-						}
-						catch(InterruptedException e)
-						{
+						} catch (InterruptedException e) {
 							client.sendError("Microscope image processor was interrupted.", e);
 							return;
 						}
 					}
-					if(!shouldRun)
+					if (!shouldRun)
 						return;
 					image = nextImage;
 					nextImage = null;
 				}
-				
+
 				// process image
 				setImage(image);
-				
+
 			}
-			
+
 		}
-		
-    }
+
+	}
+
 	/**
 	 * Control to select the channel and exposure times.
+	 * 
 	 * @author Moritz Lang
 	 *
 	 */
-	public static class ChannelControl extends DynamicPanel
-	{
+	public static class ChannelControl extends DynamicPanel {
 		/**
 		 * Serial Version UID.
 		 */
@@ -544,304 +547,297 @@ public class LiveStreamPanel extends ImagePanel {
 		final DoubleTextField exposureField = new DoubleTextField();
 		final IntegerTextField imagingPeriodField = new IntegerTextField();
 		private final ArrayList<ActionListener> actionListeners = new ArrayList<ActionListener>();
+
 		/**
 		 * Constructor.
+		 * 
 		 * @param client YouScope client.
 		 * @param server YouScope server.
 		 */
-		public ChannelControl(final YouScopeClient client, final YouScopeServer server)
-		{
+		public ChannelControl(final YouScopeClient client, final YouScopeServer server) {
 			cameraField = new CameraField(client, server);
 			channelField = new ChannelField(client, server);
-			
+
 			exposureField.setMinimalValue(0);
 			exposureField.setValue(10.0);
 			imagingPeriodField.setMinimalValue(0);
-			
-			ActionListener changeListener = new ActionListener()
-			{
+
+			ActionListener changeListener = new ActionListener() {
 				@Override
-				public void actionPerformed(ActionEvent e) 
-				{
+				public void actionPerformed(ActionEvent e) {
 					fireActionEvent();
 				}
 			};
-			
+
 			JLabel label;
-			if(cameraField.isChoice())
-			{
+			if (cameraField.isChoice()) {
 				label = new JLabel("Camera:");
 				label.setForeground(Color.WHITE);
 				add(label);
 				add(cameraField);
 				cameraField.addActionListener(changeListener);
 			}
-			
+
 			label = new JLabel("Channel:");
 			label.setForeground(Color.WHITE);
 			add(label);
 			add(channelField);
 			channelField.addActionListener(changeListener);
-			
+
 			label = new JLabel("Exposure (ms):");
 			label.setForeground(Color.WHITE);
 			add(label);
 			add(exposureField);
 			exposureField.addActionListener(changeListener);
-			
+
 			label = new JLabel("Imaging Period (ms):");
 			label.setForeground(Color.WHITE);
 			add(label);
 			add(imagingPeriodField);
 			imagingPeriodField.addActionListener(changeListener);
 		}
-		
+
 		/**
 		 * Adds a listener which gets notified when channel configuration changed.
+		 * 
 		 * @param listener Notifier to add.
 		 */
-		public void addActionListener(ActionListener listener)
-		{
-			synchronized (actionListeners) 
-			{
+		public void addActionListener(ActionListener listener) {
+			synchronized (actionListeners) {
 				actionListeners.add(listener);
 			}
 		}
+
 		/**
 		 * Removes a previously added listener.
+		 * 
 		 * @param listener Listener to remove.
 		 */
-		public void removeActionListener(ActionListener listener)
-		{
-			synchronized (actionListeners) 
-			{
+		public void removeActionListener(ActionListener listener) {
+			synchronized (actionListeners) {
 				actionListeners.remove(listener);
 			}
 		}
-		
-		private void fireActionEvent()
-		{
-			synchronized (actionListeners) 
-			{
-				for(ActionListener listener : actionListeners)
-				{
-					listener.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_FIRST, "Channel settings changed"));
+
+		private void fireActionEvent() {
+			synchronized (actionListeners) {
+				for (ActionListener listener : actionListeners) {
+					listener.actionPerformed(
+							new ActionEvent(this, ActionEvent.ACTION_FIRST, "Channel settings changed"));
 				}
 			}
 		}
-		
+
 		/**
 		 * Returns the currently selected channel.
+		 * 
 		 * @return Currently selected channel.
 		 */
-		public String getChannel()
-		{
+		public String getChannel() {
 			return channelField.getChannel();
 		}
+
 		/**
 		 * Sets the currently selected channel
+		 * 
 		 * @param channelGroup channel group
-		 * @param channel channel
+		 * @param channel      channel
 		 */
-		public void setChannel(String channelGroup, String channel)
-		{
+		public void setChannel(String channelGroup, String channel) {
 			channelField.setChannel(channelGroup, channel);
 		}
+
 		/**
 		 * Returns the currently selected channel group.
+		 * 
 		 * @return Currently selected channel group.
 		 */
-		public String getChannelGroup()
-		{
+		public String getChannelGroup() {
 			return channelField.getChannelGroup();
 		}
+
 		/**
 		 * Returns the currently selected exposure time in ms.
+		 * 
 		 * @return exposure time in ms.
 		 */
-		public double getExposure()
-		{
+		public double getExposure() {
 			return exposureField.getValue();
 		}
+
 		/**
 		 * Sets the currently selected exposure
+		 * 
 		 * @param exposure exposure time in ms.
 		 */
-		public void setExposure(double exposure)
-		{
+		public void setExposure(double exposure) {
 			exposureField.setValue(exposure);
 		}
+
 		/**
 		 * Returns the currently selected imaging period in ms.
+		 * 
 		 * @return Imaging period in ms.
 		 */
-		public int getImagingPeriod()
-		{
+		public int getImagingPeriod() {
 			return imagingPeriodField.getValue();
 		}
+
 		/**
 		 * Sets the currently selected imaging period in ms.
+		 * 
 		 * @param period Imaging period in ms.
 		 */
-		public void setImagingPeriod(int period)
-		{
+		public void setImagingPeriod(int period) {
 			imagingPeriodField.setValue(period);
 		}
+
 		/**
 		 * Returns the currently selected camera.
-		 * Note: the camera selection field will only be shown if more than one camera is available. This function
-		 * nevertheless will return the camera name even if only one camera is available.
+		 * Note: the camera selection field will only be shown if more than one camera
+		 * is available. This function
+		 * nevertheless will return the camera name even if only one camera is
+		 * available.
+		 * 
 		 * @return Name of currently selected camera.
 		 */
-		public String getCamera()
-		{
+		public String getCamera() {
 			return cameraField.getCameraDevice();
 		}
+
 		/**
 		 * Sets the currently selected camera.
-		 * Note: the camera selection field will only be shown if more than one camera is available. This function
+		 * Note: the camera selection field will only be shown if more than one camera
+		 * is available. This function
 		 * nevertheless will set the camera name even if only one camera is available.
+		 * 
 		 * @param camera Name of currently selected camera.
 		 */
-		public void setCamera(String camera)
-		{
+		public void setCamera(String camera) {
 			cameraField.setCamera(camera);
 		}
 	}
-	
+
 	/**
-	 * If set to true, the stream automatically starts when the window is made visible.
+	 * If set to true, the stream automatically starts when the window is made
+	 * visible.
 	 * Note: the stream automatically stops if the frame is hidden.
 	 * Has only an effect if #toFrame() is used.
+	 * 
 	 * @param autostart true to automatically start imaging when frame shows up.
 	 */
-	public void setAutoStartStream(boolean autostart)
-	{
+	public void setAutoStartStream(boolean autostart) {
 		this.autostart = autostart;
 	}
-	
+
 	/**
-	 * Set to true to display a button with which the user can choose on him/herself if the LiveStream should be shown in full-screen mode. Default is false.
+	 * Set to true to display a button with which the user can choose on him/herself
+	 * if the LiveStream should be shown in full-screen mode. Default is false.
+	 * 
 	 * @param userChooses True to display fullscreen button.
 	 */
-	public void setUserChoosesFullScreen(boolean userChooses)
-	{
+	public void setUserChoosesFullScreen(boolean userChooses) {
 		GraphicsDevice[] screens = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
-		if(screens.length < 1)
+		if (screens.length < 1)
 			userChooses = false;
-		else
-		{
+		else {
 			userChooses = userChooses && screens[0].isFullScreenSupported();
 		}
-		
+
 		startStopControl.fullScreenButton.setVisible(userChooses);
 	}
 
 	@Override
-	public void paintComponent(Graphics g)
-	{
-		super.paintComponent(g);  
+	public void paintComponent(Graphics g) {
+		super.paintComponent(g);
 
 		Graphics2D g2d = (Graphics2D) g;
 
-		// Draw Crosshair if enabled
-		if (isCrosshairDisplayed && crosshairX >= 0 && crosshairY >= 0)
-		{
-			g2d.setColor(CROSSHAIR_COLOR); 
-			g2d.drawLine(crosshairX, 0, crosshairX, getHeight());
-			g2d.drawLine(0, crosshairY, getWidth(), crosshairY);
+		// Get the image transform from ImagePanel
+		AffineTransform imageTransform = getImageTransform();
+		if (imageTransform == null) {
+			return;
 		}
 
-		// Draw Mask if enabled
+		int imageW = getCurrentImageWidth();
+		int imageH = getCurrentImageHeight();
+		if (imageW <= 0 || imageH <= 0) {
+			return;
+		}
+
+		// Draw crosshair in image coordinates, transformed to screen coords
+		if (isCrosshairDisplayed && crosshairImageX >= 0 && crosshairImageY >= 0) {
+			// Vertical line: (crosshairImageX, 0) -> (crosshairImageX, imageH)
+			Point2D p1 = imageTransform.transform(new Point2D.Double(crosshairImageX, 0), null);
+			Point2D p2 = imageTransform.transform(new Point2D.Double(crosshairImageX, imageH), null);
+
+			// Horizontal line: (0, crosshairImageY) -> (imageW, crosshairImageY)
+			Point2D p3 = imageTransform.transform(new Point2D.Double(0, crosshairImageY), null);
+			Point2D p4 = imageTransform.transform(new Point2D.Double(imageW, crosshairImageY), null);
+
+			g2d.setColor(CROSSHAIR_COLOR);
+			g2d.drawLine(
+					(int) Math.round(p1.getX()), (int) Math.round(p1.getY()),
+					(int) Math.round(p2.getX()), (int) Math.round(p2.getY()));
+			g2d.drawLine(
+					(int) Math.round(p3.getX()), (int) Math.round(p3.getY()),
+					(int) Math.round(p4.getX()), (int) Math.round(p4.getY()));
+		}
+
+		// Draw mask in image coordinates, transformed to screen coords
 		if (isMaskDisplayed) {
 			Composite originalComposite = g2d.getComposite();
-
-			int panelWidth = getWidth();
-			int panelHeight = getHeight();
-			int rectSize = Math.min(panelWidth, panelHeight);
-			int rectX = (panelWidth - rectSize) / 2;
-			int rectY = (panelHeight - rectSize) / 2;
-
-			// @todo currently does not scale when image is zoomed
-			Area overlayArea = new Area(new Rectangle2D.Double(rectX, rectY, rectSize, rectSize));
-
-			if (isCircMask && maskCircRadius >= 0) {
-				int radius = maskCircRadius;
-				Shape circleHole = new Ellipse2D.Double(
-					rectX + rectSize / 2 - radius, rectY + rectSize / 2 - radius, radius * 2, radius * 2);
-				if (!isInvertMask) {
-					overlayArea.subtract(new Area(circleHole));
-				} else {
-					overlayArea = new Area(circleHole);
-				};
-			} else if (isRectMask && maskRectWidth >= 0 && maskRectHeight >= 0) {
-				int rectW = maskRectWidth;
-				int rectH = maskRectHeight;
-				int cutoutX = rectX + (rectSize - rectW) / 2;
-				int cutoutY = rectY + (rectSize - rectH) / 2;
-				Shape rectHole = new Rectangle2D.Double(cutoutX, cutoutY, rectW, rectH);
-				if (!isInvertMask) {
-					overlayArea.subtract(new Area(rectHole));
-				} else {
-					overlayArea = new Area(rectHole);
-				};
-			}
-
-			// Draw semi-transparent overlay with the hole
 			g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
 			g2d.setColor(CROSSHAIR_COLOR);
-			g2d.fill(overlayArea);
 
-			// Restore original composite
+			// Base area: full image rectangle in image coordinates
+			Area overlayArea = new Area(new Rectangle2D.Double(0, 0, imageW, imageH));
+
+			if (isCircMask && maskCircRadius >= 0 && crosshairImageX >= 0 && crosshairImageY >= 0) {
+				Shape hole = new Ellipse2D.Double(
+						crosshairImageX - maskCircRadius,
+						crosshairImageY - maskCircRadius,
+						maskCircRadius * 2.0,
+						maskCircRadius * 2.0);
+				if (!isInvertMask) {
+					overlayArea.subtract(new Area(hole));
+				} else {
+					overlayArea = new Area(hole);
+				}
+			} else if (isRectMask && maskRectWidth >= 0 && maskRectHeight >= 0 && crosshairImageX >= 0
+					&& crosshairImageY >= 0) {
+				Shape hole = new Rectangle2D.Double(
+						crosshairImageX - maskRectWidth / 2.0,
+						crosshairImageY - maskRectHeight / 2.0,
+						maskRectWidth,
+						maskRectHeight);
+				if (!isInvertMask) {
+					overlayArea.subtract(new Area(hole));
+				} else {
+					overlayArea = new Area(hole);
+				}
+			}
+
+			// Transform the overlay shape to screen coordinates and draw
+			Shape screenShape = imageTransform.createTransformedShape(overlayArea);
+			g2d.fill(screenShape);
+
 			g2d.setComposite(originalComposite);
 		}
-
 	}
 
 	@Override
 	public synchronized void setImage(ImageEvent<?> imageEvent) {
-	    super.setImage(imageEvent);
-	
-	    if (isCrosshairCentered && imageEvent != null) {
-	        int imagePixelWidth = imageEvent.getWidth();
-	        int imagePixelHeight = imageEvent.getHeight();
-	
-	        int panelWidth = getWidth();
-	        int panelHeight = getHeight();
-	
-	        // Calculate image draw size preserving aspect ratio
-	        double imageAspect = (double) imagePixelWidth / imagePixelHeight;
-	        double panelAspect = (double) panelWidth / panelHeight;
-	
-	        int drawWidth;
-	        int drawHeight;
-	        int offsetX;
-	        int offsetY;
-	
-	        if (panelAspect > imageAspect) {
-	            // Panel is wider than image aspect
-	            drawHeight = panelHeight;
-	            drawWidth = (int) (drawHeight * imageAspect);
-	            offsetX = (panelWidth - drawWidth) / 2;
-	            offsetY = 0;
-	        } else {
-	            // Panel is taller than image aspect
-	            drawWidth = panelWidth;
-	            drawHeight = (int) (drawWidth / imageAspect);
-	            offsetX = 0;
-	            offsetY = (panelHeight - drawHeight) / 2;
-	        }
-	
-	        // Center of drawn image inside panel coordinates
-	        crosshairX = offsetX + drawWidth / 2;
-	        crosshairY = offsetY + drawHeight / 2;
-	
-	        repaint();
-	    }
+		super.setImage(imageEvent);
+
+		if (isCrosshairCentered && imageEvent != null) {
+			crosshairImageX = imageEvent.getWidth() / 2;
+			crosshairImageY = imageEvent.getHeight() / 2;
+		}
+		repaint();
 	}
-	
-	private class StartStopControl extends DynamicPanel
-	{
+
+	private class StartStopControl extends DynamicPanel {
 		/**
 		 * Serial Version UID.
 		 */
@@ -849,24 +845,23 @@ public class LiveStreamPanel extends ImagePanel {
 		private final String START_TEXT = "start imaging";
 		private final String STOP_TEXT = "stop imaging";
 		private final String SNAP_TEXT = "snap image";
-		
+
 		private final String START_FULLSCREEN_TEXT = "full-screen";
 		private final String STOP_FULLSCREEN_TEXT = "stop full-screen";
-		
+
 		final JButton startStopButton = new JButton(START_TEXT);
 		final JButton snapImageButton = new JButton(SNAP_TEXT);
 		final JButton fullScreenButton = new JButton(START_FULLSCREEN_TEXT);
-		
+
 		final Icon startIcon = ImageLoadingTools.getResourceIcon("icons/control.png", "start stream");
 		final Icon stopIcon = ImageLoadingTools.getResourceIcon("icons/control-stop.png", "stop stream");
 		final Icon snapIcon = ImageLoadingTools.getResourceIcon("icons/picture--plus.png", "snap image");
 		final Icon startFullScreenIcon = ImageLoadingTools.getResourceIcon("icons/monitor-image.png", "snap image");
 		final Icon stopFullScreenIcon = ImageLoadingTools.getResourceIcon("icons/monitor-window-3d.png", "snap image");
-		StartStopControl()
-		{
+
+		StartStopControl() {
 			startStopButton.setText(START_TEXT);
-			if(startIcon != null)
-			{
+			if (startIcon != null) {
 				startStopButton.setIcon(startIcon);
 			}
 			startStopButton.setOpaque(false);
@@ -874,23 +869,19 @@ public class LiveStreamPanel extends ImagePanel {
 			startStopButton.setToolTipText(START_TEXT);
 			add(startStopButton);
 			startStopButton.addActionListener(new ActionListener() {
-				
+
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					if(!streamRunning)
-					{
+					if (!streamRunning) {
 						startLiveStream();
-					}
-					else
-					{
+					} else {
 						stopLiveStream();
 					}
 				}
 			});
-			
+
 			snapImageButton.setText(SNAP_TEXT);
-			if(snapIcon != null)
-			{
+			if (snapIcon != null) {
 				snapImageButton.setIcon(snapIcon);
 			}
 			snapImageButton.setOpaque(false);
@@ -903,10 +894,9 @@ public class LiveStreamPanel extends ImagePanel {
 					snapImage();
 				}
 			});
-			
+
 			fullScreenButton.setText(START_FULLSCREEN_TEXT);
-			if(startFullScreenIcon != null)
-			{
+			if (startFullScreenIcon != null) {
 				fullScreenButton.setIcon(startFullScreenIcon);
 			}
 			fullScreenButton.setOpaque(false);
@@ -914,11 +904,10 @@ public class LiveStreamPanel extends ImagePanel {
 			fullScreenButton.setToolTipText(START_FULLSCREEN_TEXT);
 			add(fullScreenButton);
 			fullScreenButton.addActionListener(new ActionListener() {
-				
+
 				@Override
-				public void actionPerformed(ActionEvent e) 
-				{
-					if(fullScreenOn)
+				public void actionPerformed(ActionEvent e) {
+					if (fullScreenOn)
 						setFullScreen(false);
 					else
 						setFullScreen(true);
@@ -926,150 +915,144 @@ public class LiveStreamPanel extends ImagePanel {
 			});
 			fullScreenButton.setVisible(false);
 		}
-		void updateButtons()
-		{
-			if(streamRunning)
-			{
+
+		void updateButtons() {
+			if (streamRunning) {
 				startStopButton.setText(STOP_TEXT);
-				if(stopIcon != null)
-				{
+				if (stopIcon != null) {
 					startStopButton.setIcon(stopIcon);
 				}
 				startStopButton.setToolTipText(STOP_TEXT);
 				snapImageButton.setEnabled(false);
-			}
-			else
-			{
+			} else {
 				startStopButton.setText(START_TEXT);
-				if(startIcon != null)
-				{
+				if (startIcon != null) {
 					startStopButton.setIcon(startIcon);
 				}
 				startStopButton.setToolTipText(START_TEXT);
 				snapImageButton.setEnabled(true);
 			}
-			if(fullScreenOn)
-			{
+			if (fullScreenOn) {
 				fullScreenButton.setText(STOP_FULLSCREEN_TEXT);
-				if(stopFullScreenIcon != null)
-				{
+				if (stopFullScreenIcon != null) {
 					fullScreenButton.setIcon(stopFullScreenIcon);
 				}
 				fullScreenButton.setToolTipText(STOP_FULLSCREEN_TEXT);
-			}
-			else
-			{
+			} else {
 				fullScreenButton.setText(START_FULLSCREEN_TEXT);
-				if(startFullScreenIcon != null)
-				{
+				if (startFullScreenIcon != null) {
 					fullScreenButton.setIcon(startFullScreenIcon);
 				}
 				fullScreenButton.setToolTipText(START_FULLSCREEN_TEXT);
 			}
 		}
 	}
-	
-	/**
-     * Stops the live stream. Does nothing if live stream is not running.
-     * The call immediately returns, even if the stopping of the live stream takes longer.
-     */
-    public void stopLiveStream()
-    {
-        synchronized (measurementControlLock)
-        {
-        	streamRunning = false;
-            if (measurement != null)
-            {
-                try
-                {
-                    measurement.stopMeasurement(false);
-                } 
-                catch (RemoteException | MeasurementException e)
-                {
-                    client.sendError("Could not stop measurement.", e);
-                }
-                measurement = null;
-            }
-            if(imageHandler != null)
-            {
-            	imageHandler.stopListening();
-                imageHandler = null;
-            }
-        }
-        startStopControl.updateButtons();
-    }
 
-    /**
-     * Snaps a single image with the current settings.
-     */
-    public void snapImage()
-    {
-    	ImageEvent<?> image;
-    	synchronized(measurementControlLock)
-    	{
-    		if(measurement != null)
-    			return;
-	    	String camera = channelControl.getCamera();
-	    	String channelGroup = channelControl.getChannelGroup();
-	    	String channel = channelControl.getChannel();
-	    	double exposure = channelControl.getExposure();
-	    	try {
-	    		image =server.getMicroscope().getCameraDevice(camera).makeImage(channelGroup, channel, exposure);
+	/**
+	 * Stops the live stream. Does nothing if live stream is not running.
+	 * The call immediately returns, even if the stopping of the live stream takes
+	 * longer.
+	 */
+	public void stopLiveStream() {
+		synchronized (measurementControlLock) {
+			streamRunning = false;
+			if (measurement != null) {
+				try {
+					measurement.stopMeasurement(false);
+				} catch (RemoteException | MeasurementException e) {
+					client.sendError("Could not stop measurement.", e);
+				}
+				measurement = null;
+			}
+			if (imageHandler != null) {
+				imageHandler.stopListening();
+				imageHandler = null;
+			}
+		}
+		startStopControl.updateButtons();
+	}
+
+	/**
+	 * Snaps a single image with the current settings.
+	 */
+	public void snapImage() {
+		ImageEvent<?> image;
+		synchronized (measurementControlLock) {
+			if (measurement != null)
+				return;
+			String camera = channelControl.getCamera();
+			String channelGroup = channelControl.getChannelGroup();
+			String channel = channelControl.getChannel();
+			double exposure = channelControl.getExposure();
+			try {
+				image = server.getMicroscope().getCameraDevice(camera).makeImage(channelGroup, channel, exposure);
 			} catch (Exception e) {
 				client.sendError("Could not snap image.", e);
 				image = null;
 			}
-    	}
-    	if(image != null)
-    		setImage(image);
-    }
-    
-    /**
-     * Starts the live stream. If the live stream is already running, it restarts it.
-     */
-    public void startLiveStream()
-    {
-    	synchronized(measurementControlLock)
-    	{
-	    	String camera = channelControl.getCamera();
-	    	String channelGroup = channelControl.getChannelGroup();
-	    	String channel = channelControl.getChannel();
-	    	double exposure = channelControl.getExposure();
-	    	int imagingPeriod = channelControl.getImagingPeriod();
-	    	
-	    	// stop any previous measurement
-	    	if(streamRunning)
-	    	{
-	    		stopLiveStream();	
-	    		// wait some additional time to reduce risk for snc errors.
-	    		try {
+		}
+		if (image != null)
+			setImage(image);
+	}
+
+	/**
+	 * Starts the live stream. If the live stream is already running, it restarts
+	 * it.
+	 */
+	public void startLiveStream() {
+		synchronized (measurementControlLock) {
+			String camera = channelControl.getCamera();
+			String channelGroup = channelControl.getChannelGroup();
+			String channel = channelControl.getChannel();
+			double exposure = channelControl.getExposure();
+			int imagingPeriod = channelControl.getImagingPeriod();
+
+			// stop any previous measurement
+			if (streamRunning) {
+				stopLiveStream();
+				// wait some additional time to reduce risk for snc errors.
+				try {
 					Thread.sleep(500);
 				} catch (@SuppressWarnings("unused") InterruptedException e) {
 					// do nothing...
 				}
-	    	}
-	    	streamRunning = true;
-	    	
-	    	
-	        // Create measurement on server
-	        try
-	        {
-	            MeasurementProvider measurementFactory =server.getMeasurementProvider();
-	            
-                // Create measurement
-            	imageHandler = new ImageHandler();
-                measurement = measurementFactory.createContinuousMeasurement((camera == null || camera.length() < 1) ? null : camera, channelGroup, channel, imagingPeriod, exposure, imageHandler.startListening());
-                
-                // Start measurement
-                measurement.startMeasurement();
-	        } 
-	        catch (Exception e)
-	        {
-	        	client.sendError("Could not create/start measurement", e);
-	            measurement = null;
-	            return;
-	        }
-    	}
-    	startStopControl.updateButtons();
-    }
+			}
+			streamRunning = true;
+
+			// Create measurement on server
+			try {
+				MeasurementProvider measurementFactory = server.getMeasurementProvider();
+
+				// Create measurement
+				imageHandler = new ImageHandler();
+				measurement = measurementFactory.createContinuousMeasurement(
+						(camera == null || camera.length() < 1) ? null : camera, channelGroup, channel, imagingPeriod,
+						exposure, imageHandler.startListening());
+
+				// Start measurement
+				measurement.startMeasurement();
+			} catch (Exception e) {
+				client.sendError("Could not create/start measurement", e);
+				measurement = null;
+				return;
+			}
+		}
+		startStopControl.updateButtons();
+	}
+
+	private int getCurrentImageWidth() {
+		ImageEvent<?> img = getImageEvent();
+		if (img == null) {
+			return 0;
+		}
+		return img.getWidth();
+	}
+
+	private int getCurrentImageHeight() {
+		ImageEvent<?> img = getImageEvent();
+		if (img == null) {
+			return 0;
+		}
+		return img.getHeight();
+	}
 }
