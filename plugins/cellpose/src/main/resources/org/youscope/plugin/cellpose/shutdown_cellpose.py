@@ -11,8 +11,6 @@
 
 #!/usr/bin/env python3
 """
-shutdown_cellpose.py:  manually stop any running Cellpose worker servers.
-
 The YouScope Cellpose plugin runs a persistent Python "server" that keeps the
 cpsam model loaded between detections. Normally the plugin manages it, but a
 server left over from a crashed run (or an older plugin version) can linger and
@@ -23,12 +21,12 @@ USAGE (from the YouScope cpython env, or any Python 3):
     python shutdown_cellpose.py 59712 59713     # only these ports
 
 It sends the graceful {"cmd":"shutdown"} command that v0.4.10+ servers understand.
-Servers older than v0.4.10 do NOT understand it and will NOT stop - for those,
+Servers older than v0.4.10 do not understand it and will not stop. For those,
 kill the Python processes directly:
 
     Windows : taskkill /F /IM python.exe        (kills ALL python; blunt but sure)
               or find the one on the port:
-              netstat -ano | findstr 59712      -> note the PID
+              netstat -ano | findstr 59712      Note the PID
               taskkill /F /PID <pid>
     Linux/Mac: pkill -f cellpose_server.py
 """
