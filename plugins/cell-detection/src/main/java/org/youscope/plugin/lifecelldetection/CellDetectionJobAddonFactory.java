@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - New Python API and implementation
  ******************************************************************************/
 /**
  * 
@@ -20,6 +21,10 @@ import org.youscope.addon.celldetection.CellDetectionAddon;
 import org.youscope.addon.celldetection.CellDetectionConfiguration;
 import org.youscope.addon.celldetection.CellVisualizationAddon;
 import org.youscope.addon.celldetection.CellVisualizationConfiguration;
+import org.youscope.addon.celldetection.QuantificationAddon;
+import org.youscope.addon.celldetection.QuantificationConfiguration;
+import org.youscope.addon.celldetection.TrackingAddon;
+import org.youscope.addon.celldetection.TrackingConfiguration;
 import org.youscope.addon.component.ComponentAddonFactoryAdapter;
 import org.youscope.addon.component.ComponentCreationException;
 import org.youscope.addon.component.CustomAddonCreator;
@@ -32,102 +37,115 @@ import org.youscope.common.job.JobConfiguration;
 import org.youscope.serverinterfaces.ConstructionContext;
 
 /**
- * @author Moritz Lang
+ * @author Moritz Lang and Andreas P. Cuny
  */
-public class CellDetectionJobAddonFactory extends ComponentAddonFactoryAdapter 
-{
-	private static final CustomAddonCreator<CellDetectionJobConfiguration, CellDetectionJob> CREATOR = new CustomAddonCreator<CellDetectionJobConfiguration, CellDetectionJob>()
-	{
+public class CellDetectionJobAddonFactory extends ComponentAddonFactoryAdapter {
+	private static final CustomAddonCreator<CellDetectionJobConfiguration, CellDetectionJob> CREATOR = new CustomAddonCreator<CellDetectionJobConfiguration, CellDetectionJob>() {
 
 		@Override
 		public CellDetectionJob createCustom(PositionInformation positionInformation,
 				CellDetectionJobConfiguration configuration, ConstructionContext constructionContext)
-						throws ConfigurationException, AddonException 
-		{
-			try
-			{			
+				throws ConfigurationException, AddonException {
+			try {
 				// Get detection & visualization algorithms.
-				CellDetectionConfiguration detectionAlgorithmConfiguration = configuration.getDetectionAlgorithmConfiguration();
-				CellVisualizationConfiguration visualizationAlgorithmConfiguration = configuration.getVisualizationAlgorithmConfiguration();
-				if(detectionAlgorithmConfiguration == null)
-				{
+				CellDetectionConfiguration detectionAlgorithmConfiguration = configuration
+						.getDetectionAlgorithmConfiguration();
+				CellVisualizationConfiguration visualizationAlgorithmConfiguration = configuration
+						.getVisualizationAlgorithmConfiguration();
+				if (detectionAlgorithmConfiguration == null) {
 					throw new ConfigurationException("Configuration of cell detection algorithm is null.");
 				}
-				CellDetectionAddon cellDetectionAddon = constructionContext.getComponentProvider().createComponent(positionInformation, detectionAlgorithmConfiguration, CellDetectionAddon.class);
+				CellDetectionAddon cellDetectionAddon = constructionContext.getComponentProvider().createComponent(
+						positionInformation, detectionAlgorithmConfiguration, CellDetectionAddon.class);
 				CellVisualizationAddon cellVisualizationAddon;
-				if(visualizationAlgorithmConfiguration != null)
-				{
-					cellVisualizationAddon = constructionContext.getComponentProvider().createComponent(positionInformation, visualizationAlgorithmConfiguration, CellVisualizationAddon.class);
-					
-				}
-				else
+				if (visualizationAlgorithmConfiguration != null) {
+					cellVisualizationAddon = constructionContext.getComponentProvider().createComponent(
+							positionInformation, visualizationAlgorithmConfiguration, CellVisualizationAddon.class);
+
+				} else
 					cellVisualizationAddon = null;
-				 
+
 				CellDetectionJobImpl cellDetectionJob = new CellDetectionJobImpl(positionInformation);
 				cellDetectionJob.addMessageListener(constructionContext.getLogger());
 				cellDetectionJob.setDetectionAlgorithm(cellDetectionAddon);
 				cellDetectionJob.setVisualizationAlgorithm(cellVisualizationAddon);
+				// Optional quantification stage.
+				QuantificationConfiguration quantificationAlgorithmConfiguration = configuration
+						.getQuantificationAlgorithmConfiguration();
+				if (quantificationAlgorithmConfiguration != null) {
+					QuantificationAddon cellQuantificationAddon = constructionContext.getComponentProvider()
+							.createComponent(positionInformation, quantificationAlgorithmConfiguration,
+									QuantificationAddon.class);
+					cellDetectionJob.setQuantificationAlgorithm(cellQuantificationAddon);
+				}
+				// Optional tracking stage.
+				TrackingConfiguration trackingAlgorithmConfiguration = configuration
+						.getTrackingAlgorithmConfiguration();
+				if (trackingAlgorithmConfiguration != null) {
+					TrackingAddon cellTrackingAddon = constructionContext.getComponentProvider()
+							.createComponent(positionInformation, trackingAlgorithmConfiguration, TrackingAddon.class);
+					cellDetectionJob.setTrackingAlgorithm(cellTrackingAddon);
+				}
 				cellDetectionJob.setMinimalTimeMS(configuration.getMinimalTimeMS());
-							
+
 				// Detection Image producing job
 				JobConfiguration detectionImageProducerConfig = configuration.getDetectionJob();
-				if(detectionImageProducerConfig == null)
-					throw new ConfigurationException("No image producing job defined to take the image used for detection.");
-				Job detectionImageProducer = constructionContext.getComponentProvider().createJob(positionInformation, configuration.getDetectionJob());
-				if(detectionImageProducer == null)
-					throw new ConfigurationException("Type of job defined to take the image used for detection (" + detectionImageProducerConfig.getTypeIdentifier() + ") unknown.");
-				if(!(detectionImageProducer instanceof ImageProducer))
-						throw new ConfigurationException("Job defined to take the image used for detection (" + detectionImageProducerConfig.getTypeIdentifier() + ") does not implement interface ImageProducer.");
-				
+				if (detectionImageProducerConfig == null)
+					throw new ConfigurationException(
+							"No image producing job defined to take the image used for detection.");
+				Job detectionImageProducer = constructionContext.getComponentProvider().createJob(positionInformation,
+						configuration.getDetectionJob());
+				if (detectionImageProducer == null)
+					throw new ConfigurationException("Type of job defined to take the image used for detection ("
+							+ detectionImageProducerConfig.getTypeIdentifier() + ") unknown.");
+				if (!(detectionImageProducer instanceof ImageProducer))
+					throw new ConfigurationException("Job defined to take the image used for detection ("
+							+ detectionImageProducerConfig.getTypeIdentifier()
+							+ ") does not implement interface ImageProducer.");
+
 				// Add image save listeners
-				if(configuration.getSegmentationImageSaveName() != null)
-				{
-					cellDetectionJob.addSegmentationImageListener(constructionContext.getMeasurementSaver().getSaveImageListener(configuration.getSegmentationImageSaveName()));
-				} 
-				if(configuration.getControlImageSaveName() != null)
-				{
-					cellDetectionJob.addControlImageListener(constructionContext.getMeasurementSaver().getSaveImageListener(configuration.getControlImageSaveName()));
+				if (configuration.getSegmentationImageSaveName() != null) {
+					cellDetectionJob.addSegmentationImageListener(constructionContext.getMeasurementSaver()
+							.getSaveImageListener(configuration.getSegmentationImageSaveName()));
 				}
-				
+				if (configuration.getControlImageSaveName() != null) {
+					cellDetectionJob.addControlImageListener(constructionContext.getMeasurementSaver()
+							.getSaveImageListener(configuration.getControlImageSaveName()));
+				}
+
 				// Change image name for display
-				if(configuration.getControlImageSaveName() != null && configuration.getVisualizationAlgorithmConfiguration() != null)
-				{
+				if (configuration.getControlImageSaveName() != null
+						&& configuration.getVisualizationAlgorithmConfiguration() != null) {
 					cellDetectionJob.setImageDescription(configuration.getControlImageSaveName() + " (cell-detection)");
-				}
-				else if(configuration.getVisualizationAlgorithmConfiguration() != null)
-				{
+				} else if (configuration.getVisualizationAlgorithmConfiguration() != null) {
+					cellDetectionJob.setImageDescription("cell-detection");
+				} else if (configuration.getSegmentationImageSaveName() != null) {
+					cellDetectionJob
+							.setImageDescription(configuration.getSegmentationImageSaveName() + " (cell-detection)");
+				} else {
 					cellDetectionJob.setImageDescription("cell-detection");
 				}
-				else if(configuration.getSegmentationImageSaveName() != null) 
-				{
-					cellDetectionJob.setImageDescription(configuration.getSegmentationImageSaveName() + " (cell-detection)");
-				} 
-				else
-				{
-					cellDetectionJob.setImageDescription("cell-detection");
-				}
-				
-				if(configuration.getCellTableSaveName() != null)
-				{
-					cellDetectionJob.addTableListener(constructionContext.getMeasurementSaver().getSaveTableListener(configuration.getCellTableSaveName()));
+
+				if (configuration.getCellTableSaveName() != null) {
+					cellDetectionJob.addTableListener(constructionContext.getMeasurementSaver()
+							.getSaveTableListener(configuration.getCellTableSaveName()));
 				}
 				cellDetectionJob.addJob(detectionImageProducer);
-				
+
 				// other image producing jobs
-				for(JobConfiguration childJobConfig : configuration.getJobs())
-				{
-					Job childJob = constructionContext.getComponentProvider().createJob(positionInformation, childJobConfig);
-					if(!(childJob instanceof ImageProducer))
-						throw new ConfigurationException("Job defined to take the image used for quantification (" + childJobConfig.getTypeIdentifier() + ") does not implement interface ImageProducer.");
-				
+				for (JobConfiguration childJobConfig : configuration.getJobs()) {
+					Job childJob = constructionContext.getComponentProvider().createJob(positionInformation,
+							childJobConfig);
+					if (!(childJob instanceof ImageProducer))
+						throw new ConfigurationException("Job defined to take the image used for quantification ("
+								+ childJobConfig.getTypeIdentifier() + ") does not implement interface ImageProducer.");
+
 					cellDetectionJob.addJob(childJob);
 				}
 
 				return cellDetectionJob;
-				
-			}
-			catch(RemoteException e)
-			{
+
+			} catch (RemoteException e) {
 				throw new AddonException("Could not create job due to remote exception.", e);
 			} catch (ComponentCreationException e) {
 				throw new AddonException("Could not create all components of job.", e);
@@ -140,14 +158,13 @@ public class CellDetectionJobAddonFactory extends ComponentAddonFactoryAdapter
 		public Class<CellDetectionJob> getComponentInterface() {
 			return CellDetectionJob.class;
 		}
-		
+
 	};
 
 	/**
 	 * Constructor.
 	 */
-	public CellDetectionJobAddonFactory()
-	{
+	public CellDetectionJobAddonFactory() {
 		super(CellDetectionJobAddonUI.class, CREATOR, CellDetectionJobAddonUI.getMetadata());
 	}
 }

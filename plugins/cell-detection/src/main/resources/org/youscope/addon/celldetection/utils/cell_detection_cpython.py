@@ -10,9 +10,6 @@
 #  ******************************************************************************/
 
 """
-cell_detection_cpython.py
-=========================
-
 Cell detection plus glow for the YouScope cell-detection plugin, using scipy /
 scikit-image library functions.
 Runs in the YouScope CPython environment; the GraalPy side only marshals bytes.
@@ -236,7 +233,7 @@ def glow(image_u8, cell_positions, glow_strength):
 
 # Quantification (moved in-module on purpose)
 # -----------------------------------------------------------------------------
-# The quantifier lives HERE, inside cell_detection_cpython.py, rather than in a
+# The quantifier lives here, inside cell_detection_cpython.py, rather than in a
 # separate quantify_cpython.py. This module is already extracted from the plugin
 # JAR on every startup, so bundling the quantifier with it removes the need to
 # package/extract an ADDITIONAL resource file. quickdetect_server.py calls these

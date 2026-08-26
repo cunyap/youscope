@@ -53,7 +53,7 @@ import org.youscope.common.util.ImageTools;
  * tracks once their trail has fully aged out. Runs in-process (pure Java, no
  * IPC), like the label visualizer, so it is safe on the feedback path.
  *
- * @author YouScope
+ * @author Andreas P. Cuny
  */
 class TrackVisualizerAddon extends ResourceAdapter<TrackVisualizerConfiguration> implements CellVisualizationAddon {
 	private static final long serialVersionUID = 74007731210012002L;

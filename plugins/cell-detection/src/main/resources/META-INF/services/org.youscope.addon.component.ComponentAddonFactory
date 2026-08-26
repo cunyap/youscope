@@ -2,3 +2,8 @@ org.youscope.plugin.quickdetect.QuickDetectAddonFactory
 org.youscope.plugin.lifecelldetection.CellDetectionJobAddonFactory
 org.youscope.plugin.glowvisualizer.GlowVisualizerAddonFactory
 org.youscope.plugin.labelvisualizer.LabelVisualizerAddonFactory
+org.youscope.plugin.intensityquantifier.IntensityQuantifierAddonFactory
+org.youscope.plugin.nntracker.NearestNeighborTrackerAddonFactory
+org.youscope.plugin.trackvisualizer.TrackVisualizerAddonFactory
+org.youscope.plugin.cellxquantifier.CellXMaskQuantifierAddonFactory
+org.youscope.plugin.cellxtracker.CellXTrackerAddonFactory

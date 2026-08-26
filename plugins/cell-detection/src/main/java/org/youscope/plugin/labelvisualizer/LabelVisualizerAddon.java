@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - New Python API and implementation
  ******************************************************************************/
 /**
  * 
@@ -19,6 +20,8 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.rmi.RemoteException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.youscope.addon.celldetection.CellDetectionResult;
 import org.youscope.addon.celldetection.CellDetectionTableColumns;
@@ -28,8 +31,9 @@ import org.youscope.common.PositionInformation;
 import org.youscope.common.configuration.ConfigurationException;
 import org.youscope.common.image.ImageEvent;
 import org.youscope.common.resource.ResourceAdapter;
+import org.youscope.common.table.ColumnDefinition;
 import org.youscope.common.table.ColumnView;
-import org.youscope.common.table.TableEntry;
+import org.youscope.common.table.TableDefinition;
 import org.youscope.common.table.TableException;
 import org.youscope.common.util.ImageConvertException;
 import org.youscope.common.util.ImageTools;
@@ -39,7 +43,7 @@ import org.youscope.common.util.ImageTools;
  * different color. Can also draw information about the cell (area,
  * fluorescence) next to the cell.
  * 
- * @author Moritz Lang
+ * @author Moritz Lang and Andreas P. Cuny
  *
  */
 class LabelVisualizerAddon extends ResourceAdapter<LabelVisualizerConfiguration> implements CellVisualizationAddon {
@@ -96,7 +100,7 @@ class LabelVisualizerAddon extends ResourceAdapter<LabelVisualizerConfiguration>
 			} catch (ImageConvertException e) {
 				throw new CellVisualizationException("Could not create image object out of cell label data.", e);
 			}
-			image = paintInformationIntoImage(image, detectionResult);
+			image = paintInformationIntoImage(image, detectionResult, getConfiguration());
 
 			try {
 				return ImageTools.toYouScopeImage(image);
@@ -108,7 +112,8 @@ class LabelVisualizerAddon extends ResourceAdapter<LabelVisualizerConfiguration>
 
 	}
 
-	private static BufferedImage paintInformationIntoImage(BufferedImage image, CellDetectionResult detectionResult) {
+	private static BufferedImage paintInformationIntoImage(BufferedImage image, CellDetectionResult detectionResult,
+			LabelVisualizerConfiguration cfg) {
 		if (detectionResult.getCellTable().getNumRows() <= 0)
 			return image;
 
@@ -132,59 +137,48 @@ class LabelVisualizerAddon extends ResourceAdapter<LabelVisualizerConfiguration>
 			// not necessarily needed.
 			areaColumn = null;
 		}
+		// Track id: the standard "track.index" (0-based) if present, else the online
+		// tracker's "cell.track.id" (1-based). trackOneBased records which, so the
+		// displayed id is correct for both.
 		ColumnView<Integer> trackColumn;
+		boolean trackOneBased = false;
 		try {
 			trackColumn = detectionResult.getCellTable()
 					.getColumnView(CellDetectionTableColumns.TABLE_COLUMN_CELL_TRACKING_ID);
 		} catch (@SuppressWarnings("unused") TableException e) {
-			// not necessarily needed.
 			trackColumn = null;
 		}
-		ColumnView<Double> fluorescenceColumn;
-		try {
-			fluorescenceColumn = detectionResult.getCellTable()
-					.getColumnView(CellDetectionTableColumns.TABLE_COLUMN_FLUORESCENCE);
-		} catch (@SuppressWarnings("unused") TableException e) {
-			// not necessarily needed.
-			fluorescenceColumn = null;
-		}
-		ColumnView<Integer> imageIDColumn;
-		try {
-			imageIDColumn = detectionResult.getCellTable()
-					.getColumnView(CellDetectionTableColumns.TABLE_COLUMN_QUANTIFICATION_IMAGE_ID);
-		} catch (@SuppressWarnings("unused") TableException e) {
-			// not necessarily needed.
-			imageIDColumn = null;
-		}
-
-		// find number of fluorescence channels imaged
-		// int imageID;
-		// if (imageIDColumn == null) {
-		// imageID = -1;
-		// } else {
-		// imageID = -1;
-		// // only use first image ID.
-		// // TODO: implement others.
-		// for (TableEntry<? extends Integer> entry : imageIDColumn) {
-		// if (!entry.isNull()) {
-		// imageID = entry.getValue().intValue();
-		// break;
-		// }
-		// }
-		// }
-		int imageID = -1;
-		if (imageIDColumn != null) {
+		if (trackColumn == null) {
 			try {
-				for (TableEntry<? extends Integer> entry : imageIDColumn) {
-					if (entry != null && !entry.isNull()) {
-						imageID = entry.getValue().intValue();
-						break; // First valid ImageID
-					}
-				}
-			} catch (Exception e) {
-				System.out.println("LabelVisualizer imageID iterator failed: " + e.getMessage());
+				@SuppressWarnings("unchecked")
+				ColumnView<Integer> byName = (ColumnView<Integer>) detectionResult.getCellTable()
+						.getColumnView("cell.track.id");
+				trackColumn = byName;
+				trackOneBased = true;
+			} catch (@SuppressWarnings("unused") TableException e) {
+				trackColumn = null;
 			}
 		}
+
+		// Mean-intensity columns produced by the quantifier: any
+		// "cell.intensity.mean.<suffix>" (suffix is the channel name, or chN if
+		// unnamed), kept in table order. If none, fall back to the legacy fixed
+		// "cell.fluo" column (older segmenter output).
+		List<MeanCol> meanColumns = findMeanIntensityColumns(detectionResult);
+		ColumnView<Double> fluorescenceColumn = null;
+		if (meanColumns.isEmpty()) {
+			try {
+				fluorescenceColumn = detectionResult.getCellTable()
+						.getColumnView(CellDetectionTableColumns.TABLE_COLUMN_FLUORESCENCE);
+			} catch (@SuppressWarnings("unused") TableException e) {
+				fluorescenceColumn = null;
+			}
+		}
+
+		// Which lines are shown (per-field selection, to avoid crowding dense fields).
+		boolean showId = cfg.isShowCellId();
+		boolean showArea = cfg.isShowArea() && areaColumn != null;
+		boolean showMean = cfg.isShowMeanIntensity() && (!meanColumns.isEmpty() || fluorescenceColumn != null);
 
 		// initialize graphics
 		Graphics g = image.getGraphics();
@@ -197,41 +191,110 @@ class LabelVisualizerAddon extends ResourceAdapter<LabelVisualizerConfiguration>
 		int fontHeight = g.getFontMetrics().getHeight();
 		int fontAscent = g.getFontMetrics().getAscent();
 
+		int numLines = (showId ? 1 : 0) + (showArea ? 1 : 0) + (showMean ? 1 : 0);
+		if (numLines == 0)
+			return image; // nothing selected to draw
+
 		// draw cells
-		int numLines = 1 + (areaColumn != null ? 1 : 0) + (fluorescenceColumn != null ? 1 : 0);
 		for (int row = 0; row < xposColumn.getNumRows(); row++) {
 			Double xRaw = xposColumn.getValue(row);
 			Double yRaw = yposColumn.getValue(row);
-			Double areaRaw = areaColumn == null ? null : areaColumn.getValue(row);
-			Integer trackRaw = trackColumn == null ? null : trackColumn.getValue(row);
-			Double fluoRaw = fluorescenceColumn == null ? null : fluorescenceColumn.getValue(row);
-
 			if (xRaw == null || yRaw == null)
 				continue;
 
 			double xPosCell = xRaw.doubleValue();
 			double yPosCell = yRaw.doubleValue();
-			double areaCell = areaRaw != null ? areaRaw.doubleValue() : -1;
-			int cellID = trackRaw != null ? trackRaw.intValue() + 1 : row + 1;
-			double fluorescence = fluoRaw != null ? fluoRaw.doubleValue() : -1;
-			String fluoText = fluorescence >= 0 ? String.format("F:%.0f%%", fluorescence * 100) : "Multi-Ch.";
 
-			// Now we paint
 			int firstLineX = (int) (xPosCell + TEXT_PIXEL_DIST_HORIZONTAL);
 			int firstLineY = (int) (yPosCell + TEXT_PIXEL_DIST_VERTICAL - numLines * fontHeight / 2.0 + fontAscent);
-
 			g.drawLine((int) xPosCell, (int) yPosCell, firstLineX - 2, firstLineY - fontAscent / 2);
-			g.drawString("Cell " + cellID, firstLineX, firstLineY);
-			firstLineY += fontHeight;
-			if (areaCell >= 0) {
-				g.drawString("Area: " + (int) areaCell, firstLineX, firstLineY);
+
+			if (showId) {
+				Integer trackRaw = trackColumn == null ? null : trackColumn.getValue(row);
+				int cellID = trackRaw != null ? trackRaw.intValue() + (trackOneBased ? 0 : 1) : row + 1;
+				g.drawString("Cell " + cellID, firstLineX, firstLineY);
 				firstLineY += fontHeight;
 			}
-			g.drawString("Fluo: " + fluoText, firstLineX, firstLineY);
-			firstLineY += fontHeight;
+			if (showArea) {
+				Double areaRaw = areaColumn.getValue(row);
+				double areaCell = areaRaw != null ? areaRaw.doubleValue() : -1;
+				if (areaCell >= 0) {
+					g.drawString("Area: " + (int) areaCell, firstLineX, firstLineY);
+					firstLineY += fontHeight;
+				}
+			}
+			if (showMean) {
+				String meanText;
+				if (!meanColumns.isEmpty()) {
+					boolean multi = meanColumns.size() > 1;
+					StringBuilder sb = new StringBuilder();
+					for (int c = 0; c < meanColumns.size(); c++) {
+						MeanCol mc = meanColumns.get(c);
+						Double v = mc.view.getValue(row);
+						if (c > 0)
+							sb.append(", ");
+						// Prefix with the channel label when it is informative:
+						// always for several channels, and for a single named one.
+						if (multi || !mc.label.startsWith("ch"))
+							sb.append(mc.label).append(":");
+						sb.append(v == null ? "-" : formatNum(v.doubleValue()));
+					}
+					meanText = sb.toString();
+				} else {
+					Double fluoRaw = fluorescenceColumn.getValue(row);
+					meanText = fluoRaw != null ? String.format("F:%.0f%%", fluoRaw.doubleValue() * 100) : "-";
+				}
+				g.drawString("FluoIntMean: " + meanText, firstLineX, firstLineY);
+				firstLineY += fontHeight;
+			}
 		}
 
 		return image;
+	}
+
+	/** A discovered mean-intensity column: its channel label + a view on it. */
+	private static final class MeanCol {
+		final String label;
+		final ColumnView<Double> view;
+
+		MeanCol(String label, ColumnView<Double> view) {
+			this.label = label;
+			this.view = view;
+		}
+	}
+
+	/**
+	 * Returns the quantifier's per-channel mean-intensity columns
+	 * ({@code cell.intensity.mean.<suffix>}, where suffix is the channel name or
+	 * {@code chN}), in table order (i.e. channel order), or an empty list if none.
+	 */
+	private static List<MeanCol> findMeanIntensityColumns(CellDetectionResult detectionResult) {
+		List<MeanCol> result = new ArrayList<MeanCol>();
+		TableDefinition def = detectionResult.getCellTable().getTableDefinition();
+		if (def == null)
+			return result;
+		final String prefix = "cell.intensity.mean.";
+		for (ColumnDefinition<?> col : def.getColumnDefinitions()) {
+			String name = col.getColumnName();
+			if (name != null && name.startsWith(prefix) && name.length() > prefix.length()) {
+				String label = name.substring(prefix.length());
+				try {
+					@SuppressWarnings("unchecked")
+					ColumnView<Double> view = (ColumnView<Double>) detectionResult.getCellTable().getColumnView(name);
+					result.add(new MeanCol(label, view));
+				} catch (@SuppressWarnings("unused") TableException e) {
+					// skip a column that cannot be viewed
+				}
+			}
+		}
+		return result;
+	}
+
+	/** Compact number formatting: integer when whole, else one decimal. */
+	private static String formatNum(double v) {
+		if (Math.abs(v - Math.rint(v)) < 0.05)
+			return Long.toString(Math.round(v));
+		return String.format("%.1f", v);
 	}
 
 	private ImageEvent<?> drawBorderImage(ImageEvent<?> orgImage, ImageEvent<?> labelImage)

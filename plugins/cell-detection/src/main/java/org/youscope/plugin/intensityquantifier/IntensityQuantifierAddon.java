@@ -220,7 +220,8 @@ class IntensityQuantifierAddon extends ResourceAdapter<IntensityQuantifierConfig
 		return table;
 	}
 
-	// Helpers
+	// Image serialisation plus helpers (@ToDo: migrate to shared new
+	// PythonBackendSupport)
 
 	private static int[] toIntArray(byte[] b) {
 		ByteBuffer bb = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN);
