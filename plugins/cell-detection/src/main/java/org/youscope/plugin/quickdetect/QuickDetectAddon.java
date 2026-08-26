@@ -53,7 +53,7 @@ import org.youscope.common.table.TableListener;
  *
  * <p>
  * Speaks the YouScope Analysis-Backend
- * a persistent CPython socket server ({@code quickdetect_server.py}) is started
+ * A persistent CPython socket server ({@code quickdetect_server.py}) is started
  * once and reused across the whole measurement. If the server cannot be
  * started/reached, this addon transparently falls back to the proven one-shot
  * bridge ({@code quick_detect_bridge.py}), so it can
