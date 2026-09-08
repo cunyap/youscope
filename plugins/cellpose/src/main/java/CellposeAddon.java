@@ -287,10 +287,46 @@ class CellposeAddon extends ResourceAdapter<CellposeConfiguration>
             // Format: 3 big-endian ints (width, height, bytesPerPixel) + raw pixels
             int w = detectionImage.getWidth();
             int h = detectionImage.getHeight();
-            int bpp = detectionImage.getBytesPerPixel();
 
-            // getImageData() returns byte[] via RMI serialisation
-            byte[] pixels = (byte[]) detectionImage.getImageData();
+            // getImageData() returns byte[] for 8-bit cameras, short[] for
+            // 16-bit cameras (e.g. Hamamatsu) and int[] for 32-bit ones.
+            // Serialise to big-endian bytes matching the Python bridge's
+            // read_pixels() contract (bpp 1 -> uint8, 2 -> >u2, 4 -> >u4) and
+            // derive bpp from the actual array type so the header length and
+            // the pixel buffer length always agree (Python reshapes assuming
+            // len == w*h*bpp).
+            Object raw = detectionImage.getImageData();
+            int bpp;
+            byte[] pixels;
+            if (raw instanceof byte[]) {
+                // 8-bit path: unchanged from the previously working behaviour.
+                bpp = detectionImage.getBytesPerPixel();
+                pixels = (byte[]) raw;
+            } else if (raw instanceof short[]) {
+                short[] s = (short[]) raw;
+                bpp = 2;
+                pixels = new byte[s.length * 2];
+                for (int i = 0, o = 0; i < s.length; i++, o += 2) {
+                    pixels[o] = (byte) ((s[i] >> 8) & 0xFF); // big-endian high byte
+                    pixels[o + 1] = (byte) (s[i] & 0xFF); // low byte
+                }
+            } else if (raw instanceof int[]) {
+                int[] s = (int[]) raw;
+                bpp = 4;
+                pixels = new byte[s.length * 4];
+                for (int i = 0, o = 0; i < s.length; i++, o += 4) {
+                    pixels[o] = (byte) ((s[i] >> 24) & 0xFF);
+                    pixels[o + 1] = (byte) ((s[i] >> 16) & 0xFF);
+                    pixels[o + 2] = (byte) ((s[i] >> 8) & 0xFF);
+                    pixels[o + 3] = (byte) (s[i] & 0xFF);
+                }
+            } else {
+                throw new CellDetectionException(
+                        "Unsupported image pixel type: "
+                                + (raw == null ? "null" : raw.getClass().getName())
+                                + ". Cellpose supports 8-bit (byte[]), 16-bit (short[]) "
+                                + "and 32-bit (int[]) images.");
+            }
 
             byte[] header = new byte[12];
             writeInt(header, 0, w);

@@ -55,9 +55,11 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         implements CellDetectionAddon {
     private static final long serialVersionUID = 1L;
 
-    /** Plugin version: Logged at init and, together with the server's
-     *  SCRIPT_VERSION line, lets you confirm the rebuilt JAR is actually live
-     *  (a stale .py inside the JAR was the cause of earlier confusion). */
+    /**
+     * Plugin version: Logged at init and, together with the server's
+     * SCRIPT_VERSION line, lets you confirm the rebuilt JAR is actually live
+     * (a stale .py inside the JAR was the cause of earlier confusion).
+     */
     static final String PLUGIN_VERSION = "v0.5.1";
 
     private String cpythonExe = null;
@@ -79,14 +81,17 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
     private static int SERVER_START_TIMEOUT_MS = 300000; // 5 min (was 60s)
 
     /**
-     * Per-detection socket read timeout in ms. 2D_versatile_he on CPU can take several
+     * Per-detection socket read timeout in ms. 2D_versatile_he on CPU can take
+     * several
      * minutes for a single full-frame image, so 2 min (the old hard-coded
      * value) is far too short and produced "Read timed out". Overridable via
      * "stardist_timeout_seconds" in graalpy_config.txt (default 900 s = 15 min).
      */
     private int detectionTimeoutMs = 900000;
 
-    /** File the persistent server's stdout/stderr is mirrored to (see initialize). */
+    /**
+     * File the persistent server's stdout/stderr is mirrored to (see initialize).
+     */
     private static volatile String serverLogPath = null;
 
     /**
@@ -100,13 +105,16 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
     /** Measurement context (used to best-effort locate the measurement folder). */
     private MeasurementContext measurementContext = null;
 
-    /** Measurement saver from the ConstructionContext; the reliable route to the
-     *  measurement results folder. May be null (older construction path). */
+    /**
+     * Measurement saver from the ConstructionContext; the reliable route to the
+     * measurement results folder. May be null (older construction path).
+     */
     private MeasurementSaver measurementSaver = null;
 
     /**
      * Resolved directory for this measurement's reproducibility outputs
-     * (stardist_environment.txt / stardist_requirements.txt / stardist_last_input.tif).
+     * (stardist_environment.txt / stardist_requirements.txt /
+     * stardist_last_input.tif).
      * Set lazily on first detection: the measurement results folder if it can be
      * located, else {@link #workingDir}.
      */
@@ -114,19 +122,27 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
     private boolean reproFilesCopied = false;
     private boolean logRelocated = false;
 
-    /** Label mask bytes returned inline by the persistent server for the current
-     *  frame ([w:int32][h:int32][w*h*uint16] big-endian). Avoids a sidecar file. */
+    /**
+     * Label mask bytes returned inline by the persistent server for the current
+     * frame ([w:int32][h:int32][w*h*uint16] big-endian). Avoids a sidecar file.
+     */
     private byte[] lastMaskBytes = null;
 
-    /** Preprocessed input bytes returned inline ([w:int32][h:int32][w*h*uint8]);
-     *  Java writes it as stardist_last_input.png in the results folder. */
+    /**
+     * Preprocessed input bytes returned inline ([w:int32][h:int32][w*h*uint8]);
+     * Java writes it as stardist_last_input.png in the results folder.
+     */
     private byte[] lastDebugBytes = null;
 
-    /** Port where our verified (matching-version) server is running. -1 = none.
-     *  May differ from the configured port if that one is held by a stale server. */
+    /**
+     * Port where our verified (matching-version) server is running. -1 = none.
+     * May differ from the configured port if that one is held by a stale server.
+     */
     private volatile int activePort = -1;
 
-    /** True once the JVM shutdown hook (stops servers on YouScope exit) is added. */
+    /**
+     * True once the JVM shutdown hook (stops servers on YouScope exit) is added.
+     */
     private static volatile boolean shutdownHookRegistered = false;
 
     StarDistAddon(PositionInformation positionInformation,
@@ -151,7 +167,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         this.measurementSaver = measurementSaver;
     }
 
-    // Resource lifecycle 
+    // Resource lifecycle
 
     @Override
     public void initialize(MeasurementContext measurementContext)
@@ -233,7 +249,6 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         return new File(System.getProperty("java.io.tmpdir")).getAbsolutePath();
     }
 
-
     @Override
     public void uninitialize(MeasurementContext measurementContext)
             throws ResourceException, RemoteException {
@@ -267,17 +282,53 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         Path tempResult = null;
         Path tempArgs = null;
         Path tempMasks = null;
-        lastMaskBytes = null;   // cleared per frame; set by callServer if inline
+        lastMaskBytes = null; // cleared per frame; set by callServer if inline
         lastDebugBytes = null;
         try {
             // Serialize image to temp file
             // Format: 3 big-endian ints (width, height, bytesPerPixel) + raw pixels
             int w = detectionImage.getWidth();
             int h = detectionImage.getHeight();
-            int bpp = detectionImage.getBytesPerPixel();
 
-            // getImageData() returns byte[] via RMI serialisation
-            byte[] pixels = (byte[]) detectionImage.getImageData();
+            // getImageData() returns byte[] for 8-bit cameras, short[] for
+            // 16-bit cameras (e.g. Hamamatsu) and int[] for 32-bit ones.
+            // Serialise to big-endian bytes matching the Python bridge's
+            // read_pixels() contract (bpp 1 -> uint8, 2 -> >u2, 4 -> >u4) and
+            // derive bpp from the actual array type so the header length and
+            // the pixel buffer length always agree (Python reshapes assuming
+            // len == w*h*bpp).
+            Object raw = detectionImage.getImageData();
+            int bpp;
+            byte[] pixels;
+            if (raw instanceof byte[]) {
+                // 8-bit path: unchanged from the previously working behaviour.
+                bpp = detectionImage.getBytesPerPixel();
+                pixels = (byte[]) raw;
+            } else if (raw instanceof short[]) {
+                short[] s = (short[]) raw;
+                bpp = 2;
+                pixels = new byte[s.length * 2];
+                for (int i = 0, o = 0; i < s.length; i++, o += 2) {
+                    pixels[o] = (byte) ((s[i] >> 8) & 0xFF); // big-endian high byte
+                    pixels[o + 1] = (byte) (s[i] & 0xFF); // low byte
+                }
+            } else if (raw instanceof int[]) {
+                int[] s = (int[]) raw;
+                bpp = 4;
+                pixels = new byte[s.length * 4];
+                for (int i = 0, o = 0; i < s.length; i++, o += 4) {
+                    pixels[o] = (byte) ((s[i] >> 24) & 0xFF);
+                    pixels[o + 1] = (byte) ((s[i] >> 16) & 0xFF);
+                    pixels[o + 2] = (byte) ((s[i] >> 8) & 0xFF);
+                    pixels[o + 3] = (byte) (s[i] & 0xFF);
+                }
+            } else {
+                throw new CellDetectionException(
+                        "Unsupported image pixel type: "
+                                + (raw == null ? "null" : raw.getClass().getName())
+                                + ". StarDist supports 8-bit (byte[]), 16-bit (short[]) "
+                                + "and 32-bit (int[]) images.");
+            }
 
             byte[] header = new byte[12];
             writeInt(header, 0, w);
@@ -369,7 +420,8 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
                     + (whole ? "" : " (WARNING: response looks truncated!)")
                     + ", segmentation mask "
                     + (lastMaskBytes == null ? "MISSING"
-                            : (lastMaskBytes.length / 1024) + " KB decoded OK") + ".");
+                            : (lastMaskBytes.length / 1024) + " KB decoded OK")
+                    + ".");
 
             // Write env + requirements into the results folder (from base64).
             writeReproFiles(json);
@@ -390,7 +442,8 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
                     + " debug_image=" + debugFinal
                     + " debug_image_written=" + debugExists
                     + (debugError != null && debugError.length() > 0
-                            ? " debug_error=" + debugError : ""));
+                            ? " debug_error=" + debugError
+                            : ""));
             if (!debugExists)
                 appendServerLog("NOTE: stardist_last_input.png not written"
                         + (debugError != null && debugError.length() > 0
@@ -431,7 +484,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
                         + (!cfg.isGenerateLabelImage()
                                 ? "'generate label image' is off in the config."
                                 : nCells == 0 ? "no cells were detected."
-                                : "no segmentation mask was returned (see above).")); 
+                                        : "no segmentation mask was returned (see above)."));
             }
             if (cfg.isGenerateLabelImage() && nCells > 0 && labelImage == null)
                 appendServerLog("Label/control image could not be built - "
@@ -597,16 +650,22 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
                             + " (need " + PLUGIN_VERSION + "); asking it to shut down.");
                     sendServerCommand(host, port, "shutdown", 3000);
                     boolean freed = false;
-                    for (int i = 0; i < 30; i++) {   // up to ~4.5s
-                        if (!portOpen(host, port)) { freed = true; break; }
-                        try { Thread.sleep(150); } catch (InterruptedException ignored) {}
+                    for (int i = 0; i < 30; i++) { // up to ~4.5s
+                        if (!portOpen(host, port)) {
+                            freed = true;
+                            break;
+                        }
+                        try {
+                            Thread.sleep(150);
+                        } catch (InterruptedException ignored) {
+                        }
                     }
                     if (!freed) {
                         appendServerLog("Port " + port + " is still held by a server that "
                                 + "will not shut down (likely a pre-" + PLUGIN_VERSION
                                 + " build). Trying the next port. To clear it, run "
                                 + "shutdown_stardist.py or kill the python processes.");
-                        continue;   // try next port
+                        continue; // try next port
                     }
                 }
                 // Port is free then start a fresh, matching server here and verify it.
@@ -649,8 +708,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
             Process proc = pb.start();
             serverProcess = proc;
 
-            final java.util.concurrent.CountDownLatch ready =
-                    new java.util.concurrent.CountDownLatch(1);
+            final java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(1);
             appendServerLog("==== StarDist server starting: model="
                     + getConfiguration().getModelType() + " gpu="
                     + getConfiguration().isUseGpu() + " port=" + port + " @ "
@@ -696,7 +754,10 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
             for (int i = 0; i < 10; i++) {
                 if (PLUGIN_VERSION.equals(pingServerVersion(host, port)))
                     return true;
-                try { Thread.sleep(150); } catch (InterruptedException ignored) {}
+                try {
+                    Thread.sleep(150);
+                } catch (InterruptedException ignored) {
+                }
             }
             appendServerLog("Server on port " + port + " signalled READY but does not "
                     + "report version " + PLUGIN_VERSION + " (a stale server may share "
@@ -709,7 +770,9 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         }
     }
 
-    /** Quick check whether a StarDist server is accepting connections at host:port. */
+    /**
+     * Quick check whether a StarDist server is accepting connections at host:port.
+     */
     private boolean isPortAlive(String host, int port) {
         // A remote server has no local Process handle, so only port-check for it.
         boolean local = host.equals("127.0.0.1") || host.equalsIgnoreCase("localhost");
@@ -893,8 +956,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
                     Double.valueOf(cx),
                     Double.valueOf(cy),
                     Double.valueOf((double) area),
-                    perim > 0 ? Double.valueOf(perim) : null
-            );
+                    perim > 0 ? Double.valueOf(perim) : null);
             pos = objEnd + 1;
         }
         return table;
@@ -924,8 +986,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         try {
             java.util.zip.Inflater inf = new java.util.zip.Inflater();
             inf.setInput(comp);
-            java.io.ByteArrayOutputStream bos =
-                    new java.io.ByteArrayOutputStream(Math.max(64, comp.length * 4));
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream(Math.max(64, comp.length * 4));
             byte[] buf = new byte[65536];
             while (!inf.finished()) {
                 int n = inf.inflate(buf);
@@ -1008,7 +1069,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
                 // is the id since ids <= 255). Simplest path the visualizer accepts.
                 byte[] px = new byte[n];
                 for (int i = 0; i < n; i++)
-                    px[i] = file[8 + 2 * i + 1];     // low byte of big-endian uint16
+                    px[i] = file[8 + 2 * i + 1]; // low byte of big-endian uint16
                 label = ImageEvent.createImage(px, fw, fh, 8);
                 appendServerLog("Label/control image built: " + fw + "x" + fh
                         + ", " + maxLabel + " labelled cells (8-bit). Segmentation "
@@ -1310,7 +1371,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         int idx = json.indexOf(m);
         if (idx < 0)
             return 0;
-        int s = skipWs(json, idx + m.length());     // tolerate space after colon
+        int s = skipWs(json, idx + m.length()); // tolerate space after colon
         int e = s;
         while (e < json.length() &&
                 (Character.isDigit(json.charAt(e)) || json.charAt(e) == '-'))
@@ -1327,7 +1388,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         int idx = json.indexOf(m);
         if (idx < 0)
             return 0.0;
-        int s = skipWs(json, idx + m.length());     // tolerate space after colon
+        int s = skipWs(json, idx + m.length()); // tolerate space after colon
         int e = s;
         while (e < json.length() &&
                 (Character.isDigit(json.charAt(e)) || json.charAt(e) == '-'
@@ -1341,7 +1402,9 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         }
     }
 
-    /** Best-effort raw value (object or scalar) for a key, used only for logging. */
+    /**
+     * Best-effort raw value (object or scalar) for a key, used only for logging.
+     */
     private static int skipWs(String json, int i) {
         while (i < json.length()) {
             char c = json.charAt(i);
@@ -1380,7 +1443,7 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         int idx = json.indexOf(m);
         if (idx < 0)
             return "";
-        int s = skipWs(json, idx + m.length());   // tolerate space after colon
+        int s = skipWs(json, idx + m.length()); // tolerate space after colon
         if (s >= json.length())
             return "";
         if (json.charAt(s) == '{') {
@@ -1398,10 +1461,10 @@ class StarDistAddon extends ResourceAdapter<StarDistConfiguration>
         int idx = json.indexOf(m);
         if (idx < 0)
             return null;
-        int s = skipWs(json, idx + m.length());    // tolerate space after colon
+        int s = skipWs(json, idx + m.length()); // tolerate space after colon
         if (s >= json.length() || json.charAt(s) != '"')
             return null;
-        s++;                                        // opening quote of value
+        s++; // opening quote of value
         int e = json.indexOf("\"", s);
         return e < 0 ? null : json.substring(s, e);
     }
