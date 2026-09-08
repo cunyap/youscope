@@ -154,6 +154,8 @@ class ConfigFileParser extends ConfigFileManipulator {
                         parseAxisConfiguration(tokens, accessID);
                     else if (isCommand(tokens, COMMAND_STAGE_UNITS))
                         parseStageUnits(tokens, accessID);
+                    else if (isCommand(tokens, COMMAND_FOCUS_UNITS))
+                        parseFocusUnits(tokens, accessID);
 
                     // Standard devices/roles
                     else if (isCommand(tokens, COMMAND_STANDARD_FOCUS))
@@ -276,6 +278,11 @@ class ConfigFileParser extends ConfigFileManipulator {
     private void parseStageUnits(String[] tokens, int accessID)
             throws NumberFormatException, MicroscopeLockedException, DeviceException {
         microscope.getStageDevice(tokens[1]).setUnitMagnifier(Double.parseDouble(tokens[2]), accessID);
+    }
+
+    private void parseFocusUnits(String[] tokens, int accessID)
+            throws NumberFormatException, MicroscopeLockedException, DeviceException {
+        microscope.getFocusDevice(tokens[1]).setUnitMagnifier(Double.parseDouble(tokens[2]), accessID);
     }
 
     private void parseChannelAutoShutter(String[] tokens, int accessID)

@@ -111,4 +111,13 @@ abstract class ConfigFileManipulator {
                         null };
 
         protected static final String[] COMMAND_STAGE_UNITS = { "XYStageUnit", null, null };
+
+        /**
+         * Per-focus-device unit calibration: micro meters = native units * factor.
+         * Additive, like the
+         * pixel-size magnification lines above. Old cfg files simply lack it and old
+         * YouScope versions
+         * ignore the unrecognised command. Token layout: FocusUnit,<deviceID>,<factor>.
+         */
+        protected static final String[] COMMAND_FOCUS_UNITS = { "FocusUnit", null, null };
 }

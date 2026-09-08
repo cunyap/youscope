@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - add focus conversion factor handling
  ******************************************************************************/
 /**
  * 
@@ -24,103 +25,114 @@ import org.youscope.common.microscope.MicroscopeLockedException;
  * @author langmo
  * 
  */
-public class FocusDeviceImpl extends DeviceImpl implements FocusDeviceInternal
-{
+public class FocusDeviceImpl extends DeviceImpl implements FocusDeviceInternal {
+	private double unitMagnifier = 1.0;
 	private final static String PROPERTY_POSITION = "Position";
-	
-	FocusDeviceImpl(MicroscopeImpl microscope, String deviceName, String libraryID, String driverID, HubDeviceImpl hub)
-	{
-		super(microscope, deviceName, libraryID, driverID, DeviceType.StageDevice, hub, new String[]{PROPERTY_POSITION});
+
+	FocusDeviceImpl(MicroscopeImpl microscope, String deviceName, String libraryID, String driverID,
+			HubDeviceImpl hub) {
+		super(microscope, deviceName, libraryID, driverID, DeviceType.StageDevice, hub,
+				new String[] { PROPERTY_POSITION });
 	}
-	
+
 	@Override
-	protected void initializeDevice(int accessID) throws MicroscopeException
-	{
+	protected void initializeDevice(int accessID) throws MicroscopeException {
 		super.initializeDevice(accessID);
-		
+
 		// Add some additional properties...
-		properties.put(PROPERTY_POSITION, new FloatPropertyImpl(microscope, getDeviceID(), PROPERTY_POSITION, Float.MIN_VALUE, Float.MAX_VALUE, false, this)
-		{
+		properties.put(PROPERTY_POSITION, new FloatPropertyImpl(microscope, getDeviceID(), PROPERTY_POSITION,
+				Float.MIN_VALUE, Float.MAX_VALUE, false, this) {
 			@Override
-			public String getValue() throws MicroscopeException, InterruptedException
-			{
+			public String getValue() throws MicroscopeException, InterruptedException {
 				return Double.toString(getFocusPosition());
 			}
-			
+
 			@Override
-			protected void setStringValue(String value, int accessID) throws MicroscopeException, MicroscopeLockedException, InterruptedException
-			{
-				try
-				{
+			protected void setStringValue(String value, int accessID)
+					throws MicroscopeException, MicroscopeLockedException, InterruptedException {
+				try {
 					setFocusPosition(Double.parseDouble(value), accessID);
-				}
-				catch(NumberFormatException e)
-				{
-					throw new MicroscopeException("Value for stage focus-position \"" + value + "\" is not a float value.", e);
+				} catch (NumberFormatException e) {
+					throw new MicroscopeException(
+							"Value for stage focus-position \"" + value + "\" is not a float value.", e);
 				}
 			}
 		});
 	}
 
 	@Override
-	public double getFocusPosition() throws MicroscopeException, InterruptedException
-	{
-		if(Thread.interrupted())
+	public double getFocusPosition() throws MicroscopeException, InterruptedException {
+		if (Thread.interrupted())
 			throw new InterruptedException();
-		try
-		{
+		try {
 			CMMCore core = microscope.startRead();
-			return core.getPosition(getDeviceID());
+			double position = core.getPosition(getDeviceID());
+			// Transform position from native focus units to program units (micro meters).
+			double magnifier = getUnitMagnifier();
+			if (magnifier != 1.0)
+				position *= magnifier;
+			return position;
 
-		}
-		catch(Exception e)
-		{
-			throw new MicroscopeException("Could not get position of focus device \"" + getDeviceID() + "\": " + e.getMessage());
-		}
-		finally
-		{
+		} catch (Exception e) {
+			throw new MicroscopeException(
+					"Could not get position of focus device \"" + getDeviceID() + "\": " + e.getMessage());
+		} finally {
 			microscope.unlockRead();
 		}
 	}
 
 	@Override
-	public void setFocusPosition(double position, int accessID) throws MicroscopeLockedException, MicroscopeException, InterruptedException
-	{
-		if(Thread.interrupted())
+	public void setFocusPosition(double position, int accessID)
+			throws MicroscopeLockedException, MicroscopeException, InterruptedException {
+		if (Thread.interrupted())
 			throw new InterruptedException();
-		try
-		{
+		double positionOrg = position;
+		try {
 			CMMCore core = microscope.startWrite(accessID);
-			try
-			{
+			// Transform position from program units (micro meters) to native focus units.
+			double magnifier = getUnitMagnifier();
+			if (magnifier != 1.0)
+				position /= magnifier;
+			try {
 				core.setPosition(getDeviceID(), position);
 				core.waitForDevice(getDeviceID());
-			}
-			catch(Exception e)
-			{
+			} catch (Exception e) {
 				throw new MicroscopeException("Could not set focus position.", e);
 			}
-		}
-		finally
-		{
+		} finally {
 			deviceStateModified();
 			microscope.unlockWrite();
 		}
-		microscope.stateChanged("Focus of device \"" + getDeviceID() + "\" set to " + Double.toString(position));
+		microscope.stateChanged(
+				"Focus of device \"" + getDeviceID() + "\" set to " + Double.toString(positionOrg) + " um.");
 	}
 
 	@Override
-	public void setRelativeFocusPosition(double offset, int accessID) throws MicroscopeLockedException, MicroscopeException, InterruptedException
-	{
-		try
-		{
+	public void setRelativeFocusPosition(double offset, int accessID)
+			throws MicroscopeLockedException, MicroscopeException, InterruptedException {
+		try {
 			microscope.lockWrite(accessID);
 			setFocusPosition(getFocusPosition() + offset, accessID);
-		}
-		finally
-		{
+		} finally {
 			microscope.unlockWrite();
 		}
+	}
+
+	@Override
+	public double getUnitMagnifier() {
+		return unitMagnifier;
+	}
+
+	@Override
+	public void setUnitMagnifier(double unitMagnifier, int accessID) throws MicroscopeLockedException {
+		try {
+			microscope.lockWrite(accessID);
+			this.unitMagnifier = unitMagnifier;
+		} finally {
+			microscope.unlockWrite();
+		}
+		microscope.stateChanged("Set unit magnifier of focus device " + getDeviceID() + " to "
+				+ Double.toString(unitMagnifier) + " (microns = " + Double.toString(unitMagnifier) + " * units).");
 	}
 
 }

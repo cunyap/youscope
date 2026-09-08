@@ -22,6 +22,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -33,9 +34,9 @@ import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingConstants;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -79,11 +80,13 @@ class ManageTabPixelSize extends ManageTabElement {
 	private final JButton deletePixelSizeButton;
 
 	/**
-	 * Displays pixel size settings which can be simultaneously active. Empty when
-	 * the configuration is
-	 * unambiguous.
+	 * Shows the pixel size settings which are ambiguous with the currently selected
+	 * setting. Empty and hidden when the selected setting is unambiguous, so it
+	 * never steals space from the fields above it. Bounded in height and scrollable
+	 * so a long list of conflicts can never push the other fields out of view.
 	 */
-	private final JLabel conflictLabel = new JLabel(" ");
+	private final JTextArea conflictArea = new JTextArea();
+	private final JScrollPane conflictScrollPane = new JScrollPane(conflictArea);
 
 	private final YouScopeFrame frame;
 
@@ -244,9 +247,19 @@ class ManageTabPixelSize extends ManageTabElement {
 				.add(new JLabel("<html>Device settings which have to be active for the given pixel size to apply:"));
 		pixelSizeDefinitionPanel.addFill(deviceSettingsPanel);
 
-		conflictLabel.setForeground(Color.RED);
-		conflictLabel.setVerticalAlignment(SwingConstants.TOP);
-		pixelSizeDefinitionPanel.add(conflictLabel);
+		conflictArea.setEditable(false);
+		conflictArea.setLineWrap(true);
+		conflictArea.setWrapStyleWord(true);
+		conflictArea.setOpaque(false);
+		conflictArea.setForeground(Color.RED);
+		conflictArea.setBorder(null);
+		conflictScrollPane.setOpaque(false);
+		conflictScrollPane.getViewport().setOpaque(false);
+		conflictScrollPane.setBorder(null);
+		conflictScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		conflictScrollPane.setPreferredSize(new Dimension(10, 120));
+		conflictScrollPane.setVisible(false);
+		pixelSizeDefinitionPanel.add(conflictScrollPane);
 
 		mainPanel.add(pixelSizeDefinitionPanel);
 
@@ -324,29 +337,55 @@ class ManageTabPixelSize extends ManageTabElement {
 	}
 
 	/**
-	 * Checks all pixel size settings for pairs which can be simultaneously active,
-	 * and displays the
-	 * result. Ambiguity is reported rather than blocked: a configuration which is
-	 * already ambiguous
-	 * would otherwise become uneditable.
+	 * Checks all pixel size settings for pairs which can be simultaneously active
+	 * and displays those involving the currently selected setting. Ambiguity is
+	 * reported rather than blocked: a configuration which is already ambiguous
+	 * would otherwise become uneditable. Restricting the list to the selected
+	 * setting keeps the warning short and points at the setting being edited; when
+	 * no setting is selected, all conflicts are listed as an overview.
 	 */
 	private void updateConflictWarning() {
 		try {
 			List<PixelSizeAmbiguityValidator.Conflict> conflicts = PixelSizeAmbiguityValidator.validate(
 					YouScopeClientImpl.getMicroscope().getPixelSizeManager().getPixelSizes());
-			if (conflicts.isEmpty()) {
-				conflictLabel.setText(" ");
+			List<PixelSizeAmbiguityValidator.Conflict> relevant = new ArrayList<PixelSizeAmbiguityValidator.Conflict>();
+			for (PixelSizeAmbiguityValidator.Conflict conflict : conflicts) {
+				if (currentPixelSizeSetting == null || currentPixelSizeSetting.equals(conflict.firstId)
+						|| currentPixelSizeSetting.equals(conflict.secondId)) {
+					relevant.add(conflict);
+				}
+			}
+			if (relevant.isEmpty()) {
+				conflictArea.setText("");
+				setConflictAreaVisible(false);
 				return;
 			}
-			StringBuilder builder = new StringBuilder("<html><b>Ambiguous pixel size configuration:</b><ul>");
-			for (PixelSizeAmbiguityValidator.Conflict conflict : conflicts) {
-				builder.append("<li>").append(conflict.getMessage()).append("</li>");
+			StringBuilder builder = new StringBuilder("Ambiguous pixel size configuration:\n");
+			for (PixelSizeAmbiguityValidator.Conflict conflict : relevant) {
+				builder.append("\u2022 ").append(conflict.getMessage()).append('\n');
 			}
-			builder.append("</ul></html>");
-			conflictLabel.setText(builder.toString());
+			conflictArea.setText(builder.toString());
+			conflictArea.setCaretPosition(0);
+			setConflictAreaVisible(true);
 		} catch (Exception e) {
 			ClientSystem.err.println("Could not check pixel size settings for ambiguity.", e);
-			conflictLabel.setText(" ");
+			conflictArea.setText("");
+			setConflictAreaVisible(false);
+		}
+	}
+
+	/**
+	 * Shows or hides the conflict area and revalidates its container so the freed
+	 * space is reclaimed by the fields above when the warning disappears.
+	 */
+	private void setConflictAreaVisible(boolean visible) {
+		if (conflictScrollPane.isVisible() == visible)
+			return;
+		conflictScrollPane.setVisible(visible);
+		java.awt.Container parent = conflictScrollPane.getParent();
+		if (parent != null) {
+			parent.revalidate();
+			parent.repaint();
 		}
 	}
 

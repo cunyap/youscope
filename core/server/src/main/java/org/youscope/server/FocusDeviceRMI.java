@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andereas P. Cuny - add calibration factor
  ******************************************************************************/
 /**
  * 
@@ -23,8 +24,7 @@ import org.youscope.common.microscope.MicroscopeLockedException;
 /**
  * @author langmo
  */
-class FocusDeviceRMI extends DeviceRMI implements FocusDevice
-{
+class FocusDeviceRMI extends DeviceRMI implements FocusDevice {
 
     /**
      * Serial Version UID.
@@ -33,30 +33,36 @@ class FocusDeviceRMI extends DeviceRMI implements FocusDevice
 
     private FocusDeviceInternal focusDevice;
 
-    FocusDeviceRMI(FocusDeviceInternal focusDevice, MicroscopeRMI microscope, int accessID) throws RemoteException
-    {
+    FocusDeviceRMI(FocusDeviceInternal focusDevice, MicroscopeRMI microscope, int accessID) throws RemoteException {
         super(focusDevice, microscope, accessID);
         this.focusDevice = focusDevice;
     }
 
     @Override
-	public double getFocusPosition() throws MicroscopeException, InterruptedException
-    {
+    public double getFocusPosition() throws MicroscopeException, InterruptedException {
         return focusDevice.getFocusPosition();
     }
 
     @Override
-	public void setFocusPosition(double position) throws MicroscopeLockedException,
-            MicroscopeException, InterruptedException
-    {
+    public void setFocusPosition(double position) throws MicroscopeLockedException,
+            MicroscopeException, InterruptedException {
         focusDevice.setFocusPosition(position, accessID);
 
     }
 
     @Override
-	public void setRelativeFocusPosition(double offset) throws MicroscopeLockedException,
-            RemoteException, MicroscopeException, InterruptedException
-    {
+    public void setRelativeFocusPosition(double offset) throws MicroscopeLockedException,
+            RemoteException, MicroscopeException, InterruptedException {
         focusDevice.setRelativeFocusPosition(offset, accessID);
+    }
+
+    @Override
+    public double getUnitMagnifier() {
+        return focusDevice.getUnitMagnifier();
+    }
+
+    @Override
+    public void setUnitMagnifier(double unitMagnifier) throws MicroscopeLockedException {
+        focusDevice.setUnitMagnifier(unitMagnifier, accessID);
     }
 }

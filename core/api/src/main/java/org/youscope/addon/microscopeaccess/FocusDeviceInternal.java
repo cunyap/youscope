@@ -53,4 +53,21 @@ public interface FocusDeviceInternal extends DeviceInternal
 	 * @throws InterruptedException
 	 */
 	void setRelativeFocusPosition(double offset, int accessID) throws MicroscopeLockedException, MicroscopeException, InterruptedException;
+
+	/**
+	 * Returns the calibration factor converting native focus device units to micro meters:
+	 * microMeters = units * unitMagnifier. A mechanical step-to-distance calibration, not an optical
+	 * magnification; 1.0 for drives that already move in micro meters.
+	 * @return Calibration factor for native focus unit to micro meter conversion.
+	 */
+	double getUnitMagnifier();
+
+	/**
+	 * Sets the calibration factor converting native focus device units to micro meters:
+	 * microMeters = units * unitMagnifier
+	 * @param unitMagnifier Calibration factor for native focus unit to micro meter conversion.
+	 * @param accessID The access ID of the current microscope object. If the microscope is locked with a different accessID, a MicroscopeLockedException is thrown.
+	 * @throws MicroscopeLockedException
+	 */
+	void setUnitMagnifier(double unitMagnifier, int accessID) throws MicroscopeLockedException;
 }

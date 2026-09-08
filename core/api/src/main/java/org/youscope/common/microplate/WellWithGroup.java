@@ -7,7 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
- *     Andreas P. Cuny - extension to N=100 well groups
+ *     Andreas P. Cuny - extend to N=100 well groups with unique colors
  ******************************************************************************/
 package org.youscope.common.microplate;
 

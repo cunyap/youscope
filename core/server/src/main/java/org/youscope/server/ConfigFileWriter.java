@@ -23,6 +23,7 @@ import java.util.Date;
 
 import org.youscope.addon.microscopeaccess.CameraDeviceInternal;
 import org.youscope.addon.microscopeaccess.DeviceInternal;
+import org.youscope.addon.microscopeaccess.FocusDeviceInternal;
 import org.youscope.addon.microscopeaccess.HubDeviceInternal;
 import org.youscope.addon.microscopeaccess.MicroscopeInternal;
 import org.youscope.addon.microscopeaccess.PropertyInternal;
@@ -79,6 +80,8 @@ class ConfigFileWriter extends ConfigFileManipulator {
 			writeImageBufferSize(writer);
 			writeEmptyLine(writer);
 			writeAxesStages(writer);
+			writeEmptyLine(writer);
+			writeFocusUnits(writer);
 			writeEmptyLine(writer);
 			writeAxesCameras(writer);
 			writeEmptyLine(writer);
@@ -417,6 +420,29 @@ class ConfigFileWriter extends ConfigFileManipulator {
 			if (stage.getUnitMagnifier() != 1.0) {
 				writeCommand(writer, COMMAND_STAGE_UNITS, stage.getDeviceID(),
 						Double.toString(stage.getUnitMagnifier()));
+			}
+		}
+	}
+
+	private void writeFocusUnits(BufferedWriter writer) throws IOException {
+		FocusDeviceInternal[] focusDevices = microscope.getFocusDevices();
+		if (focusDevices.length <= 0)
+			return;
+		boolean anyToWrite = false;
+		for (FocusDeviceInternal focus : focusDevices) {
+			if (focus.getUnitMagnifier() != 1.0) {
+				anyToWrite = true;
+				break;
+			}
+		}
+		if (!anyToWrite)
+			return;
+		writeComment(writer, "Unit calibration of focus devices (microns = units * magnifier).");
+		for (FocusDeviceInternal focus : focusDevices) {
+			// Only non-default magnifiers are written, exactly as for stages.
+			if (focus.getUnitMagnifier() != 1.0) {
+				writeCommand(writer, COMMAND_FOCUS_UNITS, focus.getDeviceID(),
+						Double.toString(focus.getUnitMagnifier()));
 			}
 		}
 	}
