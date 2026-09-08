@@ -200,7 +200,7 @@ if (-not $SkipCpython -and (Test-Path $UvExe)) {
         Write-Host "  Installing base scientific stack via uv pip..."
         Install-CpPkg @("numpy","scipy","scikit-image","tifffile","imageio",
                         "matplotlib","pillow","zarr","ome-zarr","pybis",
-                        "opencv-python-headless") "base sci stack"
+                        "opencv-python-headless", "napari", "napari-ome-zarr", "trackpy", "btrack", "useq-schema") "base sci stack"
 
         # PyTorch (Cellpose backend)
         if (-not $SkipTorch) {
