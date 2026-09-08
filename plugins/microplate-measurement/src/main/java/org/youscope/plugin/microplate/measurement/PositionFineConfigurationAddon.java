@@ -44,6 +44,8 @@ import org.youscope.addon.AddonUIAdapter;
 import org.youscope.addon.microplate.MicroplateWellSelectionUI;
 import org.youscope.addon.microplate.RectangularMicroplateLayout;
 import org.youscope.clientinterfaces.YouScopeClient;
+import org.youscope.clientinterfaces.PropertyProvider;
+import org.youscope.clientinterfaces.StandardProperty;
 import org.youscope.clientinterfaces.YouScopeFrameListener;
 import org.youscope.common.PositionInformation;
 import org.youscope.common.Well;
@@ -733,6 +735,72 @@ public class PositionFineConfigurationAddon  extends AddonUIAdapter<AddonMetadat
 		
 		return contentPane;
 	}
+	/**
+	 * Immutable holder for the camera / channel / exposure currently selected in
+	 * the live-view of this fine-configuration dialog.
+	 */
+	public static final class LiveChannelSettings
+	{
+		private final String channelGroup;
+		private final String channel;
+		private final String camera;
+		private final double exposureMs;
+		LiveChannelSettings(String channelGroup, String channel, String camera, double exposureMs)
+		{
+			this.channelGroup = channelGroup;
+			this.channel = channel;
+			this.camera = camera;
+			this.exposureMs = exposureMs;
+		}
+		/** @return the channel group, or null if none is selected. */
+		public String getChannelGroup() { return channelGroup; }
+		/** @return the channel, or null if none is selected. */
+		public String getChannel() { return channel; }
+		/** @return the camera device, or null if none is selected. */
+		public String getCamera() { return camera; }
+		/** @return the exposure time in milliseconds. */
+		public double getExposureMs() { return exposureMs; }
+		/** @return true if a channel group and channel are both set. */
+		public boolean hasChannel() { return channelGroup != null && channel != null; }
+	}
+
+	/**
+	 * Returns the camera, channel and exposure currently selected in the live-view.
+	 * Call this from a save listener (while the dialog is still open) to propagate
+	 * the live settings to the measurement's imaging jobs.
+	 * @return the current live-view channel settings.
+	 */
+	public LiveChannelSettings getLiveChannelSettings()
+	{
+		PropertyProvider properties = getClient().getPropertyProvider();
+		// Persist the current live-view selection into the standard "last used"
+		// properties, then read them back (LiveStreamPanel has no public getters).
+		if(liveStreamPanel != null)
+		{
+			try
+			{
+				liveStreamPanel.saveSettings(properties);
+			}
+			catch(@SuppressWarnings("unused") Exception e)
+			{
+				// fall back to whatever is currently stored.
+			}
+		}
+		String channelGroup = asString(properties.getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL_GROUP));
+		String channel = asString(properties.getProperty(StandardProperty.PROPERTY_STREAM_LAST_CHANNEL));
+		String camera = asString(properties.getProperty(StandardProperty.PROPERTY_STREAM_LAST_CAMERA));
+		double exposure = 5.0;
+		Object exp = properties.getProperty(StandardProperty.PROPERTY_STREAM_LAST_EXPOSURE);
+		if(exp instanceof Number)
+			exposure = ((Number) exp).doubleValue();
+		return new LiveChannelSettings(channelGroup, channel, camera, exposure);
+	}
+
+	private static String asString(Object o)
+	{
+		return o == null ? null : o.toString();
+	}
+
 	/**
 	 * Function to manually deactivate the live stream used for fine-configuration. Is automatically deactivated if
 	 * containing frame is closed.
