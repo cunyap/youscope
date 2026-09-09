@@ -55,6 +55,14 @@ public class MicroplateJobConfiguration implements CompositeJobConfiguration {
 	 */
 	private HashMap<WellWithGroup.WellGroup, ArrayList<JobConfiguration>> jobs = new HashMap<>();
 
+	/**
+	 * Legacy storage for configurations saved before well-group support. Older files
+	 * stored a flat <jobs> list which applied to every well. It is migrated to GROUP0
+	 * after deserialization. New configurations do not write this field.
+	 */
+	@XStreamAlias("jobs")
+	private ArrayList<JobConfiguration> legacyJobs = null;
+
 	@XStreamAlias("stage")
 	private String stageDevice = null;
 
@@ -71,8 +79,12 @@ public class MicroplateJobConfiguration implements CompositeJobConfiguration {
 	@XStreamConverter(FineConfigurationConverter.class)
 	private HashMap<PositionInformation, XYAndFocusPosition> configuredPositions = new HashMap<>(200);
 
-	@XStreamAlias("selected-wells")
+	@XStreamAlias("selected-well-groups")
 	private HashSet<WellWithGroup> selectedWells = new HashSet<>(200);
+
+	/** Legacy storage for plain well selections from pre-group configurations. */
+	@XStreamAlias("selected-wells")
+	private HashSet<Well> legacySelectedWells = null;
 	@XStreamAlias("selected-tiles")
 	private HashSet<Well> selectedTiles = new HashSet<>(200);
 
@@ -332,6 +344,41 @@ public class MicroplateJobConfiguration implements CompositeJobConfiguration {
 	 */
 	@XStreamAlias("focus")
 	private FocusConfiguration focusConfiguration = null;
+
+	/**
+	 * Migrates configurations saved before well-group support. Legacy jobs and plain
+	 * well selections are moved to GROUP0. This is idempotent.
+	 */
+	private void migrateLegacy() {
+		if (jobs == null)
+			jobs = new HashMap<>();
+
+		if (legacyJobs != null) {
+			if (!legacyJobs.isEmpty()) {
+				ArrayList<JobConfiguration> group0 = jobs.get(WellWithGroup.WellGroup.GROUP0);
+				if (group0 == null) {
+					group0 = new ArrayList<>();
+					jobs.put(WellWithGroup.WellGroup.GROUP0, group0);
+				}
+				group0.addAll(legacyJobs);
+			}
+			legacyJobs = null;
+		}
+
+		if (selectedWells == null)
+			selectedWells = new HashSet<>(200);
+		if (legacySelectedWells != null) {
+			for (Well well : legacySelectedWells)
+				selectedWells.add(new WellWithGroup(well, WellWithGroup.WellGroup.GROUP0));
+			legacySelectedWells = null;
+		}
+	}
+
+	/** Called by the deserialization lifecycle to migrate legacy configurations. */
+	private Object readResolve() {
+		migrateLegacy();
+		return this;
+	}
 
 	@Override
 	public String getTypeIdentifier() {
