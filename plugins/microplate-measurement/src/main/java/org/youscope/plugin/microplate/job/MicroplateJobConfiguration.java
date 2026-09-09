@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Moritz Lang - initial API and implementation
+ *     Andreas P. Cuny - add sync between selected and configured positions
  ******************************************************************************/
 /**
  * 
@@ -14,6 +15,7 @@
 package org.youscope.plugin.microplate.job;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -23,6 +25,7 @@ import org.youscope.addon.microplate.MicroplateConfiguration;
 import org.youscope.addon.pathoptimizer.PathOptimizerConfiguration;
 import org.youscope.common.PositionInformation;
 import org.youscope.common.Well;
+import org.youscope.common.microplate.WellWithGroup;
 import org.youscope.common.configuration.ConfigurationException;
 import org.youscope.common.configuration.FocusConfiguration;
 import org.youscope.common.job.JobConfiguration;
@@ -35,103 +38,104 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamConverter;
 
 /**
- * This class represents the configuration of a user configurable microplate job.
+ * This class represents the configuration of a user configurable microplate
+ * job.
  * 
- * @author Moritz Lang
+ * @author Moritz Lang, Andreas P. Cuny
  */
 @XStreamAlias("microplate-job")
-public class MicroplateJobConfiguration implements CompositeJobConfiguration
-{
+public class MicroplateJobConfiguration implements CompositeJobConfiguration {
 	/**
 	 * Serial version UID.
 	 */
-	private static final long						serialVersionUID	= 3413810800791783902L;
+	private static final long serialVersionUID = 3413810800791783902L;
 
 	/**
-	 * A list of all the jobs which should be done during the measurement.
+	 * The jobs which should be executed in each well/tile, per well group.
 	 */
-	private final ArrayList<JobConfiguration>	jobs				= new ArrayList<JobConfiguration>();
+	private HashMap<WellWithGroup.WellGroup, ArrayList<JobConfiguration>> jobs = new HashMap<>();
 
 	@XStreamAlias("stage")
 	private String stageDevice = null;
-	
+
 	@XStreamAlias("path-optimizer")
 	private PathOptimizerConfiguration pathOptimizerConfiguration = null;
-	
+
 	@XStreamAlias("microplate-configuration")
 	private MicroplateConfiguration microplateConfiguration = null;
-	
+
 	@XStreamAlias("tile-configuration")
 	private TileConfiguration tileConfiguration = null;
-	
+
 	@XStreamAlias("configured-positions")
 	@XStreamConverter(FineConfigurationConverter.class)
 	private HashMap<PositionInformation, XYAndFocusPosition> configuredPositions = new HashMap<>(200);
-	
+
 	@XStreamAlias("selected-wells")
-	private HashSet<Well> selectedWells = new HashSet<>(200);
+	private HashSet<WellWithGroup> selectedWells = new HashSet<>(200);
 	@XStreamAlias("selected-tiles")
 	private HashSet<Well> selectedTiles = new HashSet<>(200);
-	
+
 	/**
 	 * Sets the configured imaging positions to the positions in the provided map.
+	 * 
 	 * @param positions Map of positions where imaging should take place.
 	 */
-	public void setPositions(Map<PositionInformation, XYAndFocusPosition> positions)
-	{
+	public void setPositions(Map<PositionInformation, XYAndFocusPosition> positions) {
 		configuredPositions.clear();
 		configuredPositions.putAll(positions);
 	}
-	
+
 	/**
-	 * Returns a map of all positions where the measurement images. 
+	 * Returns a map of all positions where the measurement images.
+	 * 
 	 * @return Map of all positions where imaging takes place.
 	 */
-	public Map<PositionInformation, XYAndFocusPosition> getPositions()
-	{
+	public Map<PositionInformation, XYAndFocusPosition> getPositions() {
 		return new HashMap<>(configuredPositions);
 	}
-	
+
 	/**
 	 * Sets the wells which are selected in the microplate.
+	 * 
 	 * @param selectedWells selected wells.
 	 */
-	public void setSelectedWells(Set<Well> selectedWells)
-	{
+	public void setSelectedWells(Set<WellWithGroup> selectedWells) {
 		this.selectedWells.clear();
 		this.selectedWells.addAll(selectedWells);
 	}
-	
+
 	/**
 	 * Returns a collection of all wells selected in the microplate.
+	 * 
 	 * @return selected wells.
 	 */
-	public Set<Well> getSelectedWells()
-	{
+	public Set<WellWithGroup> getSelectedWells() {
 		return new HashSet<>(selectedWells);
 	}
-	
+
 	/**
 	 * Sets the wells which are selected in the microplate.
+	 * 
 	 * @param selectedTiles selected wells.
 	 */
-	public void setSelectedTiles(Set<Well> selectedTiles)
-	{
+	public void setSelectedTiles(Set<Well> selectedTiles) {
 		this.selectedTiles.clear();
 		this.selectedTiles.addAll(selectedTiles);
 	}
-	
+
 	/**
 	 * Returns a collection of all tiles selected in the microplate.
+	 * 
 	 * @return selected tiles.
 	 */
-	public Set<Well> getSelectedTiles()
-	{
+	public Set<Well> getSelectedTiles() {
 		return new HashSet<>(selectedTiles);
 	}
-	
+
 	/**
 	 * Returns the configuration of the microplate layout.
+	 * 
 	 * @return microplate configuration
 	 */
 	public MicroplateConfiguration getMicroplateConfiguration() {
@@ -140,14 +144,17 @@ public class MicroplateJobConfiguration implements CompositeJobConfiguration
 
 	/**
 	 * Sets the configuration of the microplate layout.
+	 * 
 	 * @param microplateConfiguration microplate configuration.
 	 */
 	public void setMicroplateConfiguration(MicroplateConfiguration microplateConfiguration) {
 		this.microplateConfiguration = microplateConfiguration;
 	}
-	
+
 	/**
-	 * Returns the configuration of the tile layout. Internally, the tile layout is stored as another microplate layout.
+	 * Returns the configuration of the tile layout. Internally, the tile layout is
+	 * stored as another microplate layout.
+	 * 
 	 * @return tile configuration
 	 */
 	public TileConfiguration getTileConfiguration() {
@@ -155,96 +162,213 @@ public class MicroplateJobConfiguration implements CompositeJobConfiguration
 	}
 
 	/**
-	 * Sets the configuration of the tile layout. Internally, the tile layout is stored as another microplate layout.
+	 * Sets the configuration of the tile layout. Internally, the tile layout is
+	 * stored as another microplate layout.
+	 * 
 	 * @param tileConfiguration tile configuration.
 	 */
 	public void setTileConfiguration(TileConfiguration tileConfiguration) {
 		this.tileConfiguration = tileConfiguration;
 	}
-	
+
 	/**
-	 * Returns the configuration of the optimizer which should be used to minimize the distances between two wells/positions measured.
+	 * Returns the configuration of the optimizer which should be used to minimize
+	 * the distances between two wells/positions measured.
 	 * Returns null if not uses any optimized path.
+	 * 
 	 * @return The configuration of the path optimizer used, or null
 	 */
 	public PathOptimizerConfiguration getPathOptimizerConfiguration() {
 		return pathOptimizerConfiguration;
 	}
+
 	/**
-	 * Sets the configuration of the optimizer which should be used to minimize the distances between two wells/positions measured.
+	 * Sets the configuration of the optimizer which should be used to minimize the
+	 * distances between two wells/positions measured.
 	 * Set to null to not use any optimized path.
-	 * @param pathOptimizerConfiguration The configuration of the path optimizer used, or null
+	 * 
+	 * @param pathOptimizerConfiguration The configuration of the path optimizer
+	 *                                   used, or null
 	 */
 	public void setPathOptimizerConfiguration(PathOptimizerConfiguration pathOptimizerConfiguration) {
 		this.pathOptimizerConfiguration = pathOptimizerConfiguration;
 	}
-	
+
+	/**
+	 * Returns the well groups which currently have an imaging protocol defined,
+	 * sorted by group id.
+	 * 
+	 * @return sorted well groups with jobs.
+	 */
+	private ArrayList<WellWithGroup.WellGroup> sortedGroups() {
+		ArrayList<WellWithGroup.WellGroup> groups = new ArrayList<>(jobs.keySet());
+		Collections.sort(groups); // WellGroup is an enum; natural order == group id order.
+		return groups;
+	}
+
+	// CompositeJobConfiguration contract. A microplate job can define a different
+	// imaging protocol
+	// per well group; the flat methods below provide the "all child jobs" view
+	// expected by generic
+	// tooling. getJobs() returns the union across all groups (group-id order); the
+	// single-argument
+	// mutators operate on the default group (GROUP0). Use the well-group-aware
+	// overloads to edit a
+	// specific group.
+
 	@Override
-	public JobConfiguration[] getJobs()
-	{
-		return jobs.toArray(new JobConfiguration[jobs.size()]);
+	public JobConfiguration[] getJobs() {
+		ArrayList<JobConfiguration> all = new ArrayList<>();
+		for (WellWithGroup.WellGroup group : sortedGroups())
+			all.addAll(jobs.get(group));
+		return all.toArray(new JobConfiguration[all.size()]);
 	}
 
 	@Override
-	public void setJobs(JobConfiguration[] jobs)
-	{
+	public void setJobs(JobConfiguration[] jobs) {
 		this.jobs.clear();
-		for(JobConfiguration job:jobs)
-		{
-			this.jobs.add(job);
-		}
+		setJobs(WellWithGroup.WellGroup.GROUP0, jobs);
 	}
 
 	@Override
-	public void addJob(JobConfiguration job)
-	{
-		jobs.add(job);
+	public void addJob(JobConfiguration job) {
+		addJob(WellWithGroup.WellGroup.GROUP0, job);
 	}
 
 	@Override
-	public void clearJobs()
-	{
+	public void clearJobs() {
 		jobs.clear();
+	}
+
+	/**
+	 * Returns the jobs executed in each well/tile belonging to the given group.
+	 * 
+	 * @param wellGroup The well group for which the jobs should be returned.
+	 * @return Jobs of the group (empty array if none).
+	 */
+	public JobConfiguration[] getJobs(WellWithGroup.WellGroup wellGroup) {
+		ArrayList<JobConfiguration> groupJobs = jobs.get(wellGroup);
+		if (groupJobs == null)
+			return new JobConfiguration[0];
+		return groupJobs.toArray(new JobConfiguration[groupJobs.size()]);
+	}
+
+	/**
+	 * Sets the jobs executed in each well/tile belonging to the given group.
+	 * 
+	 * @param wellGroup The well group for which the jobs should be set.
+	 * @param jobs      New jobs.
+	 */
+	public void setJobs(WellWithGroup.WellGroup wellGroup, JobConfiguration[] jobs) {
+		ArrayList<JobConfiguration> groupJobs = new ArrayList<>(jobs.length);
+		for (JobConfiguration job : jobs) {
+			groupJobs.add(job);
+		}
+		this.jobs.put(wellGroup, groupJobs);
+	}
+
+	/**
+	 * Adds a job to the jobs executed in each well/tile belonging to the given
+	 * group.
+	 * 
+	 * @param wellGroup Well group for the job.
+	 * @param job       Job to be added.
+	 */
+	public void addJob(WellWithGroup.WellGroup wellGroup, JobConfiguration job) {
+		ArrayList<JobConfiguration> groupJobs = jobs.get(wellGroup);
+		if (groupJobs == null) {
+			groupJobs = new ArrayList<>();
+			jobs.put(wellGroup, groupJobs);
+		}
+		groupJobs.add(job);
+	}
+
+	/**
+	 * Removes all jobs belonging to the given group.
+	 * 
+	 * @param wellGroup Well group for which all jobs should be cleared.
+	 */
+	public void clearJobs(WellWithGroup.WellGroup wellGroup) {
+		jobs.remove(wellGroup);
+	}
+
+	/**
+	 * Removes the job at the given index within the given group.
+	 * 
+	 * @param wellGroup Well group where the job should be removed from.
+	 * @param index     Index of the job to be removed.
+	 */
+	public void removeJob(WellWithGroup.WellGroup wellGroup, int index) {
+		ArrayList<JobConfiguration> groupJobs = jobs.get(wellGroup);
+		if (groupJobs == null)
+			return;
+		groupJobs.remove(index);
+	}
+
+	/**
+	 * Inserts a job at the given index within the given group.
+	 * 
+	 * @param wellGroup Well group where the job should be added.
+	 * @param job       Job to be added.
+	 * @param index     position where to insert.
+	 */
+	public void addJob(WellWithGroup.WellGroup wellGroup, JobConfiguration job, int index) {
+		ArrayList<JobConfiguration> groupJobs = jobs.get(wellGroup);
+		if (groupJobs == null) {
+			groupJobs = new ArrayList<>();
+			jobs.put(wellGroup, groupJobs);
+		}
+		groupJobs.add(index, job);
 	}
 
 	/**
 	 * The identifier for this measurement type.
 	 */
-	public static final String								TYPE_IDENTIFIER		= "YouScope.MicroPlateJob";
+	public static final String TYPE_IDENTIFIER = "YouScope.MicroPlateJob";
 
 	/**
 	 * Configuration of the focus device used for focussing the wells. Set to
 	 * null to not set focus in wells.
 	 */
 	@XStreamAlias("focus")
-	private FocusConfiguration		 			focusConfiguration	= null;
+	private FocusConfiguration focusConfiguration = null;
 
 	@Override
-	public String getTypeIdentifier()
-	{
+	public String getTypeIdentifier() {
 		return TYPE_IDENTIFIER;
 	}
 
 	@Override
-	public void removeJobAt(int index)
-	{
-		jobs.remove(index);
+	public void removeJobAt(int index) {
+		// Interpret the index over the flattened (union) job order, matching getJobs().
+		int remaining = index;
+		for (WellWithGroup.WellGroup group : sortedGroups()) {
+			ArrayList<JobConfiguration> groupJobs = jobs.get(group);
+			if (remaining < groupJobs.size()) {
+				groupJobs.remove(remaining);
+				return;
+			}
+			remaining -= groupJobs.size();
+		}
 	}
 
 	@Override
-	public void addJob(JobConfiguration job, int index)
-	{
-		jobs.add(index, job);
-
+	public void addJob(JobConfiguration job, int index) {
+		ArrayList<JobConfiguration> groupJobs = jobs.get(WellWithGroup.WellGroup.GROUP0);
+		if (groupJobs == null) {
+			groupJobs = new ArrayList<>();
+			jobs.put(WellWithGroup.WellGroup.GROUP0, groupJobs);
+		}
+		groupJobs.add(index < 0 ? 0 : (index > groupJobs.size() ? groupJobs.size() : index), job);
 	}
 
 	/**
 	 * @param focusConfiguration
-	 *            The configuration of the focus used when entering a well. Set
-	 *            to NULL to not set focus.
+	 *                           The configuration of the focus used when entering a
+	 *                           well. Set
+	 *                           to NULL to not set focus.
 	 */
-	public void setFocusConfiguration(FocusConfiguration focusConfiguration)
-	{
+	public void setFocusConfiguration(FocusConfiguration focusConfiguration) {
 		this.focusConfiguration = focusConfiguration;
 	}
 
@@ -252,45 +376,41 @@ public class MicroplateJobConfiguration implements CompositeJobConfiguration
 	 * @return The configuration of the focus used when entering a well. NULL if
 	 *         focus is not set.
 	 */
-	public FocusConfiguration getFocusConfiguration()
-	{
+	public FocusConfiguration getFocusConfiguration() {
 		return focusConfiguration;
 	}
 
 	/**
-	 * Sets the ID of the stage device which should be used to change between wells and positions. Set to NULL to use default stage device.
+	 * Sets the ID of the stage device which should be used to change between wells
+	 * and positions. Set to NULL to use default stage device.
+	 * 
 	 * @param stageDevice The ID of the stage device, or NULL.
 	 */
-	public void setStageDevice(String stageDevice)
-	{
+	public void setStageDevice(String stageDevice) {
 		this.stageDevice = stageDevice;
 	}
 
 	/**
-	 * Returns the ID of the stage device which should be used to change between wells and positions. Returns NULL to use default stage device.
+	 * Returns the ID of the stage device which should be used to change between
+	 * wells and positions. Returns NULL to use default stage device.
+	 * 
 	 * @return The ID of the stage device, or NULL.
 	 */
-	public String getStageDevice()
-	{
+	public String getStageDevice() {
 		return stageDevice;
 	}
 
 	@Override
-	public String getDescription()
-	{
+	public String getDescription() {
 		String description = "<p>Microplate Job</p>";
-		if(selectedWells != null && selectedWells.size() > 0)
-		{
-			description += "<p>for well=1:" + Integer.toString(selectedWells.size()) + "</p>"+
-			"<ul style=\"margin-top:0px;margin-bottom:0px;margin-left:12px;list-style-type:none\">";
-			for(JobConfiguration job : jobs)
-			{
+		if (selectedWells != null && selectedWells.size() > 0) {
+			description += "<p>for well=1:" + Integer.toString(selectedWells.size()) + "</p>" +
+					"<ul style=\"margin-top:0px;margin-bottom:0px;margin-left:12px;list-style-type:none\">";
+			for (JobConfiguration job : getJobs()) {
 				description += "<li>" + job.getDescription() + "</li>";
 			}
 			description += "</ul><p>end</p>";
-		}
-		else
-		{
+		} else {
 			description += "<p>No well specified.</p>";
 		}
 		return description;
@@ -298,9 +418,10 @@ public class MicroplateJobConfiguration implements CompositeJobConfiguration
 
 	@Override
 	public void checkConfiguration() throws ConfigurationException {
-		for(JobConfiguration childJob : jobs)
-		{
-			childJob.checkConfiguration();
+		for (ArrayList<JobConfiguration> groupJobs : jobs.values()) {
+			for (JobConfiguration childJob : groupJobs) {
+				childJob.checkConfiguration();
+			}
 		}
 	}
 }
