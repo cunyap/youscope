@@ -1,0 +1,79 @@
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+    flatDir {
+        dirs '../../libs'
+    }
+}
+
+// The CAME plugin is a Java 17 plugin.
+// Keep its dependency-resolution classpaths at Java 17 so Gradle does not
+// try to select Java-7 variants of modern libraries.
+configurations.compileClasspath.attributes {
+    attribute(
+        org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+        17
+    )
+}
+
+configurations.runtimeClasspath.attributes {
+    attribute(
+        org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
+        17
+    )
+}
+
+dependencies {
+    implementation project(':plugins:custom-microplates')
+
+    // Computer vision
+    implementation 'org.boofcv:boofcv-core:1.1.6'
+
+    // SVG
+    implementation 'org.apache.xmlgraphics:batik-transcoder:1.17'
+    implementation 'org.apache.xmlgraphics:batik-codec:1.17'
+
+    // PDF
+    implementation 'org.apache.pdfbox:pdfbox:2.0.31'
+
+    // TIFF / JPEG ImageIO plugins
+    runtimeOnly 'com.twelvemonkeys.imageio:imageio-tiff:3.11.0'
+    runtimeOnly 'com.twelvemonkeys.imageio:imageio-jpeg:3.11.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.compilerArgs += ['-Xlint:-options']
+}
+
+tasks.register('copyCameLibs', Copy) {
+    from configurations.runtimeClasspath
+    into "${rootProject.projectDir}/libs"
+
+    include {
+        def n = it.file.name
+
+        n.startsWith('boofcv-') ||
+        n.startsWith('ddogleg-') ||
+        n.startsWith('ejml-') ||
+        n.startsWith('georegression') ||
+        n.startsWith('batik-') ||
+        n.startsWith('xmlgraphics-commons') ||
+        n.startsWith('xml-apis') ||
+        n.startsWith('pdfbox-') ||
+        n.startsWith('fontbox-') ||
+        n.startsWith('commons-logging') ||
+        n.startsWith('imageio-') ||
+        n.startsWith('common-') ||
+        n.startsWith('commons-io')
+    }
+
+    duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
+}
+
+build.dependsOn copyCameLibs
