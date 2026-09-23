@@ -39,7 +39,7 @@ import java.util.List;
 public class YouScopeVersion {
 	private static final String UNKNOWN = "UNKNOWN";
 
-	private final static String DEVELOPER_VERSION = "2.5.1";
+	private final static String DEVELOPER_VERSION = "2.5.2";
 
 	private final static String PRODUCT_VERSION = "R2026";
 

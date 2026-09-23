@@ -135,7 +135,7 @@ startScripts {
  * Global project variables.
  */
 ext.archivesBaseName = 'youscope'
-ext.version = '2.5.1'
+ext.version = '2.5.2'
 
 /*
  * Core subprojects.
