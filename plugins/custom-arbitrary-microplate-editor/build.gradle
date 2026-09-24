@@ -52,6 +52,26 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+tasks.jar {
+    // Compiled classes + resources from main source set
+    from sourceSets.main.output
+
+    // Your custom MANIFEST.MF from resources
+    from('src/main/resources') {
+        include 'META-INF/MANIFEST.MF'
+    }
+
+    // Avoid duplicate MANIFEST.MF entries
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // Optionally inject/update Class-Path based on runtimeClasspath
+    doFirst {
+        def runtimeJars = configurations.runtimeClasspath.files.collect { it.name }
+        def classPathValue = runtimeJars.collect { "../lib/${it}" }.join(' ')
+        manifest.attributes['Class-Path'] = classPathValue
+    }
+}
+
 tasks.register('copyCameLibs', Copy) {
     from configurations.runtimeClasspath
     into "${rootProject.projectDir}/libs"
@@ -78,3 +98,79 @@ tasks.register('copyCameLibs', Copy) {
 }
 
 build.dependsOn copyCameLibs
+
+// ---------------------------------------------------------------------------
+// Bundle the third-party runtime classes INTO the plugin jar (uber-jar).
+//
+// YouScope's plugin class-loader could not resolve the third-party jars via the
+// MANIFEST.MF Class-Path in this setup (they were not on the runtime lib/ path
+// next to the plugin jar), so BoofCV/Batik/PDFBox/TwelveMonkeys classes were
+// missing at run time (NoClassDefFoundError: boofcv/io/image/ConvertBufferedImage).
+//
+// Bundling their classes directly into the plugin jar makes the plugin
+// self-contained: it no longer depends on lib/ placement or on the loader
+// honouring Class-Path. YouScope core + xstream + custom-microplates are NOT
+// bundled (YouScope already provides them to every plugin). ServiceLoader files
+// under META-INF/services are merged so the TwelveMonkeys ImageIO readers (and
+// any Batik providers) still register.
+// ---------------------------------------------------------------------------
+def cameBundleFilter = { String n ->
+    n.startsWith('boofcv-') ||
+    n.startsWith('ddogleg-') ||
+    n.startsWith('ejml-') ||
+    n.startsWith('georegression') ||
+    n.startsWith('batik-') ||
+    n.startsWith('xmlgraphics-commons') ||
+    n.startsWith('xml-apis') ||
+    n.startsWith('pdfbox-') ||
+    n.startsWith('fontbox-') ||
+    n.startsWith('commons-logging') ||
+    n.startsWith('imageio-') ||
+    n.startsWith('common-') ||
+    n.startsWith('commons-io')
+}
+
+def cameMergedServicesDir = layout.buildDirectory.dir('cameMergedServices')
+
+tasks.register('mergeCameServices') {
+    def libs = configurations.runtimeClasspath
+    def outDirProvider = cameMergedServicesDir
+    inputs.files libs
+    outputs.dir outDirProvider
+    doLast {
+        def merged = [:]  // service-file name -> ordered set of provider lines
+        libs.findAll { cameBundleFilter(it.name) }.each { jarFile ->
+            zipTree(jarFile).matching { include 'META-INF/services/*' }.files.each { f ->
+                def set = merged.get(f.name)
+                if (set == null) { set = new LinkedHashSet(); merged.put(f.name, set) }
+                f.eachLine('UTF-8') { line -> def t = line.trim(); if (t) set.add(t) }
+            }
+        }
+        def dir = outDirProvider.get().asFile
+        dir.deleteDir(); dir.mkdirs()
+        merged.each { name, lines -> new File(dir, name).setText(lines.join('\n') + '\n', 'UTF-8') }
+    }
+}
+
+jar {
+    dependsOn 'mergeCameServices'
+    duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
+
+    // merged ServiceLoader registrations (must win over the per-jar copies below)
+    from(cameMergedServicesDir) {
+        into 'META-INF/services'
+    }
+
+    // classes from the third-party runtime jars
+    from({
+        configurations.runtimeClasspath.findAll { cameBundleFilter(it.name) }
+            .collect { it.isDirectory() ? it : zipTree(it) }
+    }) {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+        exclude 'META-INF/services/**'   // provided by mergeCameServices
+        exclude 'module-info.class'
+    }
+}

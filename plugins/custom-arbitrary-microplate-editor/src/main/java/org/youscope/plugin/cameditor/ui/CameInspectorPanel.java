@@ -10,7 +10,6 @@
  ******************************************************************************/
 package org.youscope.plugin.cameditor.ui;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -177,7 +176,7 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 	{
 		JPanel modePanel = new JPanel(new GridLayout(0, 1));
 		JRadioButton select = new JRadioButton("Select / move / resize", true);
-		JRadioButton add = new JRadioButton("Add wells (drag)");
+		JRadioButton add = new JRadioButton("Add wells (Click and drag)");
 		JRadioButton measure = new JRadioButton("Measure");
 		ButtonGroup group = new ButtonGroup();
 		group.add(select); group.add(add); group.add(measure);
@@ -510,7 +509,8 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 	private static JLabel section(String title)
 	{
 		JLabel label = new JLabel(title);
-		label.setForeground(new Color(0x20, 0x50, 0x90));
+		// Bold, using the default label foreground so it stays readable in both light and dark themes
+		label.setFont(label.getFont().deriveFont(java.awt.Font.BOLD));
 		label.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
 		return label;
 	}

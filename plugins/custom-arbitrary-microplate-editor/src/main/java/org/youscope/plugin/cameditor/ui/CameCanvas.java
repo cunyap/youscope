@@ -32,7 +32,9 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.swing.AbstractAction;
 import javax.swing.JPanel;
@@ -83,6 +85,8 @@ public class CameCanvas extends JPanel
 
 	// interaction state
 	private EditableWell selected;
+	// additional wells selected for batch operations (e.g. Select-All then Delete); may be empty
+	private final Set<EditableWell> multiSelection = new LinkedHashSet<EditableWell>();
 	private Point2D.Double dragStartScene;
 	private EditableWell newWellInProgress;
 	private int activeHandle = -1; // 0..3 corners, -1 none
@@ -120,6 +124,14 @@ public class CameCanvas extends JPanel
 		{
 			private static final long serialVersionUID = 1L;
 			@Override public void actionPerformed(ActionEvent e) { undo(); }
+		});
+
+		// Ctrl+A (Cmd+A on macOS) to select every well, e.g. to batch-delete them.
+		getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_A, menuMask), "came-select-all");
+		getActionMap().put("came-select-all", new AbstractAction()
+		{
+			private static final long serialVersionUID = 1L;
+			@Override public void actionPerformed(ActionEvent e) { selectAll(); }
 		});
 	}
 
@@ -223,6 +235,63 @@ public class CameCanvas extends JPanel
 			fireModelChanged();
 			repaint();
 		}
+	}
+
+	/** Selects every well (for batch operations such as delete). Clears any single selection. */
+	public void selectAll()
+	{
+		multiSelection.clear();
+		multiSelection.addAll(model.getWells());
+		selected = null;
+		fireSelection();
+		repaint();
+	}
+
+	/** @return an unmodifiable view of the wells currently in the batch selection (may be empty). */
+	public Set<EditableWell> getMultiSelection() { return java.util.Collections.unmodifiableSet(multiSelection); }
+
+	/**
+	 * Deletes all currently selected wells: the batch selection if there is one, otherwise the single
+	 * selected well. The whole deletion is a single undo step.
+	 */
+	public void deleteSelection()
+	{
+		final List<EditableWell> toDelete = new ArrayList<EditableWell>();
+		if(!multiSelection.isEmpty())
+			toDelete.addAll(multiSelection);
+		else if(selected != null)
+			toDelete.add(selected);
+		if(toDelete.isEmpty())
+			return;
+
+		final double[][] geom = new double[toDelete.size()][4];
+		final WellShape[] shapes = new WellShape[toDelete.size()];
+		final boolean[] actives = new boolean[toDelete.size()];
+		for(int i = 0; i < toDelete.size(); i++)
+		{
+			EditableWell w = toDelete.get(i);
+			geom[i][0] = w.getXPx(); geom[i][1] = w.getYPx(); geom[i][2] = w.getWidthPx(); geom[i][3] = w.getHeightPx();
+			shapes[i] = w.getShape();
+			actives[i] = w.isActive();
+			model.removeWell(w);
+		}
+		pushUndo(new Runnable()
+		{
+			@Override public void run()
+			{
+				for(int i = 0; i < geom.length; i++)
+				{
+					EditableWell re = model.addWell(geom[i][0], geom[i][1], geom[i][2], geom[i][3]);
+					re.setShape(shapes[i]);
+					re.setActive(actives[i]);
+				}
+			}
+		});
+		multiSelection.clear();
+		selected = null;
+		fireSelection();
+		fireModelChanged();
+		repaint();
 	}
 
 	public void toggleSelectedActive()
@@ -354,7 +423,7 @@ public class CameCanvas extends JPanel
 		double w = well.getWidthPx() * zoom;
 		double h = well.getHeightPx() * zoom;
 
-		boolean isSelected = well == selected;
+		boolean isSelected = well == selected || multiSelection.contains(well);
 		Color fill = well.isActive() ? new Color(0x33, 0x99, 0xFF, 70) : new Color(0x88, 0x88, 0x88, 70);
 		Color line = well.isActive() ? new Color(0x33, 0x99, 0xFF) : new Color(0xAA, 0xAA, 0xAA);
 		if(isSelected)
@@ -509,6 +578,8 @@ public class CameCanvas extends JPanel
 			}
 
 			// SELECT
+			if(!multiSelection.isEmpty())
+				multiSelection.clear();
 			int handle = hitHandle(selected, scene);
 			if(handle >= 0)
 			{
@@ -677,7 +748,7 @@ public class CameCanvas extends JPanel
 		public void keyPressed(KeyEvent e)
 		{
 			if(e.getKeyCode() == KeyEvent.VK_DELETE || e.getKeyCode() == KeyEvent.VK_BACK_SPACE)
-				deleteSelected();
+				deleteSelection();
 			else if(e.getKeyCode() == KeyEvent.VK_SPACE)
 				toggleSelectedActive();
 			else if(e.getKeyCode() == KeyEvent.VK_F)
