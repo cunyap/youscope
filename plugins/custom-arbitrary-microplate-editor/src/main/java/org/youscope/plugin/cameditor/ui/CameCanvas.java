@@ -94,6 +94,9 @@ public class CameCanvas extends JPanel
 	private boolean movingBody = false;
 	private int panLastX, panLastY;
 	private boolean panning = false;
+	// rubber-band (drag-rectangle) selection state
+	private boolean rubberBanding = false;
+	private Point2D.Double rubberStartScene, rubberCurScene;
 	private final List<Point2D.Double> measurePoints = new ArrayList<Point2D.Double>();
 
 	// undo: a stack of actions that revert the most recent edit (move/resize/add/delete)
@@ -247,6 +250,29 @@ public class CameCanvas extends JPanel
 		selected = null;
 		fireSelection();
 		repaint();
+	}
+
+	private Rectangle2D.Double rubberRectScene()
+	{
+		double x = Math.min(rubberStartScene.x, rubberCurScene.x);
+		double y = Math.min(rubberStartScene.y, rubberCurScene.y);
+		double w = Math.abs(rubberCurScene.x - rubberStartScene.x);
+		double h = Math.abs(rubberCurScene.y - rubberStartScene.y);
+		return new Rectangle2D.Double(x, y, w, h);
+	}
+
+	/** Recomputes the batch selection as every well intersecting the current rubber-band rectangle. */
+	private void updateRubberSelection()
+	{
+		multiSelection.clear();
+		if(rubberStartScene == null || rubberCurScene == null)
+			return;
+		Rectangle2D.Double r = rubberRectScene();
+		for(EditableWell w : model.getWells())
+		{
+			if(r.intersects(w.getXPx(), w.getYPx(), Math.max(1, w.getWidthPx()), Math.max(1, w.getHeightPx())))
+				multiSelection.add(w);
+		}
 	}
 
 	/** @return an unmodifiable view of the wells currently in the batch selection (may be empty). */
@@ -407,6 +433,7 @@ public class CameCanvas extends JPanel
 			paintWell(g, well);
 
 		paintMeasure(g);
+		paintRubberBand(g);
 
 		g.dispose();
 	}
@@ -532,6 +559,20 @@ public class CameCanvas extends JPanel
 		}
 	}
 
+	private void paintRubberBand(Graphics2D g)
+	{
+		if(!rubberBanding || rubberStartScene == null || rubberCurScene == null)
+			return;
+		Rectangle2D.Double r = rubberRectScene();
+		double sx = sceneToScreenX(r.x), sy = sceneToScreenY(r.y);
+		double sw = r.width * zoom, sh = r.height * zoom;
+		g.setColor(new Color(0xFF, 0xCC, 0x00, 40));
+		g.fill(new Rectangle2D.Double(sx, sy, sw, sh));
+		g.setColor(new Color(0xFF, 0xCC, 0x00, 200));
+		g.setStroke(new BasicStroke(1f));
+		g.draw(new Rectangle2D.Double(sx, sy, sw, sh));
+	}
+
 	// Hit testing
 
 	private int hitHandle(EditableWell well, Point2D.Double scene)
@@ -618,9 +659,10 @@ public class CameCanvas extends JPanel
 			}
 
 			// SELECT
-			if(!multiSelection.isEmpty())
-				multiSelection.clear();
-			int handle = hitHandle(selected, scene);
+			boolean additive = e.isShiftDown() || e.isControlDown() || e.isMetaDown();
+
+			// resize handle of the single selected well (only for a plain, non-additive click)
+			int handle = additive ? -1 : hitHandle(selected, scene);
 			if(handle >= 0)
 			{
 				activeHandle = handle;
@@ -628,12 +670,51 @@ public class CameCanvas extends JPanel
 				snapshotEditStart(selected);
 				return;
 			}
+
 			EditableWell hit = hitWell(scene);
+
+			if(additive)
+			{
+				// Shift/Ctrl(/Cmd)-click toggles a single well in the batch selection (no move, no clear)
+				if(hit != null)
+				{
+					if(multiSelection.remove(hit))
+					{
+						if(selected == hit)
+							selected = null;
+					}
+					else
+					{
+						multiSelection.add(hit);
+						selected = hit;
+					}
+					fireSelection();
+					repaint();
+				}
+				return;
+			}
+
+			if(hit == null)
+			{
+				// begin a rubber-band rectangle over empty space
+				multiSelection.clear();
+				selected = null;
+				activeHandle = -1;
+				movingBody = false;
+				rubberBanding = true;
+				rubberStartScene = scene;
+				rubberCurScene = scene;
+				fireSelection();
+				repaint();
+				return;
+			}
+
+			// plain click on a well: single-select and prepare to move
+			multiSelection.clear();
 			selected = hit;
 			activeHandle = -1;
-			movingBody = hit != null;
-			if(movingBody)
-				snapshotEditStart(hit);
+			movingBody = true;
+			snapshotEditStart(hit);
 			fireSelection();
 			repaint();
 		}
@@ -651,6 +732,14 @@ public class CameCanvas extends JPanel
 				return;
 			}
 			Point2D.Double scene = toScene(e.getX(), e.getY());
+
+			if(mode == Mode.SELECT && rubberBanding)
+			{
+				rubberCurScene = scene;
+				updateRubberSelection();
+				repaint();
+				return;
+			}
 
 			if(mode == Mode.ADD && newWellInProgress != null)
 			{
@@ -715,6 +804,16 @@ public class CameCanvas extends JPanel
 				}
 				newWellInProgress = null;
 				fireModelChanged();
+				repaint();
+				return;
+			}
+			if(mode == Mode.SELECT && rubberBanding)
+			{
+				rubberBanding = false;
+				rubberStartScene = null;
+				rubberCurScene = null;
+				// multiSelection was already populated live during the drag
+				fireSelection();
 				repaint();
 				return;
 			}
