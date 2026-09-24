@@ -82,6 +82,7 @@ public class CameCanvas extends JPanel
 	private boolean showGrid = true;
 	private boolean snapToGrid = false;
 	private double gridSpacingScene = 50; // in scene pixels
+	private boolean centerGridOnSelection = false; // anchor the grid on the selected well's centre
 
 	// interaction state
 	private EditableWell selected;
@@ -176,7 +177,7 @@ public class CameCanvas extends JPanel
 
 	public void addListener(Listener listener) { listeners.add(listener); }
 
-	private void fireSelection() { for(Listener l : listeners) l.selectionChanged(selected); }
+	private void fireSelection() { for(Listener l : listeners) l.selectionChanged(selected); if(centerGridOnSelection) repaint(); }
 	private void fireModelChanged() { for(Listener l : listeners) l.modelChanged(); }
 
 	public void setBackdrop(BufferedImage image)
@@ -201,6 +202,7 @@ public class CameCanvas extends JPanel
 	public void setSnapToGrid(boolean snap) { this.snapToGrid = snap; }
 	public void setGridSpacingScene(double spacing) { if(spacing > 0) { this.gridSpacingScene = spacing; repaint(); } }
 	public double getGridSpacingScene() { return gridSpacingScene; }
+	public void setCenterGridOnSelection(boolean center) { this.centerGridOnSelection = center; repaint(); }
 
 	public EditableWell getSelected() { return selected; }
 
@@ -365,11 +367,19 @@ public class CameCanvas extends JPanel
 	private double sceneToScreenX(double x) { return x * zoom + offsetX; }
 	private double sceneToScreenY(double y) { return y * zoom + offsetY; }
 
-	private double snap(double value)
+	// The scene-space point the grid lines are anchored to: the selected well's centre when
+	// "center grid on selected well" is enabled, otherwise the image origin (0,0).
+	private double gridOriginX() { return (centerGridOnSelection && selected != null) ? selected.getXPx() + selected.getWidthPx() / 2.0 : 0; }
+	private double gridOriginY() { return (centerGridOnSelection && selected != null) ? selected.getYPx() + selected.getHeightPx() / 2.0 : 0; }
+
+	private double snapX(double value) { return snapTo(value, gridOriginX()); }
+	private double snapY(double value) { return snapTo(value, gridOriginY()); }
+
+	private double snapTo(double value, double origin)
 	{
 		if(!snapToGrid || gridSpacingScene <= 0)
 			return value;
-		return Math.round(value / gridSpacingScene) * gridSpacingScene;
+		return origin + Math.round((value - origin) / gridSpacingScene) * gridSpacingScene;
 	}
 
 	// Painting 
@@ -403,17 +413,47 @@ public class CameCanvas extends JPanel
 
 	private void paintGrid(Graphics2D g)
 	{
-		g.setColor(new Color(255, 255, 255, 40));
-		g.setStroke(new BasicStroke(1f));
 		double stepScreen = gridSpacingScene * zoom;
 		if(stepScreen < 4)
-			return; // too dense to be useful
-		double startX = offsetX % stepScreen;
-		double startY = offsetY % stepScreen;
+			return; // too dense to be useful at this zoom (increase "Grid spacing" to see it)
+
+		boolean centered = centerGridOnSelection && selected != null;
+		double originScreenX = sceneToScreenX(gridOriginX());
+		double originScreenY = sceneToScreenY(gridOriginY());
+
+		// first grid line at or before the top-left edge, phased to the origin
+		double startX = originScreenX - Math.floor(originScreenX / stepScreen) * stepScreen;
+		double startY = originScreenY - Math.floor(originScreenY / stepScreen) * stepScreen;
+
+		g.setStroke(new BasicStroke(1f));
 		for(double x = startX; x < getWidth(); x += stepScreen)
-			g.draw(new Line2D.Double(x, 0, x, getHeight()));
+			drawGridLine(g, x, 0, x, getHeight(), true);
 		for(double y = startY; y < getHeight(); y += stepScreen)
-			g.draw(new Line2D.Double(0, y, getWidth(), y));
+			drawGridLine(g, 0, y, getWidth(), y, false);
+
+		// emphasise the two axes passing through the centred well
+		if(centered)
+		{
+			g.setStroke(new BasicStroke(1.6f));
+			g.setColor(new Color(0xFF, 0xCC, 0x00, 200));
+			g.draw(new Line2D.Double(originScreenX, 0, originScreenX, getHeight()));
+			g.draw(new Line2D.Double(0, originScreenY, getWidth(), originScreenY));
+		}
+	}
+
+	/**
+	 * Draws one grid line as a light stroke with a 1px dark shadow, so the grid stays visible over both
+	 * bright image regions and the dark canvas background.
+	 */
+	private void drawGridLine(Graphics2D g, double x1, double y1, double x2, double y2, boolean vertical)
+	{
+		g.setColor(new Color(0, 0, 0, 70));
+		if(vertical)
+			g.draw(new Line2D.Double(x1 + 1, y1, x2 + 1, y2));
+		else
+			g.draw(new Line2D.Double(x1, y1 + 1, x2, y2 + 1));
+		g.setColor(new Color(255, 255, 255, 120));
+		g.draw(new Line2D.Double(x1, y1, x2, y2));
 	}
 
 	private void paintWell(Graphics2D g, EditableWell well)
@@ -569,7 +609,7 @@ public class CameCanvas extends JPanel
 
 			if(mode == Mode.ADD)
 			{
-				double sx = snap(scene.x), sy = snap(scene.y);
+				double sx = snapX(scene.x), sy = snapY(scene.y);
 				newWellInProgress = model.addWell(sx, sy, 1, 1);
 				selected = newWellInProgress;
 				fireSelection();
@@ -618,7 +658,7 @@ public class CameCanvas extends JPanel
 				double y0 = Math.min(dragStartScene.y, scene.y);
 				double w = Math.abs(scene.x - dragStartScene.x);
 				double h = Math.abs(scene.y - dragStartScene.y);
-				newWellInProgress.setBoundsPx(snap(x0), snap(y0), Math.max(1, w), Math.max(1, h));
+				newWellInProgress.setBoundsPx(snapX(x0), snapY(y0), Math.max(1, w), Math.max(1, h));
 				repaint();
 				return;
 			}
@@ -635,8 +675,8 @@ public class CameCanvas extends JPanel
 				{
 					double dx = scene.x - dragStartScene.x;
 					double dy = scene.y - dragStartScene.y;
-					selected.setXPx(snap(selected.getXPx() + dx));
-					selected.setYPx(snap(selected.getYPx() + dy));
+					selected.setXPx(snapX(selected.getXPx() + dx));
+					selected.setYPx(snapY(selected.getYPx() + dy));
 					dragStartScene = scene;
 					repaint();
 					return;
@@ -724,7 +764,7 @@ public class CameCanvas extends JPanel
 	{
 		double x = selected.getXPx(), y = selected.getYPx();
 		double x2 = x + selected.getWidthPx(), y2 = y + selected.getHeightPx();
-		double sx = snap(scene.x), sy = snap(scene.y);
+		double sx = snapX(scene.x), sy = snapY(scene.y);
 		switch(activeHandle)
 		{
 			case 0: x = sx; y = sy; break;          // top-left

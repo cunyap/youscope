@@ -80,6 +80,7 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 	// grid (on by default)
 	private final JCheckBox showGridBox = new JCheckBox("Show grid", true);
 	private final JCheckBox snapBox = new JCheckBox("Snap to grid");
+	private final JCheckBox centerGridBox = new JCheckBox("Center grid on selected well");
 	private final JTextField gridSpacingField = new JTextField("50");
 
 	// plate
@@ -133,9 +134,11 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 		panel.add(section("5. Grid"));
 		panel.add(showGridBox);
 		panel.add(snapBox);
+		panel.add(centerGridBox);
 		panel.add(labeled("Grid spacing (px):", gridSpacingField));
 		showGridBox.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { canvas.setShowGrid(showGridBox.isSelected()); } });
 		snapBox.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { canvas.setSnapToGrid(snapBox.isSelected()); } });
+		centerGridBox.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { canvas.setCenterGridOnSelection(centerGridBox.isSelected()); } });
 		gridSpacingField.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { canvas.setGridSpacingScene(parseDouble(gridSpacingField.getText(), 50)); } });
 
 		panel.add(section("6. Selected well"));
