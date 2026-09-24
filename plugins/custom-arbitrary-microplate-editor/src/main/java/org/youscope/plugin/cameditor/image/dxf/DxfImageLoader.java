@@ -29,7 +29,7 @@ import org.youscope.plugin.cameditor.image.LoadedImage;
 /**
  * Renders a DXF drawing to a raster backdrop and, crucially, extracts wells directly from the vector
  * geometry so no computer-vision step is required: each CIRCLE / ELLIPSE / closed rectangular
- * LWPOLYLINE becomes a well. Because DXF carries real drawing units, the physical scale (µm/px) can be
+ * LWPOLYLINE becomes a well. Because DXF carries real drawing units, the physical scale (\u00b5m/px) can be
  * suggested automatically from the {@code $INSUNITS} header.
  * <p>
  * DXF is Y-up; the raster is Y-down. All coordinates are mapped as
@@ -66,7 +66,7 @@ public final class DxfImageLoader
 		double spanY = Math.max(1e-6, maxY - minY);
 
 		double ppu = pixelsPerUnit;
-		// Clamp resolution so huge drawings don't blow up memory
+		// clamp resolution so huge drawings don't blow up memory
 		double marginUnits = 0.02 * Math.max(spanX, spanY);
 		int width = (int) Math.ceil((spanX + 2 * marginUnits) * ppu);
 		int height = (int) Math.ceil((spanY + 2 * marginUnits) * ppu);

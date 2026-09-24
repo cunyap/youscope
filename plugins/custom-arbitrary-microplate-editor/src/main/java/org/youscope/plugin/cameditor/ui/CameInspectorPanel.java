@@ -17,8 +17,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -64,6 +66,11 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 	private final ScaleModel scale;
 	private final StatusSink status;
 
+	// Remembers the last directories used for images and .csb files, across restarts.
+	private static final Preferences PREFS = Preferences.userRoot().node("org/youscope/plugin/cameditor");
+	private static final String KEY_IMAGE_DIR = "lastImageDir";
+	private static final String KEY_CSB_DIR = "lastCsbDir";
+
 	// scale / detection
 	private final JTextField micronsPerPixelField = new JTextField("1.0");
 	private final JTextField thresholdField = new JTextField("100");
@@ -71,8 +78,8 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 	private final JCheckBox darkForegroundBox = new JCheckBox("Structures are darker than background", true);
 	private final JTextField closingField = new JTextField("1");
 
-	// grid
-	private final JCheckBox showGridBox = new JCheckBox("Show grid");
+	// grid (on by default)
+	private final JCheckBox showGridBox = new JCheckBox("Show grid", true);
 	private final JCheckBox snapBox = new JCheckBox("Snap to grid");
 	private final JTextField gridSpacingField = new JTextField("50");
 
@@ -101,14 +108,14 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 		DynamicPanel panel = new DynamicPanel();
 
 		panel.add(section("1. Backdrop image"));
-		JButton loadImageButton = new JButton("Load image (tif/png/svg/pdf/dxf)…");
+		JButton loadImageButton = new JButton("Load image (tif/png/svg/pdf/dxf)...");
 		loadImageButton.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { loadImage(); } });
 		panel.add(loadImageButton);
 
-		panel.add(section("2. Scale (µm per pixel)"));
-		panel.add(labeled("µm / pixel:", micronsPerPixelField));
+		panel.add(section("2. Scale (\u00b5m per pixel)"));
+		panel.add(labeled("\u00b5m / pixel:", micronsPerPixelField));
 		micronsPerPixelField.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { applyScaleField(); } });
-		JButton measureButton = new JButton("Measure a known distance…");
+		JButton measureButton = new JButton("Measure a known distance...");
 		measureButton.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { canvas.setMode(CameCanvas.Mode.MEASURE); status.status("Measure: click two points a known distance apart."); } });
 		panel.add(measureButton);
 
@@ -153,10 +160,10 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 		JButton saveLibraryButton = new JButton("Save to microplate library");
 		saveLibraryButton.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { save(true); } });
 		panel.add(saveLibraryButton);
-		JButton saveFileButton = new JButton("Save to .csb file…");
+		JButton saveFileButton = new JButton("Save to .csb file...");
 		saveFileButton.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { save(false); } });
 		panel.add(saveFileButton);
-		JButton openFileButton = new JButton("Open existing .csb…");
+		JButton openFileButton = new JButton("Open existing .csb...");
 		openFileButton.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent e) { openCsb(); } });
 		panel.add(openFileButton);
 
@@ -199,16 +206,20 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 
 	private void loadImage()
 	{
-		JFileChooser chooser = new JFileChooser();
+		JFileChooser chooser = chooserAt(KEY_IMAGE_DIR);
+		chooser.setFileFilter(new FileNameExtensionFilter(
+				"Chip images (tif, png, jpg, bmp, gif, svg, pdf, dxf)",
+				"tif", "tiff", "png", "jpg", "jpeg", "bmp", "gif", "svg", "pdf", "dxf"));
 		if(chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)
 			return;
 		final File file = chooser.getSelectedFile();
+		rememberDir(KEY_IMAGE_DIR, file);
 		if(!ImageSources.isSupported(file))
 		{
 			status.status("Unsupported file type: " + file.getName());
 			return;
 		}
-		status.status("Loading " + file.getName() + "…");
+		status.status("Loading " + file.getName() + "...");
 		new SwingWorker<Object, Void>()
 		{
 			private java.awt.image.BufferedImage image;
@@ -245,7 +256,7 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 					{
 						scale.setMicronsPerPixel(knownMpp);
 						micronsPerPixelField.setText(format(knownMpp));
-						status.status("Loaded " + file.getName() + " (scale " + format(knownMpp) + " µm/px from file).");
+						status.status("Loaded " + file.getName() + " (scale " + format(knownMpp) + " \u00b5m/px from file).");
 					}
 					else
 						status.status("Loaded " + file.getName() + ".");
@@ -277,7 +288,7 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 				(int) parseDouble(minAreaField.getText(), 100),
 				darkForegroundBox.isSelected(),
 				(int) parseDouble(closingField.getText(), 1));
-		status.status("Detecting wells…");
+		status.status("Detecting wells...");
 		new SwingWorker<List<DetectedWell>, Void>()
 		{
 			@Override
@@ -342,12 +353,15 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 			}
 			else
 			{
-				JFileChooser chooser = new JFileChooser();
+				JFileChooser chooser = chooserAt(KEY_CSB_DIR);
+				chooser.setFileFilter(new FileNameExtensionFilter("YouScope microplate (.csb)", "csb"));
 				chooser.setSelectedFile(new File(def.getCustomMicroplateName() + ".csb"));
 				if(chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION)
 					return;
-				CsbIo.saveToFile(def, chooser.getSelectedFile());
-				status.status("Saved to " + chooser.getSelectedFile().getName() + " (" + def.getNumWells() + " wells).");
+				File target = chooser.getSelectedFile();
+				rememberDir(KEY_CSB_DIR, target);
+				CsbIo.saveToFile(def, target);
+				status.status("Saved to " + target.getName() + " (" + def.getNumWells() + " wells).");
 			}
 		}
 		catch(Exception e)
@@ -358,12 +372,15 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 
 	private void openCsb()
 	{
-		JFileChooser chooser = new JFileChooser();
+		JFileChooser chooser = chooserAt(KEY_CSB_DIR);
+		chooser.setFileFilter(new FileNameExtensionFilter("YouScope microplate (.csb)", "csb"));
 		if(chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)
 			return;
+		File source = chooser.getSelectedFile();
+		rememberDir(KEY_CSB_DIR, source);
 		try
 		{
-			CustomArbitraryMicroplateDefinition def = CsbIo.loadFromFile(chooser.getSelectedFile());
+			CustomArbitraryMicroplateDefinition def = CsbIo.loadFromFile(source);
 			applyScaleField();
 			model.fromDefinition(def, scale);
 			plateNameField.setText(def.getCustomMicroplateName());
@@ -415,21 +432,26 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 	public void distanceMeasured(double pixelDistance)
 	{
 		if(pixelDistance <= 0)
+		{
+			canvas.clearMeasure();
 			return;
+		}
 		String input = JOptionPane.showInputDialog(this,
 				String.format("Measured %.1f px.%nEnter the real distance in micrometres:", pixelDistance),
 				"Calibrate scale", JOptionPane.QUESTION_MESSAGE);
-		if(input == null)
-			return;
-		double microns = parseDouble(input, -1);
-		if(microns > 0)
+		if(input != null)
 		{
-			scale.setFromMeasurement(pixelDistance, microns);
-			micronsPerPixelField.setText(format(scale.getMicronsPerPixel()));
-			status.status(String.format("Scale set to %s µm/px.", format(scale.getMicronsPerPixel())));
-			updateUmLabel();
+			double microns = parseDouble(input, -1);
+			if(microns > 0)
+			{
+				scale.setFromMeasurement(pixelDistance, microns);
+				micronsPerPixelField.setText(format(scale.getMicronsPerPixel()));
+				status.status(String.format("Scale set to %s \u00b5m/px.", format(scale.getMicronsPerPixel())));
+				updateUmLabel();
+			}
 		}
-		canvas.setMode(CameCanvas.Mode.SELECT);
+		// clear the two crosshairs + line; stay in Measure mode so another measurement is one click away
+		canvas.clearMeasure();
 	}
 
 	@Override
@@ -455,11 +477,35 @@ public class CameInspectorPanel extends JScrollPane implements CameCanvas.Listen
 			return;
 		}
 		double mpp = scale.getMicronsPerPixel();
-		wellUmLabel.setText(String.format("<html>= %.1f × %.1f µm at %s µm/px</html>",
+		wellUmLabel.setText(String.format("<html>= %.1f \u00d7 %.1f \u00b5m at %s \u00b5m/px</html>",
 				selected.getWidthPx() * mpp, selected.getHeightPx() * mpp, format(mpp)));
 	}
 
 	// Helpers
+	
+	/** Creates a file chooser positioned at the directory last used for {@code prefKey}. */
+	private static JFileChooser chooserAt(String prefKey)
+	{
+		JFileChooser chooser = new JFileChooser();
+		String dir = PREFS.get(prefKey, null);
+		if(dir != null)
+		{
+			File d = new File(dir);
+			if(d.isDirectory())
+				chooser.setCurrentDirectory(d);
+		}
+		return chooser;
+	}
+
+	/** Remembers the directory of {@code file} under {@code prefKey} for next time. */
+	private static void rememberDir(String prefKey, File file)
+	{
+		if(file == null)
+			return;
+		File dir = file.isDirectory() ? file : file.getParentFile();
+		if(dir != null)
+			PREFS.put(prefKey, dir.getAbsolutePath());
+	}
 
 	private static JLabel section(String title)
 	{

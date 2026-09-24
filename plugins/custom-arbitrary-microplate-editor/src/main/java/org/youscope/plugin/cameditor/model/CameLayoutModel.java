@@ -91,7 +91,7 @@ public final class CameLayoutModel
 	 * Builds a {@link CustomArbitraryMicroplateDefinition} in micrometres from the current pixel-space
 	 * wells, applying the given scale exactly once. Wells without a valid identifier are labelled on the
 	 * fly. Zero-sized wells are skipped (YouScope requires strictly positive extents).
-	 * @param scale µm/px scale.
+	 * @param scale \u00b5m/px scale.
 	 * @return the definition ready to be saved.
 	 */
 	public CustomArbitraryMicroplateDefinition toDefinition(ScaleModel scale)
@@ -132,9 +132,9 @@ public final class CameLayoutModel
 
 	/**
 	 * Populates this model from an existing definition (micrometres), converting to pixels with the
-	 * given scale so it can be edited over an image (or, with scale = 1, edited directly in µm).
+	 * given scale so it can be edited over an image (or, with scale = 1, edited directly in \u00b5m).
 	 * @param def the definition to import.
-	 * @param scale µm/px scale.
+	 * @param scale \u00b5m/px scale.
 	 */
 	public void fromDefinition(CustomArbitraryMicroplateDefinition def, ScaleModel scale)
 	{

@@ -49,6 +49,7 @@ dependencies {
 tasks.withType(JavaCompile).configureEach {
     options.release = 17
     options.compilerArgs += ['-Xlint:-options']
+    options.encoding = 'UTF-8'
 }
 
 tasks.register('copyCameLibs', Copy) {

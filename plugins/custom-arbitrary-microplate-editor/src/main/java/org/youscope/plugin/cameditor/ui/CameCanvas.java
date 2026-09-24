@@ -1,6 +1,12 @@
 /*******************************************************************************
- * (CAME) Custom Arbitrary Microplate Editor
- * Made available under the terms of the GNU Public License v2.0.
+ * Copyright (c) 2026 Andreas P. Cuny.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ *
+ * Contributors:
+ *     Andreas P. Cuny - initial API and implementation
  ******************************************************************************/
 package org.youscope.plugin.cameditor.ui;
 
@@ -10,6 +16,8 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -21,10 +29,14 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
+import javax.swing.AbstractAction;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 import org.youscope.common.Well;
 import org.youscope.plugin.cameditor.model.CameLayoutModel;
@@ -37,7 +49,7 @@ import org.youscope.plugin.custommicroplates.WellShape;
  * toggling their active state, an optional snap-to grid, and a measure tool used to calibrate the
  * µm/px scale from a known distance.
  *
- * @author CAME
+ * @author Andreas P. Cuny
  */
 public class CameCanvas extends JPanel
 {
@@ -65,7 +77,7 @@ public class CameCanvas extends JPanel
 	private double offsetY = 0;
 
 	// grid
-	private boolean showGrid = false;
+	private boolean showGrid = true;
 	private boolean snapToGrid = false;
 	private double gridSpacingScene = 50; // in scene pixels
 
@@ -78,6 +90,13 @@ public class CameCanvas extends JPanel
 	private int panLastX, panLastY;
 	private boolean panning = false;
 	private final List<Point2D.Double> measurePoints = new ArrayList<Point2D.Double>();
+
+	// undo: a stack of actions that revert the most recent edit (move/resize/add/delete)
+	private final Deque<Runnable> undoStack = new ArrayDeque<Runnable>();
+	private static final int UNDO_LIMIT = 200;
+	// snapshot of the well being moved/resized, taken when the gesture starts
+	private EditableWell editPreWell;
+	private double editPreX, editPreY, editPreW, editPreH;
 
 	private final List<Listener> listeners = new ArrayList<Listener>();
 
@@ -93,6 +112,54 @@ public class CameCanvas extends JPanel
 		addMouseMotionListener(handler);
 		addMouseWheelListener(handler);
 		addKeyListener(new KeyHandler());
+
+		// Ctrl+Z (Cmd+Z on macOS) to undo the last move/resize/add/delete, even if focus drifted.
+		int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+		getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask), "came-undo");
+		getActionMap().put("came-undo", new AbstractAction()
+		{
+			private static final long serialVersionUID = 1L;
+			@Override public void actionPerformed(ActionEvent e) { undo(); }
+		});
+	}
+
+	// Undo
+
+	private void pushUndo(Runnable revert)
+	{
+		undoStack.push(revert);
+		while(undoStack.size() > UNDO_LIMIT)
+			undoStack.removeLast();
+	}
+
+	/** @return {@code true} if there is an edit that can be undone. */
+	public boolean canUndo() { return !undoStack.isEmpty(); }
+
+	/** Reverts the most recent move/resize/add/delete. */
+	public void undo()
+	{
+		if(undoStack.isEmpty())
+			return;
+		undoStack.pop().run();
+		model.reassignIdentifiers();
+		fireSelection();
+		fireModelChanged();
+		repaint();
+	}
+
+	/** Clears the measure overlay (the two crosshairs and their connecting line). */
+	public void clearMeasure() { measurePoints.clear(); repaint(); }
+
+	private void snapshotEditStart(EditableWell well)
+	{
+		editPreWell = well;
+		if(well != null)
+		{
+			editPreX = well.getXPx();
+			editPreY = well.getYPx();
+			editPreW = well.getWidthPx();
+			editPreH = well.getHeightPx();
+		}
 	}
 
 	public void addListener(Listener listener) { listeners.add(listener); }
@@ -136,7 +203,21 @@ public class CameCanvas extends JPanel
 	{
 		if(selected != null)
 		{
-			model.removeWell(selected);
+			final EditableWell removed = selected;
+			final double x = removed.getXPx(), y = removed.getYPx(), w = removed.getWidthPx(), h = removed.getHeightPx();
+			final WellShape shape = removed.getShape();
+			final boolean active = removed.isActive();
+			model.removeWell(removed);
+			pushUndo(new Runnable()
+			{
+				@Override public void run()
+				{
+					EditableWell re = model.addWell(x, y, w, h);
+					re.setShape(shape);
+					re.setActive(active);
+					selected = re;
+				}
+			});
 			selected = null;
 			fireSelection();
 			fireModelChanged();
@@ -164,7 +245,7 @@ public class CameCanvas extends JPanel
 		}
 	}
 
-	// ---- view helpers ---------------------------------------------------------------------------
+	// View helpers
 
 	public void fitToView()
 	{
@@ -222,7 +303,7 @@ public class CameCanvas extends JPanel
 		return Math.round(value / gridSpacingScene) * gridSpacingScene;
 	}
 
-	// ---- painting -------------------------------------------------------------------------------
+	// Painting 
 
 	@Override
 	protected void paintComponent(Graphics graphics)
@@ -300,18 +381,26 @@ public class CameCanvas extends JPanel
 			g.drawString(label, (int) (x + 3), (int) (y + 13));
 		}
 
-		// resize handles (corners) when selected
+		// resize handles (4 corners + 4 edge mid-points) when selected
 		if(isSelected)
 		{
 			g.setColor(new Color(0xFF, 0xCC, 0x00));
-			for(double[] handle : cornerHandles(x, y, w, h))
+			for(double[] handle : handlePoints(x, y, w, h))
 				g.fill(new Rectangle2D.Double(handle[0] - HANDLE_SIZE / 2, handle[1] - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE));
 		}
 	}
 
-	private double[][] cornerHandles(double x, double y, double w, double h)
+	/**
+	 * The eight resize-handle anchor points for a rectangle, in a fixed order used by painting, hit
+	 * testing and resizing. Index: 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right,
+	 * 4 top-mid, 5 bottom-mid, 6 left-mid, 7 right-mid. Works in either screen or scene coordinates.
+	 */
+	private double[][] handlePoints(double x, double y, double w, double h)
 	{
-		return new double[][]{ {x, y}, {x + w, y}, {x, y + h}, {x + w, y + h} };
+		return new double[][]{
+			{x, y}, {x + w, y}, {x, y + h}, {x + w, y + h},
+			{x + w / 2, y}, {x + w / 2, y + h}, {x, y + h / 2}, {x + w, y + h / 2}
+		};
 	}
 
 	private void paintMeasure(Graphics2D g)
@@ -334,18 +423,18 @@ public class CameCanvas extends JPanel
 		}
 	}
 
-	// ---- hit testing ----------------------------------------------------------------------------
+	// Hit testing
 
 	private int hitHandle(EditableWell well, Point2D.Double scene)
 	{
 		if(well == null)
 			return -1;
 		double x = well.getXPx(), y = well.getYPx(), w = well.getWidthPx(), h = well.getHeightPx();
-		double[][] corners = { {x, y}, {x + w, y}, {x, y + h}, {x + w, y + h} };
+		double[][] handles = handlePoints(x, y, w, h);
 		double tol = (HANDLE_SIZE + 2) / zoom;
-		for(int i = 0; i < corners.length; i++)
+		for(int i = 0; i < handles.length; i++)
 		{
-			if(Math.abs(scene.x - corners[i][0]) <= tol && Math.abs(scene.y - corners[i][1]) <= tol)
+			if(Math.abs(scene.x - handles[i][0]) <= tol && Math.abs(scene.y - handles[i][1]) <= tol)
 				return i;
 		}
 		return -1;
@@ -368,7 +457,7 @@ public class CameCanvas extends JPanel
 		return new Dimension(900, 640);
 	}
 
-	// ---- mouse / wheel --------------------------------------------------------------------------
+	// Mouse / wheel
 
 	private final class MouseHandler extends MouseAdapter implements MouseWheelListener
 	{
@@ -388,16 +477,24 @@ public class CameCanvas extends JPanel
 
 			if(mode == Mode.MEASURE)
 			{
-				if(measurePoints.size() == 2)
+				if(measurePoints.size() >= 2)
 					measurePoints.clear();
 				measurePoints.add(new Point2D.Double(scene.x, scene.y));
+				repaint();
 				if(measurePoints.size() == 2)
 				{
-					double d = measurePoints.get(0).distance(measurePoints.get(1));
-					for(Listener l : listeners)
-						l.distanceMeasured(d);
+					final double d = measurePoints.get(0).distance(measurePoints.get(1));
+					// Defer the (modal) distance prompt so the pending repaint runs first: this way both
+					// crosshairs and the connecting line are visible on screen while the dialog is open.
+					javax.swing.SwingUtilities.invokeLater(new Runnable()
+					{
+						@Override public void run()
+						{
+							for(Listener l : listeners)
+								l.distanceMeasured(d);
+						}
+					});
 				}
-				repaint();
 				return;
 			}
 
@@ -417,12 +514,15 @@ public class CameCanvas extends JPanel
 			{
 				activeHandle = handle;
 				movingBody = false;
+				snapshotEditStart(selected);
 				return;
 			}
 			EditableWell hit = hitWell(scene);
 			selected = hit;
 			activeHandle = -1;
 			movingBody = hit != null;
+			if(movingBody)
+				snapshotEditStart(hit);
 			fireSelection();
 			repaint();
 		}
@@ -485,9 +585,23 @@ public class CameCanvas extends JPanel
 			{
 				// discard zero-size accidental clicks
 				if(newWellInProgress.getWidthPx() < 3 || newWellInProgress.getHeightPx() < 3)
+				{
 					model.removeWell(newWellInProgress);
+				}
 				else
+				{
+					final EditableWell added = newWellInProgress;
+					pushUndo(new Runnable()
+					{
+						@Override public void run()
+						{
+							model.removeWell(added);
+							if(selected == added)
+								selected = null;
+						}
+					});
 					model.reassignIdentifiers();
+				}
 				newWellInProgress = null;
 				fireModelChanged();
 				repaint();
@@ -495,9 +609,26 @@ public class CameCanvas extends JPanel
 			}
 			if(mode == Mode.SELECT && (movingBody || activeHandle >= 0))
 			{
+				// record an undo only if the move/resize actually changed the geometry
+				if(editPreWell != null
+						&& (editPreX != editPreWell.getXPx() || editPreY != editPreWell.getYPx()
+						|| editPreW != editPreWell.getWidthPx() || editPreH != editPreWell.getHeightPx()))
+				{
+					final EditableWell w = editPreWell;
+					final double ox = editPreX, oy = editPreY, ow = editPreW, oh = editPreH;
+					pushUndo(new Runnable()
+					{
+						@Override public void run()
+						{
+							w.setBoundsPx(ox, oy, ow, oh);
+							selected = w;
+						}
+					});
+				}
 				model.reassignIdentifiers();
 				fireModelChanged();
 			}
+			editPreWell = null;
 			activeHandle = -1;
 			movingBody = false;
 		}
@@ -529,6 +660,10 @@ public class CameCanvas extends JPanel
 			case 1: x2 = sx; y = sy; break;         // top-right
 			case 2: x = sx; y2 = sy; break;         // bottom-left
 			case 3: x2 = sx; y2 = sy; break;        // bottom-right
+			case 4: y = sy; break;                  // top edge
+			case 5: y2 = sy; break;                 // bottom edge
+			case 6: x = sx; break;                  // left edge
+			case 7: x2 = sx; break;                 // right edge
 			default: break;
 		}
 		double nx = Math.min(x, x2), ny = Math.min(y, y2);
