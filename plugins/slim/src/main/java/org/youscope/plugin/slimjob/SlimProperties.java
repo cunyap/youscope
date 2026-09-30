@@ -21,6 +21,10 @@ public class SlimProperties
 {
 	private final YouScopeClient client;
 	private final static String ATTENUATION_FACTOR_PROPERTY = "YouScope.SLIM.attenuationFactor";
+	private final static String PHASESHIFT0_PROPERTY = "YouScope.SLIMControl.phaseShift0";
+	private final static String PHASESHIFT1_PROPERTY = "YouScope.SLIMControl.phaseShift1";
+	private final static String PHASESHIFT2_PROPERTY = "YouScope.SLIMControl.phaseShift2";
+	private final static String PHASESHIFT3_PROPERTY = "YouScope.SLIMControl.phaseShift3";
 	/**
 	 * Constructor.
 	 * @param client YouScope client.
@@ -45,4 +49,30 @@ public class SlimProperties
 	{
 		client.getPropertyProvider().setProperty(ATTENUATION_FACTOR_PROPERTY, attenuationFactor);
 	}
-}
+	
+	public void setPhaseShiftMask(int maskID, int phaseShift)
+	{
+		if (maskID == 0) {
+		client.getPropertyProvider().setProperty(PHASESHIFT0_PROPERTY, phaseShift);
+		}
+		if (maskID == 1) {
+		client.getPropertyProvider().setProperty(PHASESHIFT1_PROPERTY, phaseShift);
+		}
+		if (maskID == 2) {
+		client.getPropertyProvider().setProperty(PHASESHIFT2_PROPERTY, phaseShift);
+		}
+		if (maskID == 3) {
+		client.getPropertyProvider().setProperty(PHASESHIFT3_PROPERTY, phaseShift);
+		}
+	}
+	
+	public double[] getPhaseShiftMask() {
+		 double firstValue = client.getPropertyProvider().getProperty(PHASESHIFT0_PROPERTY, 0.0);
+		 double secondValue = client.getPropertyProvider().getProperty(PHASESHIFT1_PROPERTY, 0.0);
+		 double thirdValue = client.getPropertyProvider().getProperty(PHASESHIFT2_PROPERTY, 0.0);
+		 double forthValue = client.getPropertyProvider().getProperty(PHASESHIFT3_PROPERTY, 0.0);
+		 double[] phaseShifts = {firstValue, secondValue, thirdValue, forthValue};
+		 return phaseShifts;
+		 }
+	}
+

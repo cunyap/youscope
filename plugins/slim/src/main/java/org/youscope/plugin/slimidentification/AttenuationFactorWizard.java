@@ -47,7 +47,7 @@ import org.youscope.uielements.ImagePanel;
 import org.youscope.uielements.ImagePanel.LineInfo;
 import org.youscope.uielements.ImagePanel.LineListener;
 
-class AttenuationFactorWizard 
+public class AttenuationFactorWizard 
 {
 	private final YouScopeServer server;
 	private final YouScopeClient client;
@@ -499,7 +499,7 @@ class AttenuationFactorWizard
 		}
 	}
 	
-	AttenuationFactorWizard(YouScopeClient client, YouScopeServer server)
+	public AttenuationFactorWizard(YouScopeClient client, YouScopeServer server)
 	{
 		this.client = client;
 		this.server = server;

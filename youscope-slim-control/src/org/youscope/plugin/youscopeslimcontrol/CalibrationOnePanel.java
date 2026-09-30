@@ -1,13 +1,20 @@
 package org.youscope.plugin.youscopeslimcontrol;
 import java.awt.event.ActionListener;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
+
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
-import javax.swing.border.TitledBorder;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.HardwareSetUpPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.PolarizerWheelPosition;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SLIMController;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SecondWheelPosition;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.WheelOnePanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.WheelTwoPanel;
 
 /**
  *  This class represents the panel for the Calibration One.
@@ -17,6 +24,8 @@ import javax.swing.border.TitledBorder;
 public class CalibrationOnePanel extends JPanel implements ActionListener{
 	SLIMController slimCTRL = null;
 	JButton startCalibrationOneButton;
+	Font fontTitle = new Font(null, 1, 12);
+	Font fontText = new Font(null, 0, 12);
 
 	/**
 	 * Constructor.
@@ -26,9 +35,10 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 	public CalibrationOnePanel(SLIMController slimController) {
 		slimCTRL = slimController;
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		setTitle();
+		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS)); 
+		setBorder(BorderFactory.createTitledBorder(null, "Ring Calibration", 0, 0, fontTitle));
 		JPanel textPanel = createInfoBox();
-		startCalibrationOneButton = new JButton("Start Calibration One");
+		startCalibrationOneButton = new JButton("Start Ring Calibration");
 		add(startCalibrationOneButton);
 		startCalibrationOneButton.setAlignmentX(LEFT_ALIGNMENT);
 		startCalibrationOneButton.addActionListener(this);
@@ -37,15 +47,6 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		textPanel.setAlignmentX(RIGHT_ALIGNMENT);
 	}
 
-	/**
-	 * Set the title and the border of the panel
-	 */
-	private void setTitle() {
-		TitledBorder titlePanel = new TitledBorder("Calibration One");
-		titlePanel.setTitleJustification(TitledBorder.LEFT);
-		titlePanel.setTitlePosition(TitledBorder.TOP);
-		setBorder(titlePanel);
-	}
 	
 	/**
 	 * Creates the panel that contains the description of the computation
@@ -58,6 +59,7 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 		descriptionText.setEditable(false);
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
+		descriptionText.setFont(fontText);
 		textPanel.add(descriptionText);
 		return textPanel;	
 	}
@@ -68,9 +70,12 @@ public class CalibrationOnePanel extends JPanel implements ActionListener{
 	 */
 	public void actionPerformed(ActionEvent e){
 		if(e.getSource() == startCalibrationOneButton) {
+			HardwareSetUpPanel.buttonGroupHardwareSetUp.setSelected(HardwareSetUpPanel.calOneModeButton.getModel(), true);
+			WheelOnePanel.buttonGroupWheelOne.setSelected(WheelOnePanel.polarizerOneButton.getModel(), true);
+			WheelTwoPanel.buttonGroupWheelTwo.setSelected(WheelTwoPanel.lensButton.getModel(), true);
 			slimCTRL.setPolarizerWheelPosition(PolarizerWheelPosition.POLARIZER_ONE);
-			slimCTRL.setSecondWheelPosition(SecondWheelPosition.EMPTY);
-			JOptionPane.showMessageDialog(null, "Stepper controller not functional yet", "Stepper Error", JOptionPane.ERROR_MESSAGE);
+			slimCTRL.setSecondWheelPosition(SecondWheelPosition.LENS);
+			}
 		}
 	}
-}
+

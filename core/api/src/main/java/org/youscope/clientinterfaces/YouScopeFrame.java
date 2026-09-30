@@ -243,4 +243,9 @@ public interface YouScopeFrame
      * @param targetFrame The target frame calls to this frame should be relocated to.
      */
     void relocateFrameTo(YouScopeFrame targetFrame);
+    
+    /**
+     * Disposes (i.e. sets not visible and closes) a frame.
+     */
+    void close();
 }

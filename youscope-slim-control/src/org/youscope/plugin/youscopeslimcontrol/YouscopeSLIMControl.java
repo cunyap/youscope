@@ -13,6 +13,7 @@
  */
 package org.youscope.plugin.youscopeslimcontrol;
 import org.youscope.common.microscope.Device;
+import org.youscope.common.microscope.CameraDevice;
 import java.rmi.RemoteException;
 import javax.swing.BoxLayout;
 import javax.swing.JOptionPane;
@@ -26,6 +27,13 @@ import org.youscope.clientinterfaces.YouScopeClient;
 import org.youscope.clientinterfaces.YouScopeFrameListener;
 import org.youscope.common.microscope.DeviceException;
 import org.youscope.common.microscope.Microscope;
+import org.youscope.plugin.slimjob.SlimProperties;
+import org.youscope.plugin.youscopeslimcontrol.AttenuationFactor.AttenuationFactorPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.ArduinoController;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.HardwareSetUpPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.ManualControlPanel;
+import org.youscope.plugin.youscopeslimcontrol.HardwareControl.SLIMController;
+import org.youscope.plugin.youscopeslimcontrol.LCPMCalibration.CalibrationTwoPanel;
 import org.youscope.serverinterfaces.YouScopeServer;
 import org.youscope.uielements.DynamicPanel;
 
@@ -54,25 +62,27 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	}
 
 	/**
-	 * 
+	 * Represent the graphic interface of the plugin to control the SLIM calibration.
 	 * @param client Interface to the YouScope client, e.g. allowing to open or close new windows, or permanently save settings.
 	 * @param server Interface to the YouScope server, e.g. allowing access to the microscope.
 	 * @throws AddonException 
 	 */
-	
+
 	public YouscopeSLIMControl(YouScopeClient client, YouScopeServer server) throws AddonException
 	{
 		super(getMetadata(), client, server); 
 	}
 	@Override
-	
+
 	/*
 	 * This method defines the user interface which is exposed to the user.
 	 */
 	public java.awt.Component createUI()
 	{
-		SLIMController slimController = setSLIMController("NextGenArduino");
-
+		SLIMController slimController = setSLIMController("NextGenArduino", getClient());
+		Device LCPM = getLCPMDevice("Reflector");
+		new SlimProperties(getClient()).setAttenuationFactor(0.0);
+		
 		// General Settings regarding the main frame.
 		setMaximizable(false);
 		setResizable(true);
@@ -95,8 +105,8 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		JPanel rightPanel = new JPanel();
 		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 		rightPanel.add(new CalibrationOnePanel(slimController));
-		rightPanel.add(new CalibrationTwoPanel(slimController));
-		rightPanel.add(new AttenuationFactorPanel(slimController));
+		rightPanel.add(new CalibrationTwoPanel(slimController, getClient(), getServer(), LCPM));
+		rightPanel.add(new AttenuationFactorPanel(slimController, getClient(), getServer()));
 
 		// Adding all the elements to the content panel.
 		JSplitPane horizontalSplitPanel = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
@@ -110,7 +120,7 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 	}
 
 	/**
-	 * 
+	 * Retrieves the Arduino device.
 	 * @param deviceName Name of the device to be loaded. In this case an Arduino.
 	 * @return	nextGenArduino, a device which is properly set up.
 	 * @throws RemoteException
@@ -123,12 +133,32 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		return nextGenArduino;
 	}
 	
+/**
+ * Retrieves the reflectors device.
+ * @param deviceName the Youscope name of the LCPM
+ * @return LCPMDevice, an LCPM device.
+ */
+	private Device getLCPMDevice(String deviceName) {
+		Device LCPMDevice = null;
+		try {
+			YouScopeServer server = getServer();
+			Microscope microscope = server.getMicroscope();
+			LCPMDevice = microscope.getDevice(deviceName);
+		}
+		catch(RemoteException | DeviceException e) { 
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "No LCPM connected", "LCPM Error",
+					JOptionPane.ERROR_MESSAGE);
+		}
+		return LCPMDevice;
+	}
+
 	/**
-	 * 
+	 * Sets the SLIM controller to the given Arduino device.
 	 * @param deviceName Name of the device to be loaded. In this case an Arduino.
 	 * @return slimController an instance of SLIMController which allows to control the loaded device.
 	 */
-	private SLIMController setSLIMController(String deviceName) {
+	private SLIMController setSLIMController(String deviceName, YouScopeClient client) {
 		ArduinoController nextGenArduino = null;
 		try {
 			nextGenArduino = new ArduinoController(getArduinoDevice(deviceName));
@@ -136,16 +166,16 @@ public class YouscopeSLIMControl extends ToolAddonUIAdapter implements YouScopeF
 		catch (RemoteException | DeviceException e) { 
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(null, "No Arduino Device connected", "Arduino Error",
-											JOptionPane.ERROR_MESSAGE);
+					JOptionPane.ERROR_MESSAGE);
 		}
-		SLIMController slimController = new SLIMController(nextGenArduino);
+		SLIMController slimController = new SLIMController(nextGenArduino, client);
 		return slimController;
 	}
 
 	@Override
 	public void frameClosed()
 	{
-		
+
 	}
 
 	@Override
