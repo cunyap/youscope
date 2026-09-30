@@ -41,7 +41,7 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	/**
 	 * Minimal phase shift value
 	 */
-	public static final int MIN_PHASE_SHIFT = 255;
+	public static final int MIN_PHASE_SHIFT = 0;
 	/**
 	 * Maximal phase shift value
 	 */
@@ -341,6 +341,8 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	 */
 	public static void setPhaseShiftOutside(int phaseShiftOutside)
 	{
+		if (phaseShiftOutside < MIN_PHASE_SHIFT || phaseShiftOutside > MAX_PHASE_SHIFT)
+			throw new IllegalArgumentException("The phase shift must be between " + MIN_PHASE_SHIFT + " and " + MAX_PHASE_SHIFT + ".");
 		SlimJobConfiguration.phaseShiftOutside = phaseShiftOutside;
 	}
 
@@ -374,6 +376,8 @@ public class SlimJobConfiguration implements JobConfiguration, ImageProducerConf
 	{
 		if(maskID < 0 || maskID >= NUM_PHASE_SHIFT_MASK)
 			throw new IndexOutOfBoundsException("The pattern ID must be >= 0 and < " + Integer.toString(phaseShiftsMask.length) +".");
+		if (phaseShift < MIN_PHASE_SHIFT || phaseShift > MAX_PHASE_SHIFT)
+			throw new IllegalArgumentException("The phase shift must be between " + MIN_PHASE_SHIFT + " and " + MAX_PHASE_SHIFT + ".");
 		phaseShiftsMask[maskID] = phaseShift;
 	}
 
