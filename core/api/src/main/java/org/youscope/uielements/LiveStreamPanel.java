@@ -719,6 +719,38 @@ public class LiveStreamPanel extends ImagePanel {
 	}
 
 	/**
+	 * Returns the currently selected channel.
+	 * @return Currently selected channel, or {@code null} if none is selected.
+	 */
+	public String getChannel() {
+		return channelControl.getChannel();
+	}
+
+	/**
+	 * Returns the currently selected channel group.
+	 * @return Currently selected channel group, or {@code null} if none is selected.
+	 */
+	public String getChannelGroup() {
+		return channelControl.getChannelGroup();
+	}
+
+	/**
+	 * Returns the currently selected camera.
+	 * @return Currently selected camera device, or {@code null} if none is selected.
+	 */
+	public String getCamera() {
+		return channelControl.getCamera();
+	}
+
+	/**
+	 * Returns the currently selected exposure time.
+	 * @return Exposure time in milliseconds.
+	 */
+	public double getExposure() {
+		return channelControl.getExposure();
+	}
+
+	/**
 	 * If set to true, the stream automatically starts when the window is made
 	 * visible.
 	 * Note: the stream automatically stops if the frame is hidden.

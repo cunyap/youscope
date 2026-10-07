@@ -583,13 +583,13 @@ class SlimJobConfigurationAddon extends ComponentAddonUIAdapter<SlimJobConfigura
 		reflectorDelayField.setValue(configuration.getSlimDelayMS());
 		
 		phaseShiftBackgroundField.setMinimalValue(SlimJobConfiguration.MIN_PHASE_SHIFT);
-		phaseShiftBackgroundField.setMaximalValue(SlimJobConfiguration.MIN_PHASE_SHIFT);
+		phaseShiftBackgroundField.setMaximalValue(SlimJobConfiguration.MAX_PHASE_SHIFT);
 		phaseShiftBackgroundField.setValue(configuration.getPhaseShiftOutside());
 		
 		for(int i=0; i<phaseShiftMaskFields.length; i++)
 		{
 			phaseShiftMaskFields[i].setMinimalValue(SlimJobConfiguration.MIN_PHASE_SHIFT);
-			phaseShiftMaskFields[i].setMaximalValue(SlimJobConfiguration.MIN_PHASE_SHIFT);
+			phaseShiftMaskFields[i].setMaximalValue(SlimJobConfiguration.MAX_PHASE_SHIFT);
 			phaseShiftMaskFields[i].setValue(configuration.getPhaseShiftMask(i));
 		}
 		
