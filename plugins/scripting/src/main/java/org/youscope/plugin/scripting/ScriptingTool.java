@@ -1,10 +1,19 @@
 /*******************************************************************************
  * Copyright (c) 2017 Moritz Lang.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
  * Contributors:
  *     Moritz Lang - initial API and implementation
  *     Andreas P. Cuny - extend API to support modern Python
