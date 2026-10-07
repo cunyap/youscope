@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -60,13 +80,13 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	Font fontTitle = new Font(null, 1, 12);
 	Font fontText = new Font(null, 0, 12);
 	JPanel infoAndButtonPanel;
-	
+
 	/**
 	 * Constructor.
 	 * Adds all the elements created to a JPanel.
 	 * @param slimController an instance of SLIMController which allows to control the loaded device.
 	 */
-	public CalibrationTwoPanel(SLIMController slimController, YouScopeClient client, 
+	public CalibrationTwoPanel(SLIMController slimController, YouScopeClient client,
 			YouScopeServer server, Device reflector) {
 		slimCTRL= slimController;
 		this.client = client;
@@ -94,7 +114,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 		descriptionText.setEnabled(false);
 		descriptionText.setOpaque(false);
 		descriptionText.setFont(fontText);
-		wizardButton = new JButton("Open Wizard");		
+		wizardButton = new JButton("Open Wizard");
 		wizardButton.addActionListener(this);
 		descriptionText.setAlignmentX(LEFT_ALIGNMENT);
 		wizardButton.setAlignmentX(LEFT_ALIGNMENT);
@@ -106,7 +126,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 	}
 
 	/**
-	 * Programs the listeners to the buttons, allowing the starting of the process and the control of the motors from  
+	 * Programs the listeners to the buttons, allowing the starting of the process and the control of the motors from
 	 * the GUI and the snapping of the test image.
 	 */
 	public void actionPerformed(ActionEvent e) {
@@ -116,7 +136,7 @@ public class CalibrationTwoPanel extends JPanel implements ActionListener{
 			frame.setVisible(true);
 		}
 	}
-	
+
 }
 
 

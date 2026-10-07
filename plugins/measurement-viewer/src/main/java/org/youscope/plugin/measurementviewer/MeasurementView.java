@@ -1,3 +1,22 @@
+/*******************************************************************************
+ * Copyright (c) 2017 Moritz Lang.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Moritz Lang - initial API and implementation
+ ******************************************************************************/
 package org.youscope.plugin.measurementviewer;
 
 import java.awt.BorderLayout;
@@ -20,7 +39,7 @@ import org.youscope.uielements.ImagePanel;
 import org.youscope.uielements.ImagePanel.PixelListener;
 import org.youscope.uielements.ImagePanel.ZoomAndCenterListener;
 
-class MeasurementView extends JPanel 
+class MeasurementView extends JPanel
 {
 	/**
 	 * Serial Version UID.
@@ -32,7 +51,7 @@ class MeasurementView extends JPanel
 	private ImageFolderNode imageFolder = null;
 	private final File baseFolder;
 	private final ArrayList<MeasurementViewListener> measurementViewListeners = new ArrayList<MeasurementViewListener>(1);
-	public MeasurementView(YouScopeClient client, ImageFolderNode rootNode, File baseFolder, ImageFolderNode selectedNode) 
+	public MeasurementView(YouScopeClient client, ImageFolderNode rootNode, File baseFolder, ImageFolderNode selectedNode)
 	{
 		super(new BorderLayout());
 		this.baseFolder = baseFolder;
@@ -51,15 +70,15 @@ class MeasurementView extends JPanel
 				{
 					listener.addTiles(folders);
 				}
-				
+
 			}
-	
+
 		});
 		measurementTree.setRootNode(rootNode, selectedNode);
-		
+
 		tilingControl = new MeasurementTilingControl();
 		tilingControl.addTilingListener(new TilingListener() {
-			
+
 			@Override
 			public void removeTiling() {
 				ArrayList<MeasurementViewListener> listCopy = new ArrayList<>(measurementViewListeners);
@@ -68,7 +87,7 @@ class MeasurementView extends JPanel
 					listener.removeTile(MeasurementView.this);
 				}
 			}
-			
+
 			@Override
 			public void addTiling() {
 				ArrayList<MeasurementViewListener> listCopy = new ArrayList<>(measurementViewListeners);
@@ -78,20 +97,20 @@ class MeasurementView extends JPanel
 				}
 			}
 		});
-		
+
 		imagePanel = new ImagePanel(client);
 		imagePanel.setUserChoosesAutoAdjustContrast(true);
 		imagePanel.setAutoAdjustContrast(true);
 		setBackground(imagePanel.getBackground());
-		
+
 		JScrollPane treeScrollPane = new JScrollPane(measurementTree);
 		treeScrollPane.getViewport().setOpaque(false);
 		treeScrollPane.setOpaque(false);
 		treeScrollPane.setBorder(null);
 		imagePanel.addControl("Image Series", treeScrollPane, true);
-		
+
 		imagePanel.addControl("Tiles", tilingControl);
-		
+
 		add(imagePanel, BorderLayout.CENTER);
 	}
 	public void setIsTileCloseable(final boolean closeable)
@@ -114,21 +133,21 @@ class MeasurementView extends JPanel
 	{
 		return imagePanel.getCenter();
 	}
-	
+
 	static interface MeasurementViewListener
 	{
 		void imageNumbersChanged();
 		void addTiles(ImageFolderNode[] folders);
 		void removeTile(MeasurementView measurementView);
 	}
-	
+
 	public Collection<? extends ImageNumber> getImageNumbers()
 	{
 		if(imageFolder == null)
 			return new ArrayList<ImageNumber>(0);
 		return imageFolder.getImageList().getImageNumbers();
 	}
-	
+
 	public void addPixelListener(PixelListener listener)
 	{
 		imagePanel.addPixelListener(listener);
@@ -157,7 +176,7 @@ class MeasurementView extends JPanel
 	{
 		measurementViewListeners.remove(listener);
 	}
-	
+
 	@Override
 	public synchronized void addKeyListener(KeyListener listener)
 	{
@@ -170,7 +189,7 @@ class MeasurementView extends JPanel
 		super.removeKeyListener(listener);
 		imagePanel.removeKeyListener(listener);
 	}
-	
+
 	private void showImageSeries(ImageFolderNode imageFolder)
 	{
 		this.imageFolder = imageFolder;
@@ -181,18 +200,18 @@ class MeasurementView extends JPanel
 	}
 	String selectImage(ImageNumber imageNumber) throws AddonException
 	{
-		String imageURL = imageFolder.getImageList().getClosest(imageNumber); 
+		String imageURL = imageFolder.getImageList().getClosest(imageNumber);
 		File imageFile = new File(baseFolder, imageURL);
 		if(!imageFile.exists() || !imageFile.isFile())
 		{
 			throw new AddonException("Cannot load image file " + imageFile.getAbsolutePath() + " because it does not exist.", null);
 		}
 		BufferedImage image;
-		try 
+		try
 		{
 		    image = ImageIO.read(imageFile);
-		} 
-		catch (IOException e) 
+		}
+		catch (IOException e)
 		{
 			throw new AddonException("Loading of image file " + imageFile.getAbsolutePath() + " failed because of I/O errors.", e);
 		}

@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.AttenuationFactor;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -31,10 +51,10 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 	YouScopeServer server;
 	YouScopeClient client;
 	JButton wizardButton;
-	private final DoubleTextField attenuationFactorField = new DoubleTextField(); 
+	private final DoubleTextField attenuationFactorField = new DoubleTextField();
 	Font fontTitle = new Font(null, 1, 12);
 	Font fontText = new Font (null, 0, 12);
-	
+
 	/**
 	 * Constructor. Adds all the elements created to a JPanel.
 	 * @param slimController an instance of SLIMController which allows to control the loaded device.
@@ -50,7 +70,7 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		add(Box.createHorizontalGlue());
 		actualizeValues();
 	}
-	
+
 	/**
 	 * Creates the panel that contains the description of the computation, the start button and the option to ask for
 	 * manual confirmation.
@@ -85,10 +105,10 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		infoAndButtonPanel.add(wizardButton);
 		return infoAndButtonPanel;
 	}
-	
+
 
 	/**
-	 * Programs the listeners to the buttons, allowing the starting of the process and the control of the motors from the 
+	 * Programs the listeners to the buttons, allowing the starting of the process and the control of the motors from the
 	 * GUI.
 	 */
 	public void actionPerformed(ActionEvent e) {
@@ -106,16 +126,16 @@ public class AttenuationFactorPanel extends JPanel implements ActionListener{
 		SlimProperties properties = new SlimProperties(client);
 		attenuationFactorField.setValue(properties.getAttenuationFactor());
 	}
-	
+
 	/**
-	 * Displays the Attenuation Factor Wizard and calls the function to set the attenuation factor value in 
+	 * Displays the Attenuation Factor Wizard and calls the function to set the attenuation factor value in
 	 * the main panel.
 	 */
 	private void showAttenuationFactorWizard() {
 		AttenuationFactorWizard wizard = new AttenuationFactorWizard(client, server);
 		wizard.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent e) 
+			public void actionPerformed(ActionEvent e)
 			{
 				actualizeValues();
 			}

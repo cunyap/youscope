@@ -1,3 +1,22 @@
+/*******************************************************************************
+ * Copyright (c) 2017 Moritz Lang.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Moritz Lang - initial API and implementation
+ ******************************************************************************/
 package org.youscope.plugin.measurementviewer;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
@@ -11,7 +30,7 @@ import javax.swing.SwingUtilities;
 
 import org.youscope.uielements.ImageLoadingTools;
 
-class MeasurementTilingControl extends JPanel 
+class MeasurementTilingControl extends JPanel
 {
 	/**
 	 * Serial Version UID.
@@ -19,7 +38,7 @@ class MeasurementTilingControl extends JPanel
 	private static final long serialVersionUID = -2723513207043552227L;
 	private final ArrayList<TilingListener> tilingListeners = new ArrayList<>(1);
 	private final JButton removeTileButton;
-	public MeasurementTilingControl() 
+	public MeasurementTilingControl()
 	{
 		//super(new GridLayout(1,2));
 		super(new FlowLayout(FlowLayout.CENTER));
@@ -33,9 +52,9 @@ class MeasurementTilingControl extends JPanel
 		addTileButton.setOpaque(false);
 		addTileButton.setToolTipText("Add Tile");
 		addTileButton.addActionListener(new ActionListener() {
-			
+
 			@Override
-			public void actionPerformed(ActionEvent e) 
+			public void actionPerformed(ActionEvent e)
 			{
 				for(TilingListener listener : tilingListeners)
 				{
@@ -43,7 +62,7 @@ class MeasurementTilingControl extends JPanel
 				}
 			}
 		});
-		
+
 		Icon removeTileIcon = ImageLoadingTools.getResourceIcon("icons/cross-script.png", "Remove Tile");
 		if(removeTileIcon == null)
 			removeTileButton = new JButton("Remove");
@@ -52,9 +71,9 @@ class MeasurementTilingControl extends JPanel
 		removeTileButton.setOpaque(false);
 		removeTileButton.setToolTipText("Remove Tile");
 		removeTileButton.addActionListener(new ActionListener() {
-			
+
 			@Override
-			public void actionPerformed(ActionEvent e) 
+			public void actionPerformed(ActionEvent e)
 			{
 				for(TilingListener listener : tilingListeners)
 				{
@@ -74,7 +93,7 @@ class MeasurementTilingControl extends JPanel
 				removeTileButton.setVisible(closeable);
 				revalidate();
 			}
-	
+
 		};
 		if(SwingUtilities.isEventDispatchThread())
 			runner.run();

@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
 import java.lang.Math;
 
@@ -9,8 +29,8 @@ import org.youscope.plugin.youscopeslimcontrol.Utility;
  *
  */
 public class PhaseUnwrapping {
-	/** 
-	 * Calls the functions to unwrap the data. The computation is based on numpy unwrap function 
+	/**
+	 * Calls the functions to unwrap the data. The computation is based on numpy unwrap function
 	 * (Reference: https://github.com/numpy/numpy/blob/v1.17.0/numpy/lib/function_base.py#L1471-L1525)
 	 * @param inputArray
 	 * @return
@@ -21,12 +41,12 @@ public class PhaseUnwrapping {
 		double[] clonedArray = new double[length];
 		double[] deltasArray = new double[length];
 		double[] ddmod = new double[length];
-		boolean[] mask1 = new boolean[length]; 
+		boolean[] mask1 = new boolean[length];
 		double[] phase_correct = new double[length];
 		boolean[] mask2 = new boolean[length];
-		
+
 		clonedArray = inputArray.clone();
-		for (int i = 0; i < length; i++ ) {		
+		for (int i = 0; i < length; i++ ) {
 			deltasArray[i] = inputArray[i+1] - inputArray[i];
 		}
 		for (int i = 0; i < length; i++ ) {
@@ -54,7 +74,7 @@ public class PhaseUnwrapping {
 		for (int i = 0; i < length; i++ ) {
 			clonedArray[i+1] = inputArray[i+1] + Utility.makeCumulativeSum(phase_correct)[i];
 		}
-		return clonedArray;	
+		return clonedArray;
 	}
 
 

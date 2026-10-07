@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -30,16 +50,16 @@ import java.awt.geom.Rectangle2D;
 import java.util.Arrays;
 /**
  * This class represents the graph given as output after the computation of the radians from the images intensity.
- * Moreover it represents the commands needed to manually select the starting phaseshift and, once the input is given 
+ * Moreover it represents the commands needed to manually select the starting phaseshift and, once the input is given
  * from the user, it compute the four gray values needed to conclude the LCPM Calibration. Finally it saves the values
  * in the property file.
- * 
+ *
  * @author Elisa Garulli
  *
  */
 
 public class PhaseChart extends JPanel{
-	
+
 	YouScopeClient client;
 	YouScopeServer server;
 	CameraDevice camera;
@@ -64,14 +84,14 @@ public class PhaseChart extends JPanel{
 	Crosshair yCrosshair;
 	String[] positionString;
 	JTextArea outputText = new JTextArea();
-	
+
 	/**
 	 * Constructor. Sets the crosshairs and the graphs. Moreover adds the listener for the mouse movement and click.
 	 * Calls the calibration process to generate the dataset.
 	 * @param x grey values 0-255
 	 * @param y radians corresponding to the grey values
 	 */
-	public PhaseChart(YouScopeClient client, YouScopeServer server, CameraDevice camera, String exposure,  String channelName, 
+	public PhaseChart(YouScopeClient client, YouScopeServer server, CameraDevice camera, String exposure,  String channelName,
 			String channelGroup, Device LCPM) {
 		this.client = client;
 		this.server = server;
@@ -105,7 +125,7 @@ public class PhaseChart extends JPanel{
 		xylineChart.setBackgroundPaint(trans);
 
 	}
-	
+
 	/**
 	 * Creates the crosshair and sets their graphical appearance
 	 */
@@ -127,7 +147,7 @@ public class PhaseChart extends JPanel{
 			@Override
 			public String generateLabel(final Crosshair ch) {
 				return (Double.toString(ch.getValue()));
-			}	
+			}
 		});
 		crosshairOverlay.addDomainCrosshair(yCrosshair);
 		crosshairOverlay.addDomainCrosshair(line1);
@@ -136,9 +156,9 @@ public class PhaseChart extends JPanel{
 		crosshairOverlay.addDomainCrosshair(line4);
 		chartPanel.addOverlay(crosshairOverlay);
 	}
-	
+
 	/**
-	 * Controls the position of the crosshair in the graphs by setting listeners for the movement and for the click 
+	 * Controls the position of the crosshair in the graphs by setting listeners for the movement and for the click
 	 * of the mouse in the graph area.
 	 */
 	private void crosshairController() {
@@ -147,7 +167,7 @@ public class PhaseChart extends JPanel{
 			@Override
 			public void chartMouseMoved(final ChartMouseEvent event) {
 				final Rectangle2D dataArea = chartPanel.getScreenDataArea();
-				final double posX = (int) Math.round(plot.getDomainAxis().java2DToValue(event.getTrigger().getX(), dataArea, 
+				final double posX = (int) Math.round(plot.getDomainAxis().java2DToValue(event.getTrigger().getX(), dataArea,
 						RectangleEdge.BOTTOM));
 				yCrosshair.setValue(posX);
 			}
@@ -172,7 +192,7 @@ public class PhaseChart extends JPanel{
 			}
 		});
 	}
-	
+
 	/**
 	 * Sets the corresponding properties in a SLIM job to the computed phase shifts.
 	 */
@@ -183,7 +203,7 @@ public class PhaseChart extends JPanel{
 		SlimJobConfiguration.setPhaseShiftMask(3,(int)Math.round(positions[3][0]));
 		SlimJobConfiguration.setPhaseShiftOutside((int)Math.round(positions[0][0]));
 	}
-	
+
 	/**
 	 * Creates a user-friendly string with the results and sets it in the output text area.
 	 */
@@ -203,7 +223,7 @@ public class PhaseChart extends JPanel{
 		outputText.setText("Phase Shifts " + positionString[0] +", "+
 				positionString[1]+", "+positionString[2] +", " + positionString[3]);
 	}
-	
+
 	/**
 	 * Generates a dataset compatible with a JFreeChart.
 	 * @param radians i.e. the unwrapped intensity values.
@@ -222,7 +242,7 @@ public class PhaseChart extends JPanel{
 
 	/**
 	 * Calculates the phase shifts values starting from the first gray value manually selected.
-	 * The computation refers to doi: 10.1364/OE.19.001016 
+	 * The computation refers to doi: 10.1364/OE.19.001016
 	 * @param dataPoints radians i.e. the unwrapped intensity values.
 	 * @param initialX initial x selected manually
 	 * @return an array of the x, y values corresponding to the desired 4 phase shifts.

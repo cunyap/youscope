@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
 
 import javax.swing.JPanel;
@@ -38,7 +58,7 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 	String channelGroup;
 	YouScopeClient client;
 	YouScopeServer server;
-	CameraDevice camera; 
+	CameraDevice camera;
 	JPanel graphAndOutput;
 	SLIMController slimCTRL = null;
 	String intensityValue;
@@ -93,10 +113,10 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 		graphAndOutput = new JPanel();
 		graphAndOutput.setPreferredSize(new Dimension(450,350));
 		graphAndOutput.setMinimumSize(new Dimension(400,200));
-		startCalibrationTwo = new JButton("Start LCPM Calibration");		
+		startCalibrationTwo = new JButton("Start LCPM Calibration");
 		startCalibrationTwo.addActionListener(this);
 		graphAndOutput.add(startCalibrationTwo);
-		stopCalibrationTwo = new JButton("Stop LCPM Calibration");		
+		stopCalibrationTwo = new JButton("Stop LCPM Calibration");
 		stopCalibrationTwo.addActionListener(this);
 		graphAndOutput.add(stopCalibrationTwo);
 	}
@@ -149,14 +169,14 @@ public class LCPMCalibrationWizard extends BasePopUpPanel implements ActionListe
 			Microscope microscope = server.getMicroscope();
 			cameraDevice = microscope.getCameraDevice(deviceName);
 		}
-		catch(RemoteException | DeviceException e) { 
+		catch(RemoteException | DeviceException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(null, "No Camera Device connected", "Camera Error",
 					JOptionPane.ERROR_MESSAGE);
 		}
 		return cameraDevice;
 	}
-	
+
 	/**
 	 * Take care of opening a new thread with what is needed to perform and visualize the LCPM calibration process
 	 * @return the calibration thread

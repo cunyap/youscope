@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -48,7 +68,7 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 	 * @param slimController an instance of SLIMController which allows to control the loaded device.
 	 */
 	public WheelThreePanel(SLIMController slimController) {
-		slimCTRL = slimController;	
+		slimCTRL = slimController;
 		setLayout(new BorderLayout());
 		JLabel wheelName = new JLabel("Lens wheel");
 		add(wheelName, BorderLayout.NORTH);
@@ -77,11 +97,11 @@ public class WheelThreePanel extends JPanel implements ActionListener{
 		for (JRadioButton button : buttonsArray) {
 			button.addActionListener(this);;
 		}
-		
+
 		buttonPanel.add(animationLensWheel);
 		return buttonPanel;
 	}
-	
+
 	/**
 	 * Sets the panel where the animation gets displayed.
 	 * @return the animation panel.

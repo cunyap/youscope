@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 
 import org.youscope.clientinterfaces.YouScopeClient;
@@ -8,7 +28,7 @@ import org.youscope.clientinterfaces.YouScopeClient;
  *
  */
 public class SLIMController {
-	
+
 	ArduinoController arduino;
 	final int PolarizerMotorPin = 52;
 	final int SecondMotorPin = 53;
@@ -23,22 +43,22 @@ public class SLIMController {
 			client.sendError("Arduino is not loaded");
 		}
 	}
-	
+
 	/**
 	 * Sets the polarizer wheel to the requested position
-	 * @param wheelPosition enum element that indicates the position. 
+	 * @param wheelPosition enum element that indicates the position.
 	 */
 	public void setPolarizerWheelPosition(PolarizerWheelPosition wheelPosition) {
 		if (arduino != null) {
 		switch (wheelPosition) {
-		case POLARIZER_ONE:	
+		case POLARIZER_ONE:
 				arduino.setPinValue(PolarizerMotorPin, 1);
 			break;
-			
+
 		case EMPTY:
 				arduino.setPinValue(PolarizerMotorPin, 0);
 			break;
-		
+
 		case POLARIZER_TWO:
 				arduino.setPinValue(PolarizerMotorPin, 2);
 			break;
@@ -48,58 +68,58 @@ public class SLIMController {
 
 	/**
 	 * Sets the second wheel to the requested position
-	 * @param wheelPosition enum element that indicates the position. 
+	 * @param wheelPosition enum element that indicates the position.
 	 */
 	public void setSecondWheelPosition(SecondWheelPosition wheelPosition) {
 		if (arduino != null) {
 		switch (wheelPosition) {
-		
-		case POLARIZER:	
+
+		case POLARIZER:
 				arduino.setPinValue(SecondMotorPin, 1);
 			break;
-			
+
 		case EMPTY:
 				arduino.setPinValue(SecondMotorPin, 0);
 			break;
-		
+
 		case LENS:
 				arduino.setPinValue(SecondMotorPin, 2);
 			break;
-		}	
+		}
 	}
 	}
 
 	/**
 	 * Sets the lenses wheel to the requested position
-	 * @param wheelPosition enum element that indicates the position. 
+	 * @param wheelPosition enum element that indicates the position.
 	 */
 	public void setLensesWheelPosition(LensesWheelPosition wheelPosition) {
 		if (arduino != null) {
 		switch (wheelPosition) {
-		case LENS_ONE:	
+		case LENS_ONE:
 				arduino.setPinValue(LensMotorPin, 0);
 			break;
-			
+
 		case LENS_TWO:
 				arduino.setPinValue(LensMotorPin, 1);
 			break;
-		
+
 		case LENS_THREE:
 				arduino.setPinValue(LensMotorPin, 2);
 			break;
-		
-		case LENS_FOUR:	
+
+		case LENS_FOUR:
 				arduino.setPinValue(LensMotorPin, 3);
 			break;
-			
+
 		case LENS_FIVE:
 				arduino.setPinValue(LensMotorPin, 4);
 			break;
-		
+
 		case LENS_SIX:
 				arduino.setPinValue(LensMotorPin, 5);
 			break;
-		}	
+		}
 	}
 	}
 }

@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.HardwareControl;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -44,7 +64,7 @@ public class WheelOnePanel extends JPanel implements ActionListener{
 	static Image servoOnePolarizerTwoToEmpty = loadImage("servoOneP2Ex.gif");
 	static JButton animationServoOne = new JButton(new ImageIcon(initialPos));
 
-	
+
 	/**
 	 * Constructor.
 	 * Adds all the elements created to a JPanel
@@ -73,11 +93,11 @@ public class WheelOnePanel extends JPanel implements ActionListener{
 		animationServoOne.setContentAreaFilled(false);
 		animationServoOne.setBorderPainted(true);
 		animationServoOne.setFocusPainted(false);
-		
-		buttonGroupWheelOne.add(polarizerOneButton); 
-		buttonGroupWheelOne.add(emptyButton); 
-		buttonGroupWheelOne.add(polarizerTwoButton); 
-		
+
+		buttonGroupWheelOne.add(polarizerOneButton);
+		buttonGroupWheelOne.add(emptyButton);
+		buttonGroupWheelOne.add(polarizerTwoButton);
+
 		buttonPanel.add(polarizerOneButton);
 		buttonPanel.add(emptyButton);
 		buttonPanel.add(polarizerTwoButton);
@@ -106,7 +126,7 @@ public class WheelOnePanel extends JPanel implements ActionListener{
 	}
 
 	/**
-	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI and the displaying of the 
+	 * Programs the listeners to the buttons, allowing the control of the motors from the GUI and the displaying of the
 	 * corresponding animation.
 	 */
 	public void actionPerformed(ActionEvent e) {

@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -7,7 +27,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.time.format.DateTimeFormatter;
-import java.time.LocalDateTime; 
+import java.time.LocalDateTime;
 import javax.swing.JOptionPane;
 /**
  * This class provides the methods to save LCPM Calibration data
@@ -29,7 +49,7 @@ public class CalibrationLCPMData {
 			file.getParentFile().mkdirs();
 		}
 		if (!file.exists()) {
-			try {  
+			try {
 				file.createNewFile();
 			}
 			catch(IOException e) {
@@ -59,7 +79,7 @@ public class CalibrationLCPMData {
 	 * Provides the current date and time to be included in the name of the file
 	 * @return date and time in the format yyyyMMdd_HH-mm
 	 */
-	private String currentDateTime() {   
+	private String currentDateTime() {
 		DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyyMMdd_HH-mm-ss");
 		LocalDateTime now = LocalDateTime.now();
 		String timeStamp = (String) format.format(now);

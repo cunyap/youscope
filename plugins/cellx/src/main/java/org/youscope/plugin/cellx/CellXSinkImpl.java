@@ -1,3 +1,22 @@
+/*******************************************************************************
+ * Copyright (c) 2017 Moritz Lang.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Moritz Lang - initial API and implementation
+ ******************************************************************************/
 package org.youscope.plugin.cellx;
 
 import java.io.Serializable;
@@ -13,7 +32,7 @@ import org.youscope.common.table.TableEntry;
 import org.youscope.common.table.TableException;
 import org.youscope.common.table.TemporaryRow;
 
-class CellXSinkImpl extends UnicastRemoteObject implements CellXSink 
+class CellXSinkImpl extends UnicastRemoteObject implements CellXSink
 {
 	/**
 	 * Serial Version UID.
@@ -22,18 +41,18 @@ class CellXSinkImpl extends UnicastRemoteObject implements CellXSink
 	private final Table table;
 	private final TableDefinition tableDefinition;
 	public CellXSinkImpl(long creationTime, PositionInformation positionInformation, ExecutionInformation executionInformation) throws RemoteException {
-		
+
 		tableDefinition = CellXTable.getTableDefinition();
 		table = new Table(tableDefinition, creationTime, positionInformation, executionInformation);
 	}
-	
+
 	Table getTable()
 	{
 		return table;
 	}
 
 	@Override
-	public void addCell(String[] headers, double[] data) throws RemoteException, CellDetectionException 
+	public void addCell(String[] headers, double[] data) throws RemoteException, CellDetectionException
 	{
 		if(headers == null || data == null || headers.length != data.length)
 			throw new CellDetectionException("Provide only headers and data with the same number of elements.");
@@ -47,7 +66,7 @@ class CellXSinkImpl extends UnicastRemoteObject implements CellXSink
 			{
 				fluoID = Integer.parseInt(headers[i].substring(4, headers[i].indexOf('.')));
 			}
-			catch(Throwable throwable) 
+			catch(Throwable throwable)
 			{
 				throw new CellDetectionException("Couldn't find out index of fluorescence channel in table column with name "+headers[i]+".", throwable);
 			}
@@ -69,7 +88,7 @@ class CellXSinkImpl extends UnicastRemoteObject implements CellXSink
 			int fluoID = 0;
 			if(header.indexOf("fluo") == 0)
 			{
-				try 
+				try
 				{
 					fluoID = Integer.parseInt(header.substring(4, header.indexOf('.')))-1;
 				}
@@ -104,12 +123,12 @@ class CellXSinkImpl extends UnicastRemoteObject implements CellXSink
 					rows[i].get(2).setValue(rows[0].get(2).getValue());
 				} catch (IndexOutOfBoundsException | TableException e) {
 					throw new CellDetectionException("Couldn't copy cell ID.", e);
-				} 
+				}
 			}
 			try {
 				table.addRow(rows[i]);
-			} 
-			catch (NullPointerException | TableException e) 
+			}
+			catch (NullPointerException | TableException e)
 			{
 				String content = "";
 				for(int j = 0; j<rows[i].getNumColumns(); j++)

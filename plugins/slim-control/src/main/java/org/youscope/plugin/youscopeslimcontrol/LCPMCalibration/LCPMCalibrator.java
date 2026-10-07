@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2019 - 2020 Elisa Garulli.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
+ * License, Version 2.1 (or at your option any later version).
+ *
+ * You may choose which license you wish to use when copying, modifying,
+ * or distributing this software.
+ *
+ * Licenses are available at:
+ * - Apache 2.0: http://apache.org
+ * - LGPL 2.1:   https://gnu.org
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ *
+ * Contributors:
+ *     Elisa Garulli - initial API and implementation
+ *     Andreas P. Cuny - migration to the current YouScope API
+ ******************************************************************************/
 package org.youscope.plugin.youscopeslimcontrol.LCPMCalibration;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -36,9 +56,9 @@ import org.youscope.plugin.youscopeslimcontrol.External.HilbertTransform;
 import java.lang.Math;
 
 /**
- * This class represents the tools needed to prepare the gray values and unwrapped intensity values. 
- * The process sets the LCPM reflector to a range (0-255) of values and takes an image of it. 
- * Then the average intensity is calculated from the central region of the image. 
+ * This class represents the tools needed to prepare the gray values and unwrapped intensity values.
+ * The process sets the LCPM reflector to a range (0-255) of values and takes an image of it.
+ * Then the average intensity is calculated from the central region of the image.
  * Finally the values transformed using a Hilbert transform and stored.
  * @author Elisa Garulli
  *
@@ -55,7 +75,7 @@ public class LCPMCalibrator extends JPanel {
 	Device LCPM;
 
 	/**
-	 * Constructor. 
+	 * Constructor.
 	 * @param client
 	 * @param server
 	 * @param camera the camera to use to snap images of the reflector
@@ -73,14 +93,14 @@ public class LCPMCalibrator extends JPanel {
 		this.LCPM = LCPM;
 		this.exposure = Double.valueOf(exposure);
 	}
-	
+
 	/**
 	 * Calls the needed functions to compute the average intensity of each image and unwrap the values.
-	 * The computation refers to doi: 10.1364/OE.19.001016 
+	 * The computation refers to doi: 10.1364/OE.19.001016
 	 * @return the unwrapped values.
 	 */
 	public double[] runCalibration(){
-		
+
 		LoadingBar loadingBar = new LoadingBar(client,"Calibration Progress");
 		YouScopeFrame frame = loadingBar.toFrame();
 		frame.setVisible(true);
@@ -128,7 +148,7 @@ public class LCPMCalibrator extends JPanel {
 		// 4. Perform phase unwrapping
 		double[] angles = new double[256];
 		for (int y = 0; y < 256; y++) {
-			angles[y] = Math.atan2(normalizedIntensityArray[y],realIntensityValues[y]); 
+			angles[y] = Math.atan2(normalizedIntensityArray[y],realIntensityValues[y]);
 		}
 		double[] unwrapped = PhaseUnwrapping.unwrap(angles);
 
@@ -164,7 +184,7 @@ public class LCPMCalibrator extends JPanel {
 		}
 	}
 
-	/** 
+	/**
 	 * Saves a cropped region of an image.
 	 * @param rawImage
 	 * @return the cropped Image.
@@ -179,12 +199,12 @@ public class LCPMCalibrator extends JPanel {
 		return croppedImage;
 	}
 
-	/** 
+	/**
 	 * Computes the average intensity of a given gray-scale image.
 	 * @param processedImage
 	 * @return the average intensity of the input image
 	 */
-	private double getAverageIntensity(BufferedImage processedImage) {		
+	private double getAverageIntensity(BufferedImage processedImage) {
 		double sumIntensity = 0.0;
 		Raster raster = processedImage.getData();
 		for (int i = 0; i < processedImage.getWidth(); i++) {
@@ -206,7 +226,7 @@ public class LCPMCalibrator extends JPanel {
 		try {
 
 			LCPM.getProperty("phaseShiftBackground").setValue(pixelValue);
-		} 
+		}
 		catch (RemoteException | MicroscopeException | MicroscopeLockedException | InterruptedException
 				| DeviceException e) {
 			e.printStackTrace();
@@ -214,6 +234,6 @@ public class LCPMCalibrator extends JPanel {
 					JOptionPane.ERROR_MESSAGE);
 		}
 	}
-	
+
 
 }
