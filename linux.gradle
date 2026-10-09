@@ -1,0 +1,133 @@
+/*
+ * Linux packaging of YouScope (portable tar.gz archives).
+ *
+ * Applied from build.gradle via:   apply from: 'linux.gradle'
+ *
+ *
+ * Tasks:
+ *   createLinuxPortable             -> build/distributions/youscope-linux-x64.tar.gz
+ *                                      (no Java; JDK 21 must be installed on the machine)
+ *   createLinuxPortableWithRuntime  -> build/distributions/youscope-linux-x64-with-jdk21.tar.gz
+ *                                      (contains a JDK 21 in runtime/)
+ *   createLinuxPortables            -> both of the above
+ *
+ * The bundled runtime is taken from the directory runtime-linux/ (analogous
+ * to runtime/ for Windows). CI fills it by copying an installed JDK 21.
+ * Expected result: runtime-linux/bin/java
+ *
+ * Layout of the archives (single top-level folder "youscope"):
+ *
+ *   youscope/youscope.sh        launcher (counterpart of launch_youscope_jdk21.bat)
+ *   youscope/lib/               youscope.jar, youscope-api/-client/-server.jar, libs/*.jar
+ *   youscope/plugins/           plugin jars + distribution/plugins/*
+ *   youscope/<distribution/*>   everything from distribution/ except drivers32/ and drivers64/
+ *   youscope/runtime/           JDK 21 (only in the "with-jdk21" archive)
+ */
+
+import org.apache.tools.ant.filters.FixCrLfFilter
+
+def linuxLauncherDir = file("${rootProject.projectDir}/resources/linux")
+def linuxRuntimeDir  = file("${rootProject.projectDir}/runtime-linux")
+
+/*
+ * Content shared by both archives.
+ */
+def linuxContents = copySpec {
+    // Static files shipped with YouScope. drivers32/drivers64 contain Windows
+    // DLLs only and are therefore left out.
+    from(file("${rootProject.projectDir}/distribution")) {
+        exclude 'drivers32/**'
+        exclude 'drivers64/**'
+    }
+
+    // Committed third-party jars.
+    from(file("${rootProject.projectDir}/libs")) {
+        into 'lib'
+    }
+
+    // Jars built by Gradle: same set as the Windows "nsis" distribution.
+    from(rootProject.tasks.jar) {
+        into 'lib'
+    }
+    from(project(':core:api').tasks.jar) {
+        into 'lib'
+    }
+    from(project(':core:client').tasks.jar) {
+        into 'lib'
+    }
+    from(project(':core:server').tasks.jar) {
+        into 'lib'
+    }
+    project(':plugins').subprojects.each { pluginProject ->
+        from(pluginProject.tasks.jar) {
+            into 'plugins'
+        }
+    }
+
+    // Launcher: executable, and always LF line endings regardless of how the
+    // file was checked out.
+    from(linuxLauncherDir) {
+        include '*.sh'
+        fileMode 0755
+        filter(FixCrLfFilter, eol: FixCrLfFilter.CrLf.newInstance('lf'))
+    }
+    from(linuxLauncherDir) {
+        exclude '*.sh'
+        filter(FixCrLfFilter, eol: FixCrLfFilter.CrLf.newInstance('lf'))
+    }
+}
+
+/*
+ * Archive without Java runtime.
+ */
+tasks.register('createLinuxPortable', Tar) {
+    group = 'distribution'
+    description = 'Creates the portable Linux archive without Java (JDK 21 must be installed).'
+
+    archiveFileName = 'youscope-linux-x64.tar.gz'
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    compression = Compression.GZIP
+
+    into('youscope') {
+        with linuxContents
+    }
+}
+
+/*
+ * Archive including a JDK 21 in runtime/.
+ */
+tasks.register('createLinuxPortableWithRuntime', Tar) {
+    group = 'distribution'
+    description = 'Creates the portable Linux archive including a bundled JDK 21 (from runtime-linux/).'
+
+    archiveFileName = 'youscope-linux-x64-with-jdk21.tar.gz'
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    compression = Compression.GZIP
+
+    doFirst {
+        def bundledJava = new File(linuxRuntimeDir, 'bin/java')
+        if (!bundledJava.exists()) {
+            throw new GradleException(
+                "Bundled Java runtime is missing: ${bundledJava}. " +
+                "Copy a JDK 21 installation to ${linuxRuntimeDir} first."
+            )
+        }
+    }
+
+    into('youscope') {
+        with linuxContents
+        from(linuxRuntimeDir) {
+            into 'runtime'
+        }
+    }
+}
+
+/*
+ * Both archives.
+ */
+tasks.register('createLinuxPortables') {
+    group = 'distribution'
+    description = 'Creates both portable Linux archives (without and with JDK 21).'
+
+    dependsOn 'createLinuxPortable', 'createLinuxPortableWithRuntime'
+}

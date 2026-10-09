@@ -605,3 +605,9 @@ task createInstallers {
 createInstallers.group = createInstaller.group
 createInstallers.description =
     'Creates the 64-bit YouScope installer'
+
+/*
+ * Linux packaging (portable tar.gz archives). Independent of the Windows
+ * packaging above; see linux.gradle.
+ */
+apply from: 'linux.gradle'
