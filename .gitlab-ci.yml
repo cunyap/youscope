@@ -314,10 +314,12 @@ build_linux:
 
   cache:
     key:
+      # GitLab allows at most 2 files here, so linux.gradle cannot be listed.
+      # The prefix keeps the Linux cache separate from the Windows one.
       files:
         - build.gradle
         - settings.gradle
-        - linux.gradle
+      prefix: linux
     paths:
       - .gradle/
 
