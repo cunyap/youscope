@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 - 2024 Jonas Meier.
+ * Copyright © 2026 ETH Zürich
  *
  * This program and the accompanying materials are made available under the
  * terms of the Apache License, Version 2.0 OR the GNU Lesser General Public
