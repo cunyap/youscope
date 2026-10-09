@@ -300,6 +300,159 @@ build_installer:
     expire_in: 4 weeks
 
 
+build_linux:
+  stage: build
+  # ASSUMPTION: same runner tag as the create_release job (Ubuntu 24.04 shell runner).
+  tags:
+    - ubuntu:24.04
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    # "Run pipeline" button / API-triggered web pipelines.
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+  cache:
+    key:
+      files:
+        - build.gradle
+        - settings.gradle
+        - linux.gradle
+    paths:
+      - .gradle/
+
+  script:
+    - |
+      set -euo pipefail
+
+      # ------------------------------------------------------------------
+      # Provision JDK 8 (runs Gradle) and JDK 21 (toolchain + bundled runtime).
+      # No root/sudo needed: Temurin tarballs are
+      # unpacked into a per-user cache directory that survives between jobs
+      # on the same runner.
+      # ------------------------------------------------------------------
+      JDK_CACHE="${JDK_CACHE_DIR:-$HOME/.cache/youscope-ci/jdks}"
+      mkdir -p "$JDK_CACHE"
+
+      ensure_jdk() {
+        local major="$1"
+        local target="$JDK_CACHE/temurin-$major"
+
+        if [ -x "$target/bin/java" ]; then
+          echo "Using cached JDK $major: $target" >&2
+          return 0
+        fi
+
+        local tmp
+        tmp="$(mktemp -d "$JDK_CACHE/.download-$major-XXXXXX")"
+        echo "Downloading Temurin JDK $major ..." >&2
+        curl -fsSL --retry 5 --retry-delay 20 --retry-all-errors \
+          -o "$tmp/jdk.tar.gz" \
+          "https://api.adoptium.net/v3/binary/latest/$major/ga/linux/x64/jdk/hotspot/normal/eclipse"
+        mkdir "$tmp/jdk"
+        tar -xzf "$tmp/jdk.tar.gz" -C "$tmp/jdk" --strip-components=1
+
+        if [ ! -x "$tmp/jdk/bin/java" ]; then
+          echo "Downloaded JDK $major is incomplete" >&2
+          exit 1
+        fi
+
+        # If a parallel job was faster, keep its copy.
+        mv "$tmp/jdk" "$target" 2>/dev/null || true
+        rm -rf "$tmp"
+      }
+
+      ensure_jdk 8
+      ensure_jdk 21
+
+      export JAVA_HOME="$JDK_CACHE/temurin-8"
+      export JDK21_HOME="$JDK_CACHE/temurin-21"
+      export PATH="$JAVA_HOME/bin:$JDK21_HOME/bin:$PATH"
+
+      echo "JAVA_HOME=$JAVA_HOME"
+      echo "JDK21_HOME=$JDK21_HOME"
+      "$JAVA_HOME/bin/java" -version
+      "$JDK21_HOME/bin/javac" -version
+
+      # ------------------------------------------------------------------
+      # Configure Gradle Java toolchains (same as Windows job).
+      # ------------------------------------------------------------------
+      mkdir -p "$GRADLE_USER_HOME"
+      echo "org.gradle.java.installations.paths=$JAVA_HOME,$JDK21_HOME" \
+        > "$GRADLE_USER_HOME/gradle.properties"
+
+      # ------------------------------------------------------------------
+      # Bundled JDK 21 runtime for the "with-jdk21" archive.
+      # ------------------------------------------------------------------
+      rm -rf runtime-linux
+      mkdir -p runtime-linux
+      cp -a "$JDK21_HOME"/. runtime-linux/
+
+      if [ ! -x runtime-linux/bin/java ]; then
+        echo "Bundled JDK 21 is incomplete" >&2
+        exit 1
+      fi
+
+      # ------------------------------------------------------------------
+      # Build both Linux archives.
+      # ------------------------------------------------------------------
+      chmod +x ./gradlew
+      ./gradlew --no-daemon createLinuxPortables
+
+      # ------------------------------------------------------------------
+      # Verify the results.
+      # ------------------------------------------------------------------
+      SMALL="build/distributions/youscope-linux-x64.tar.gz"
+      BUNDLED="build/distributions/youscope-linux-x64-with-jdk21.tar.gz"
+
+      for archive in "$SMALL" "$BUNDLED"; do
+        if [ ! -f "$archive" ]; then
+          echo "Archive was not produced: $archive" >&2
+          exit 1
+        fi
+        ls -l "$archive"
+
+        listing="$(mktemp)"
+        tar -tvzf "$archive" > "$listing"
+
+        for required in \
+          "youscope/youscope.sh" \
+          "youscope/lib/youscope.jar" \
+          "youscope/lib/youscope-api.jar" \
+          "youscope/lib/youscope-client.jar" \
+          "youscope/lib/youscope-server.jar"
+        do
+          if ! grep -q " $required\$" "$listing"; then
+            echo "Missing in $archive: $required" >&2
+            exit 1
+          fi
+        done
+
+        if ! grep -E " youscope/youscope.sh\$" "$listing" | grep -q '^-rwx'; then
+          echo "youscope.sh is not executable in $archive" >&2
+          exit 1
+        fi
+
+        if grep -q -E " youscope/drivers(32|64)/" "$listing"; then
+          echo "Windows driver folders must not be part of $archive" >&2
+          exit 1
+        fi
+        rm -f "$listing"
+      done
+
+      # The bundled runtime must be usable after extraction.
+      check_dir="$(mktemp -d)"
+      tar -xzf "$BUNDLED" -C "$check_dir" youscope/runtime
+      "$check_dir/youscope/runtime/bin/java" -version
+      rm -rf "$check_dir"
+
+  artifacts:
+    name: "YouScope_Linux_$CI_PIPELINE_IID"
+    paths:
+      - build/distributions/youscope-linux-x64.tar.gz
+      - build/distributions/youscope-linux-x64-with-jdk21.tar.gz
+    expire_in: 4 weeks
+
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
