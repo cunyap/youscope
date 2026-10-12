@@ -302,9 +302,9 @@ build_installer:
 
 build_linux:
   stage: build
-  # ASSUMPTION: same runner tag as the create_release job (Ubuntu 24.04 shell runner).
-  tags:
-    - ubuntu:24.04
+  # Run in a Docker container instead and pick an untagged runner.
+  image: ubuntu:24.04
+  tags: []
 
   rules:
     - if: '$CI_COMMIT_BRANCH'
@@ -323,15 +323,19 @@ build_linux:
     paths:
       - .gradle/
 
+  before_script:
+    # The bare ubuntu image lacks curl/CA certs; tar, gzip and grep are
+    # already present.
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt-get update -qq && apt-get install -y -qq curl ca-certificates tar gzip unzip
+
   script:
     - |
       set -euo pipefail
 
       # ------------------------------------------------------------------
       # Provision JDK 8 (runs Gradle) and JDK 21 (toolchain + bundled runtime).
-      # No root/sudo needed: Temurin tarballs are
-      # unpacked into a per-user cache directory that survives between jobs
-      # on the same runner.
+      # Temurin tarballs are unpacked into a per-job cache directory.
       # ------------------------------------------------------------------
       JDK_CACHE="${JDK_CACHE_DIR:-$HOME/.cache/youscope-ci/jdks}"
       mkdir -p "$JDK_CACHE"
@@ -458,14 +462,16 @@ build_linux:
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
-  tags:
-    - ubuntu:24.04
+  # The release-cli image runs on an untagged Docker runner.
+  tags: []
 
   rules:
     - if: '$CI_COMMIT_TAG'
 
   needs:
     - job: build_installer
+      artifacts: true
+    - job: build_linux
       artifacts: true
 
   script:
