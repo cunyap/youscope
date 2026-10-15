@@ -1,0 +1,120 @@
+<!-- 
+  Default Argolight slide ("HM") pattern definition for the argolight-calibration plugin. 
+
+  COORDINATES (relative-x-um / relative-y-um): origin (0;0) is the central cross 
+  just below the Argolight logo. +X points right, +Y points UP (datasheet 
+  convention). The plugin converts +Y-up into YouScope's +Y-down internally. 
+
+  WELL LABELS are assigned automatically from the positions, following well-plate 
+  convention: rows A, B, C... from top to bottom (highest +Y first), columns 
+  1, 2, 3... from left to right. (There is therefore no well-row/well-col here.) 
+
+  GROUPS (group-id): each named pattern has its own group so it gets its own 
+  imaging-protocol tab and its own image save name; the small positional crosses of 
+  the 5x5 grid share group 0. This needs the extended WellGroup enum (GROUP0..GROUP99). 
+    0   positional grid crosses (shared)      imaging 
+    1   central cross                         imaging 
+    2   logo ("A")                            imaging 
+    3   C2  gradually spaced lines (-45)      imaging 
+    4   A3  target (600 um)                   imaging + plate-scanning(imaging) 
+    5   A4  field of rings (600 um)           imaging + plate-scanning(imaging) 
+    6   B1  4x4 intensity gradation           imaging 
+    7   B2  2x16 intensity gradation          imaging 
+    8   B3  gradually spaced lines (horiz.)   imaging 
+    9   B4  gradually spaced lines (vert.)    imaging 
+    10  C1  gradually spaced lines (+45)      imaging 
+    11  C3  matrix of crosses                 z-slides(imaging)    
+    12  C4  meridians                         z-slides(imaging) 
+    13  D1  stairs dz 1.00                    z-slides(imaging) 
+    14  D2  stairs dz 0.75                    z-slides(imaging) 
+    15  D3  stairs dz 0.50                    z-slides(imaging) 
+    16  D4  stairs dz 0.25                    z-slides(imaging) 
+    17  background region                     imaging(overview) + z-slides (same range as meridians, 12; C4) 
+
+  Only the 600 um fields (target, rings) scan; they additionally get a leading 
+  single-frame imaging job before the plate-scanning job, so at low magnification 
+  (where one frame covers the whole feature) the tiling job can simply be disabled.  
+
+  Z-STACK: z-stack="true" pre-fills a z-slides container + imaging job. 
+    z-mode="symmetric"  uses z-step-um, z-slices-below, z-slices-above. 
+    z-mode="range"      uses z-start-um, z-end-um, z-step-um. 
+
+  SCANNING: scan="true" + scan-field-width-um / scan-field-height-um wrap the 
+  imaging job in a plate-scanning (tiling) job. Tile counts / deltas come from 
+  the camera field of view (camera-pixels-x/y * pixel-size-um) and tile-overlap in 
+  <imaging-defaults>. The plate-scanning job is always created for scan groups 
+  (a single 1x1 tile at low magnification, more tiles at high magnification). 
+
+  ICONS: icon selects the glyph; icon-scale (<1 shrinks it to fit small boxes); 
+  icon-detail is glyph-specific (stairs: number of steps; crossmatrix/ringgrid: 
+  grid size). The four "lines" glyphs are one graduated-lines drawing rotated, so 
+  C1 (+45) is exactly C2 (-45) rotated 90 degrees. 
+--> 
+<argolight-plate> 
+  <name>Argolight HM (default)</name> 
+
+  <imaging-defaults> 
+    <channel-group>Channels</channel-group> 
+    <channel>GFP</channel> 
+    <camera>Camera</camera> 
+    <exposure-ms>5.0</exposure-ms> 
+    <save-images>true</save-images> 
+    <!-- Acquisition geometry for field scanning. Set to your real setup. --> 
+    <camera-pixels-x>2048</camera-pixels-x> 
+    <camera-pixels-y>2048</camera-pixels-y> 
+    <pixel-size-um>0.1625</pixel-size-um> 
+    <tile-overlap>0.1</tile-overlap> 
+  </imaging-defaults> 
+
+  <!-- Stage orientation for the physical stage layout only (never changes the 
+       pattern picker or the well labels). Use this to make stage motion agree 
+       with a camera whose X/Y have been mirrored so the Argolight logo reads correctly. 
+       mirror-y="true" flips the vertical stage direction: with it, selecting e.g. 
+       B3 -> B7 -> D5 moves right along the top row and then down to the centre. 
+       Set mirror-x / transpose similarly if a given microscope needs it. --> 
+  <stage mirror-x="false" mirror-y="true" transpose="false"/> 
+
+  <patterns> 
+    <!-- group 0: simple imaging --> 
+    <pattern id="central-cross"      name="Central cross"                    icon="cross"        relative-x-um="0"    relative-y-um="0"    fov-width-um="70"  fov-height-um="70"  group-id="1" z-stack="false"/> 
+    <pattern id="logo"               name="Logo"                             icon="logo"         relative-x-um="0"    relative-y-um="85"   fov-width-um="70"  fov-height-um="70"  group-id="2" z-stack="false"/> 
+    <pattern id="lines-minus45"      name="Gradually spaced lines (-45deg)"  icon="linesM45" icon-scale="0.7" relative-x-um="-250" relative-y-um="-800" fov-width-um="50"  fov-height-um="50"  group-id="3" z-stack="false"/> 
+
+    <!-- group 1: 600 um field scan --> 
+    <pattern id="target"             name="Target"                           icon="target"       relative-x-um="-500" relative-y-um="500"  fov-width-um="600" fov-height-um="600" group-id="4" z-stack="false" scan="true" scan-field-width-um="600" scan-field-height-um="600"/> 
+    <pattern id="field-of-rings"     name="Field of rings"                   icon="ringgrid" icon-detail="4" relative-x-um="500"  relative-y-um="500"  fov-width-um="600" fov-height-um="600" group-id="5" z-stack="false" scan="true" scan-field-width-um="600" scan-field-height-um="600"/> 
+
+    <!-- group 2: 50 um field scan --> 
+    <pattern id="grad-4x4"           name="4x4 intensity gradation"          icon="intensity4x4"  relative-x-um="-750" relative-y-um="-200" fov-width-um="50" fov-height-um="50" group-id="6" z-stack="false" scan="false" scan-field-width-um="50" scan-field-height-um="50"/> 
+    <pattern id="grad-2x16"          name="2x16 intensity gradation"         icon="intensity2col" relative-x-um="-250" relative-y-um="-200" fov-width-um="50" fov-height-um="50" group-id="7" z-stack="false" scan="false" scan-field-width-um="50" scan-field-height-um="50"/> 
+    <pattern id="lines-horizontal"   name="Gradually spaced lines (horiz.)"  icon="linesH"        relative-x-um="-750" relative-y-um="-500" fov-width-um="50" fov-height-um="50" group-id="8" z-stack="false" scan="false" scan-field-width-um="50" scan-field-height-um="50"/> 
+    <pattern id="lines-vertical"     name="Gradually spaced lines (vert.)"   icon="linesV"        relative-x-um="-250" relative-y-um="-500" fov-width-um="50" fov-height-um="50" group-id="9" z-stack="false" scan="false" scan-field-width-um="50" scan-field-height-um="50"/> 
+    <pattern id="lines-plus45"       name="Gradually spaced lines (+45deg)"  icon="linesP45" icon-scale="0.7" relative-x-um="-750" relative-y-um="-800" fov-width-um="50" fov-height-um="50" group-id="10" z-stack="false" scan="false" scan-field-width-um="50" scan-field-height-um="50"/> 
+
+    <!-- group 3: matrix of crosses (C3) = 50 um scan + z 0..3.5 um --> 
+    <pattern id="matrix-of-crosses"  name="Matrix of crosses (6x6)"          icon="crossmatrix" icon-detail="6" icon-scale="0.75" relative-x-um="250" relative-y-um="-200" fov-width-um="50" fov-height-um="50" group-id="11" z-stack="true" z-mode="range" z-start-um="0" z-end-um="3.5" z-step-um="0.1" scan="false" scan-field-width-um="50" scan-field-height-um="50"/> 
+
+    <!-- group 4: meridians (C4) = z +/-30 um --> 
+    <pattern id="meridians"          name="Meridians of a sphere"            icon="meridians"    relative-x-um="750" relative-y-um="-200" fov-width-um="200" fov-height-um="200" group-id="12" z-stack="true" z-mode="symmetric" z-step-um="1.0" z-slices-below="30" z-slices-above="30"/> 
+
+    <!-- groups 5 & 6: 3D crossing stairs (paired) --> 
+    <pattern id="stairs-dz-1_00"     name="3D crossing stairs (dz=1.00 um, 10 um)"   icon="stairs" icon-detail="10" icon-scale="1.00" relative-x-um="250" relative-y-um="-500" fov-width-um="200" fov-height-um="200" group-id="13" z-stack="true" z-mode="range" z-start-um="0" z-end-um="10" z-step-um="1.0"/> 
+    <pattern id="stairs-dz-0_75"     name="3D crossing stairs (dz=0.75 um, 7.5 um)"  icon="stairs" icon-detail="10" icon-scale="0.78" relative-x-um="750" relative-y-um="-500" fov-width-um="200" fov-height-um="200" group-id="14" z-stack="true" z-mode="range" z-start-um="0" z-end-um="7.5" z-step-um="0.75"/> 
+    <pattern id="stairs-dz-0_50"     name="3D crossing stairs (dz=0.50 um, 5 um)"    icon="stairs" icon-detail="10" icon-scale="0.58" relative-x-um="250" relative-y-um="-800" fov-width-um="200" fov-height-um="200" group-id="15" z-stack="true" z-mode="range" z-start-um="0" z-end-um="5" z-step-um="0.5"/> 
+    <pattern id="stairs-dz-0_25"     name="3D crossing stairs (dz=0.25 um, 2.5 um)"  icon="stairs" icon-detail="10" icon-scale="0.42" relative-x-um="750" relative-y-um="-800" fov-width-um="200" fov-height-um="200" group-id="16" z-stack="true" z-mode="range" z-start-um="0" z-end-um="2.5" z-step-um="0.25"/> 
+
+    <!-- group 17: background region outside the 5x5 pattern grid 
+         A leading single-frame overview image (saved "background-overview") plus a 
+         z-slides stack (saved "background") over the same +/-30 um range as meridians 
+         (C4). overview="true" 
+         requests the extra frame. Position is deliberately outside the 5x5 grid 
+         (grid extent is +/-1000 um). --> 
+    <pattern id="background"  name="Background region stack"                icon="background"        relative-x-um="1500" relative-y-um="0" fov-width-um="200" fov-height-um="200" group-id="17" z-stack="true" z-mode="symmetric" z-step-um="1.0" z-slices-below="30" z-slices-above="30" overview="true"/> 
+
+    <!-- 5 x 5 grid of small crosses (20 um), 500 um pitch, centred on the central cross. 
+         Nodes coinciding with the central cross / target / rings are skipped. --> 
+    <cross-grid rows="5" cols="5" pitch-x-um="500" pitch-y-um="500" center-x-um="0" center-y-um="0" 
+                length-um="20" icon="cross" group-id="0" id-prefix="grid-cross" 
+                skip-occupied="true" marker-scale="0.6" icon-scale="0.9"/> 
+  </patterns> 
+</argolight-plate> 
