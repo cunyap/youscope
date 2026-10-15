@@ -13,6 +13,8 @@
 ;--------------------------------
 ;Set to moder design/UI
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
+!include "x64.nsh"
 
 ;--------------------------------
 ;General
@@ -110,6 +112,10 @@ InstType "Client"
 
 ; Splash screen
 Function .onInit
+  ; 64-bit application: use the native registry view so that the uninstall
+  ; entries land in HKLM\SOFTWARE and not in WOW6432Node.
+  SetRegView 64
+
   SetOutPath $TEMP
   File /oname=spltmp.bmp "splash.bmp"
 
@@ -124,6 +130,29 @@ FunctionEnd
 Function VCRedistNeeded
 
 FunctionEnd  
+
+; Offers to run the Python environment setup. Shown at most once per install,
+; no matter how many Python-dependent sections are selected.
+Function OfferPythonSetup
+  StrCmp $RunPythonSetupAsked "1" done 0
+  StrCpy $RunPythonSetupAsked "1"
+  ; In silent mode (/S) never download gigabytes without being asked.
+  IfSilent done 0
+  MessageBox MB_YESNO|MB_ICONQUESTION \
+      "Python-based YouScope plugins were installed.$\n$\n\
+To use Python packages (numpy, cellpose, stardist, scikit-image, torch, \
+tensorflow, trackpy, btrack, ...) the Python environment must be created. \
+This downloads roughly 2-4 GB and takes 10-30 minutes.$\n$\n\
+Run the Python setup now? (Recommended and needs an internet connection.)$\n$\n\
+You can also run it later from:$\n$INSTDIR\setup_graalpy_venv.ps1" \
+      IDNO done
+  ExecWait 'powershell -ExecutionPolicy Bypass -NoProfile -File "$INSTDIR\setup_graalpy_venv.ps1"'
+  done:
+FunctionEnd
+
+Function un.onInit
+  SetRegView 64
+FunctionEnd
 
 
 ;--------------------------------
@@ -147,6 +176,25 @@ Section "-Main Program" SecMain
     SetOutPath "$INSTDIR\runtime"
     FILE /r "runtime\*"
     SetOutPath "$INSTDIR"
+
+    ; Sanity check: the bundled JDK 21 must contain a JVM, otherwise
+    ; YouScope64.exe cannot start.
+    IfFileExists "$INSTDIR\runtime\bin\server\jvm.dll" +2 0
+        MessageBox MB_OK|MB_ICONSTOP "The bundled Java 21 runtime is incomplete ($INSTDIR\runtime\bin\server\jvm.dll is missing).$\nYouScope will not start. Please rebuild the installer with a full JDK/JRE 21 in the 'runtime' folder."
+
+    ; JVM options read by the YouScope64.exe launcher (Launch4j reads
+    ; <exe-name>.l4j.ini next to the exe).
+    ; One option per line. %EXEDIR% is expanded by the launcher to the install dir.
+    FileOpen $0 "$INSTDIR\YouScope64.l4j.ini" w
+    FileWrite $0 "-Djava.library.path=%EXEDIR%\drivers64$\r$\n"
+    FileWrite $0 "--enable-native-access=ALL-UNNAMED$\r$\n"
+    FileWrite $0 "--add-opens=java.base/java.util=ALL-UNNAMED$\r$\n"
+    FileWrite $0 "--add-opens=java.base/java.lang=ALL-UNNAMED$\r$\n"
+    FileWrite $0 "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED$\r$\n"
+    FileWrite $0 "--add-opens=java.base/java.text=ALL-UNNAMED$\r$\n"
+    FileWrite $0 "--add-opens=java.base/java.math=ALL-UNNAMED$\r$\n"
+    FileWrite $0 "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED$\r$\n"
+    FileClose $0
 	
 	AccessControl::GrantOnFile "$INSTDIR" "(BU)" "FullAccess" 
 	Pop $0
@@ -241,6 +289,14 @@ SectionGroup "Microplate Types" SecMicroplateTypes
   		;Files:
   		FILE "plugins\youscope-bd-bioscience-multiwell-tc-microplates.jar"  
 	SectionEnd
+
+	Section "Custom arbitrary microplate editor" SecArbitraryMicroplateEditor
+  		SetOutPath "$INSTDIR\plugins"
+  		SectionIn 1 3 4
+  
+  		;Files:
+  		FILE "plugins\youscope-custom-arbitrary-microplate-editor.jar"  
+	SectionEnd
 SectionGroupEnd
 
 ;--------------------------------
@@ -280,6 +336,14 @@ SectionGroup "Measurement Types" SecMeasurementTypes
   		FILE "plugins\youscope-composed-imaging.jar"  
 	SectionEnd
 
+	Section "Continuation Measurement" SecContinuationMeasurement
+  		SetOutPath "$INSTDIR\plugins"
+  		SectionIn 1 3 4
+  
+  		;Files:
+  		FILE "plugins\youscope-continuation-measurement.jar"  
+	SectionEnd
+
 	Section "Task Measurement" SecTaskMeasurement
   		SetOutPath "$INSTDIR\plugins"
   		SectionIn 1 2 3 4
@@ -316,6 +380,13 @@ SectionGroup "Measurement Result Consumers" SecResultConsumers
   		;Files:
 		SetOutPath "$INSTDIR\plugins"
   		FILE "plugins\youscope-open-measurement-folder.jar"  
+	SectionEnd
+	Section "Show Measurement Information" SecShowMeasurementInfo
+  		SectionIn 1 2 3 4
+  
+  		;Files:
+		SetOutPath "$INSTDIR\plugins"
+  		FILE "plugins\youscope-show-measurement-information.jar"  
 	SectionEnd
 SectionGroupEnd
 
@@ -513,6 +584,13 @@ SectionGroup "Job Types" SecJobTypes
   		;Files:
   		FILE "plugins\youscope-slim.jar"  
 	SectionEnd
+	Section "SLIM Control" SecSLIMControl
+		SetOutPath "$INSTDIR\plugins"
+  		SectionIn 1 3 4
+  
+  		;Files:
+  		FILE "plugins\youscope-slim-control.jar"  
+	SectionEnd
 	Section "Share Execution" SecShareExecution
 		SetOutPath "$INSTDIR\plugins"
   		SectionIn 1 3 4
@@ -608,7 +686,7 @@ SectionGroup "Misc" SecOptional
 	; All GraalPy/Truffle runtime JARs (polyglot, truffle-*, python-*, icu4j,
 	; word, collections, regex, nativeimage, js-language) are committed to
 	; youscope/libs and copied into lib/ by Gradle. They ship inside the
-	; installer via the "FILE lib\*" line in SecMain. No per-JAR FILE lines
+	; installer via the "FILE lib\*" line in SecMain. No per-JAR file lines
 	; are needed here. The heavy *Python packages* (numpy, cellpose, stardist,
 	; torch, tensorflow, scipy) are not bundled; they are fetched at first run
 	; by setup_graalpy_venv.ps1 (see the prompt at the end of SecGraalPy).
@@ -626,22 +704,10 @@ SectionGroup "Misc" SecOptional
       AccessControl::GrantOnFile "$INSTDIR" "(BU)" "FullAccess"
       Pop $0
 
-      ; Offer to run the Python environment setup now. This downloads GraalPy,
-      ; a CPython 3.11 env and the DL stack (~2-4 GB). Cellpose and
-      ; StarDist below depend on this environment, so it is also offered if the
-      ; user only selected those.
-      StrCmp $RunPythonSetupAsked "1" skip_setup_prompt 0
-      StrCpy $RunPythonSetupAsked "1"
-      MessageBox MB_YESNO|MB_ICONQUESTION \
-          "GraalPy scripting was installed.$\n$\n\
-To use Python packages (numpy, cellpose, stardist, scikit-image, torch, \
-tensorflow) the Python environment must be created. This downloads roughly \
-2-4 GB and takes 10-30 minutes.$\n$\n\
-Run the Python setup now? (Recommended and needs an internet connection.)$\n$\n\
-You can also run it later from:$\n$INSTDIR\setup_graalpy_venv.ps1" \
-          IDNO skip_setup_prompt
-      ExecWait 'powershell -ExecutionPolicy Bypass -NoProfile -File "$INSTDIR\setup_graalpy_venv.ps1"'
-      skip_setup_prompt:
+      ; Offer to run the Python environment setup (GraalPy, CPython 3.11 env and
+      ; the DL stack, ~2-4 GB). All Python-based plugins call the same helper,
+      ; so the prompt appears once.
+      Call OfferPythonSetup
 	SectionEnd
 
 	;--------------------------------
@@ -659,6 +725,12 @@ You can also run it later from:$\n$INSTDIR\setup_graalpy_venv.ps1" \
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-cellpose.jar"
+      ; Cellpose needs the Python environment, which ships with the GraalPy
+      ; setup scripts, so make sure they are present even without SecGraalPy.
+      SetOutPath "$INSTDIR"
+      FILE /nonfatal "setup_graalpy_venv.bat"
+      FILE /nonfatal "setup_graalpy_venv.ps1"
+      Call OfferPythonSetup
 	SectionEnd
 
 	;--------------------------------
@@ -667,6 +739,71 @@ You can also run it later from:$\n$INSTDIR\setup_graalpy_venv.ps1" \
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-stardist.jar"
+      SetOutPath "$INSTDIR"
+      FILE /nonfatal "setup_graalpy_venv.bat"
+      FILE /nonfatal "setup_graalpy_venv.ps1"
+      Call OfferPythonSetup
+	SectionEnd
+
+	;--------------------------------
+	; Tracking with trackpy.
+	; Jar names follow the convention plugins\youscope-<gradle-module>.jar.
+	Section "Trackpy Tracker" SecTrackpy
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-trackpy-tracker.jar"
+      SetOutPath "$INSTDIR"
+      FILE /nonfatal "setup_graalpy_venv.bat"
+      FILE /nonfatal "setup_graalpy_venv.ps1"
+      Call OfferPythonSetup
+	SectionEnd
+
+	Section "BTrack Tracker" SecBTrack
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-btrack-tracker.jar"
+      SetOutPath "$INSTDIR"
+      FILE /nonfatal "setup_graalpy_venv.bat"
+      FILE /nonfatal "setup_graalpy_venv.ps1"
+      Call OfferPythonSetup
+	SectionEnd
+
+	Section "CellProfiler Quantifier" SecCellProfiler
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-cellprofiler-quantifier.jar"
+      SetOutPath "$INSTDIR"
+      FILE /nonfatal "setup_graalpy_venv.bat"
+      FILE /nonfatal "setup_graalpy_venv.ps1"
+      Call OfferPythonSetup
+	SectionEnd
+
+	Section "TrackMate Tracker" SecTrackMate
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-trackmate-tracker.jar"
+	  SetOutPath "$INSTDIR"
+      FILE /nonfatal "setup_graalpy_venv.bat"
+      FILE /nonfatal "setup_graalpy_venv.ps1"
+      Call OfferPythonSetup
+	SectionEnd
+
+	Section "Quantitative phase imaging with TIE" SecTie
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-tie.jar"
+	SectionEnd
+
+	Section "fastER Segmentation" SecFaster
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-faster.jar"
+	SectionEnd
+
+	Section "Argolight Microscope Calibration" SecArgolight
+	  SetOutPath "$INSTDIR\plugins"
+	  SectionIn 1 3 4
+      FILE "plugins\youscope-argolight-calibration.jar"
 	SectionEnd
 
 	;--------------------------------
@@ -822,11 +959,19 @@ SectionEnd
 ;--------------------------------
 ; Uninstaller
 Section "Uninstall"
+    SetShellVarContext all
+
+    ; Unregister the 64-bit Nemesys COM DLL before its files are deleted.
+    IfFileExists "$INSTDIR\drivers64\nemesys\NemesysDotCom.dll" 0 +2
+        ExecWait '"$WINDIR\sysnative\regsvr32.exe" /u /s "$INSTDIR\drivers64\nemesys\NemesysDotCom.dll"'
+
     RMDir /r "$INSTDIR\runtime"
     RMDir /r "$INSTDIR\drivers64"
     RMDir /r "$INSTDIR\lib"
     RMDir /r "$INSTDIR\plugins"
     RMDir /r "$INSTDIR\documentation"
+    RMDir /r "$INSTDIR\cellx"
+    RMDir /r "$INSTDIR\openbis"
 	; Remove Python environments
     RMDir /r "$INSTDIR\graalpy-venv"
     RMDir /r "$INSTDIR\cpython-env"
@@ -836,8 +981,14 @@ Section "Uninstall"
     Delete "$INSTDIR\YouScope64.exe"
     Delete "$INSTDIR\LICENSE"
     Delete "$INSTDIR\YSConfig_demo.cfg"
+    Delete "$INSTDIR\YouScope64.l4j.ini"
     Delete "$INSTDIR\setup_graalpy_venv.bat"
     Delete "$INSTDIR\setup_graalpy_venv.ps1"
+    Delete "$INSTDIR\graalpy_config.txt"
+    Delete "$INSTDIR\graalpy_requirements.txt"
+    Delete "$INSTDIR\launch_youscope_jdk21.bat"
+    Delete "$INSTDIR\launch_youscope_jdk17.bat"
+    Delete "$INSTDIR\vcredist_x64.exe"
 
     ; Do not recursively remove scripts or $INSTDIR: these may contain
     ; measurements, configuration, user scripts, or Python environments.
@@ -851,6 +1002,7 @@ Section "Uninstall"
 
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\YouScope"
     DeleteRegKey HKCU "Software\YouScope64"
+    DeleteRegKey HKCU "Software\YouScope2"
 
     RMDir "$INSTDIR"
 
@@ -909,6 +1061,18 @@ SectionEnd
 	LangString DESC_SecStarDist ${LANG_ENGLISH} "Star-convex nucleus segmentation (StarDist). Requires the GraalPy Python environment and TensorFlow, which are downloaded by the Python setup script."
 	LangString DESC_SecFairExport ${LANG_ENGLISH} "Export measurements as FAIR datasets (OME-Zarr / OME-TIFF) with rich metadata. All required libraries ship with the installer."
 	LangString DESC_SecImageFormats ${LANG_ENGLISH} "Possibility to save images in various image formats like tiff."
+
+	LangString DESC_SecTrackpy ${LANG_ENGLISH} "Particle/cell tracking with trackpy. Requires the GraalPy Python environment (downloaded by the Python setup script)."
+	LangString DESC_SecBTrack ${LANG_ENGLISH} "Cell tracking with btrack. Requires the GraalPy Python environment (downloaded by the Python setup script)."
+	LangString DESC_SecCellProfiler ${LANG_ENGLISH} "Quantification of cell features with CellProfiler. Requires the GraalPy Python environment (downloaded by the Python setup script)."
+	LangString DESC_SecTrackMate ${LANG_ENGLISH} "Cell tracking with TrackMate.  Requires the GraalPy Python environment (downloaded by the Python setup script)."
+	LangString DESC_SecTie ${LANG_ENGLISH} "Quantitative pahse imaging TIE plugin for YouScope."
+	LangString DESC_SecFaster ${LANG_ENGLISH} "fastER segmentation plugin for YouScope."
+	LangString DESC_SecArgolight ${LANG_ENGLISH} "Microscope calibration using Argolight calibration slides."
+	LangString DESC_SecArbitraryMicroplateEditor ${LANG_ENGLISH} "Editor to define microplates with arbitrary well layouts."
+	LangString DESC_SecContinuationMeasurement ${LANG_ENGLISH} "Measurement which continues a previously run measurement."
+	LangString DESC_SecShowMeasurementInfo ${LANG_ENGLISH} "Displays information about a measurement."
+	LangString DESC_SecSLIMControl ${LANG_ENGLISH} "User interface to control SLIM microscopy hardware for quantitative phase imaging."
 
 	LangString DESC_SecDocumentation ${LANG_ENGLISH} "In program documentation of the YouScope tools and measurement types."
 	LangString DESC_SecExampleScripts ${LANG_ENGLISH} "Script snipplets which exemplify how jobs can be programmed by using different script engines."
@@ -991,7 +1155,7 @@ SectionEnd
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecLiveStream} $(DESC_SecLiveStream) 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecMultiStream} $(DESC_SecMultiStream) 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecPositionControl} $(DESC_SecPositionControl) 
-		!insertmacro MUI_DESCRIPTION_TEXT ${SecPositionControl} $(DESC_SecFocusViewer) 
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecFocusViewer} $(DESC_SecFocusViewer) 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecMeasurementViewer} $(DESC_SecMeasurementViewer) 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecScripting} $(DESC_SecScripting) 
 		;!insertmacro MUI_DESCRIPTION_TEXT ${SecYouPong} $(DESC_SecYouPong) 
@@ -1004,6 +1168,17 @@ SectionEnd
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecStarDist} $(DESC_SecStarDist)
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecFairExport} $(DESC_SecFairExport)
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecImageFormats} $(DESC_SecImageFormats)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecTrackpy} $(DESC_SecTrackpy)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecBTrack} $(DESC_SecBTrack)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecCellProfiler} $(DESC_SecCellProfiler)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecTrackMate} $(DESC_SecTrackMate)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecTie} $(DESC_SecTie)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecFaster} $(DESC_SecFaster)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecArgolight} $(DESC_SecArgolight)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecArbitraryMicroplateEditor} $(DESC_SecArbitraryMicroplateEditor)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecContinuationMeasurement} $(DESC_SecContinuationMeasurement)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecShowMeasurementInfo} $(DESC_SecShowMeasurementInfo)
+		!insertmacro MUI_DESCRIPTION_TEXT ${SecSLIMControl} $(DESC_SecSLIMControl)
 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecDocumentation} $(DESC_SecDocumentation) 
 		!insertmacro MUI_DESCRIPTION_TEXT ${SecExampleScripts} $(DESC_SecExampleScripts)
