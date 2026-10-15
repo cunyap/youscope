@@ -1,0 +1,14 @@
+// argolight-calibration: a YouScope measurement plugin that automates image
+// acquisition on Argolight calibration slides.
+//
+// Reuses the microplate-measurement runtime and the imaging-job / z-slides job
+// types. The remaining runtime dependencies (change-position-job, focusing-job,
+// live-modifiable-job, custom-microplates) come transitively from
+// microplate-measurement and are listed in src/main/resources/META-INF/MANIFEST.MF
+// so YouScope's plugin loader can resolve them at runtime.
+dependencies {
+	implementation project(':plugins:microplate-measurement')
+	implementation project(':plugins:imaging-job')
+	implementation project(':plugins:z-slides')
+	implementation project(':plugins:composed-imaging')
+}
