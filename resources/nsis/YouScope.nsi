@@ -14,6 +14,7 @@
 ;Set to moder design/UI
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
+!include "Sections.nsh"
 !include "x64.nsh"
 
 ;--------------------------------
@@ -34,9 +35,9 @@ RequestExecutionLevel admin
 ;--------------------------------
 ;Variables
 Var StartMenuFolder
-; Guards the "run Python setup now?" prompt so it is shown at most once even if
-; several Python-dependent sections (GraalPy, Cellpose, StarDist) are selected.
-Var RunPythonSetupAsked
+; Comma separated list of the selected Python-based plugins, filled in .onInstSuccess
+; and handed to setup_graalpy_venv.ps1 (-Plugins) so only the needed environments are built.
+Var PythonPlugins
 
 ;--------
 ; Config
@@ -131,25 +132,6 @@ Function VCRedistNeeded
 
 FunctionEnd  
 
-; Offers to run the Python environment setup. Shown at most once per install,
-; no matter how many Python-dependent sections are selected.
-Function OfferPythonSetup
-  StrCmp $RunPythonSetupAsked "1" done 0
-  StrCpy $RunPythonSetupAsked "1"
-  ; In silent mode (/S) never download gigabytes without being asked.
-  IfSilent done 0
-  MessageBox MB_YESNO|MB_ICONQUESTION \
-      "Python-based YouScope plugins were installed.$\n$\n\
-To use Python packages (numpy, cellpose, stardist, scikit-image, torch, \
-tensorflow, trackpy, btrack, ...) the Python environment must be created. \
-This downloads roughly 2-4 GB and takes 10-30 minutes.$\n$\n\
-Run the Python setup now? (Recommended and needs an internet connection.)$\n$\n\
-You can also run it later from:$\n$INSTDIR\setup_graalpy_venv.ps1" \
-      IDNO done
-  ExecWait 'powershell -ExecutionPolicy Bypass -NoProfile -File "$INSTDIR\setup_graalpy_venv.ps1"'
-  done:
-FunctionEnd
-
 Function un.onInit
   SetRegView 64
 FunctionEnd
@@ -171,6 +153,10 @@ Section "-Main Program" SecMain
 			
 	FILE LICENSE
 	FILE YouScope64.exe
+
+	; Python environment setup (run by .onInstSuccess for the selected plugins, or manually later)
+    FILE "..\..\setup_graalpy_venv.bat"
+	FILE "..\..\setup_graalpy_venv.ps1"
 
     ; Private JDK 21. YouScope does not require a system Java installation.
     SetOutPath "$INSTDIR\runtime"
@@ -689,25 +675,18 @@ SectionGroup "Misc" SecOptional
 	; installer via the "FILE lib\*" line in SecMain. No per-JAR file lines
 	; are needed here. The heavy *Python packages* (numpy, cellpose, stardist,
 	; torch, tensorflow, scipy) are not bundled; they are fetched at first run
-	; by setup_graalpy_venv.ps1 (see the prompt at the end of SecGraalPy).
+	; by setup_graalpy_venv.ps1, which .onInstSuccess runs once for the selected plugins.
 	Section "GraalPy Scripting (Python 3)" SecGraalPy
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-graalpy-scripting.jar"
 
-      SetOutPath "$INSTDIR"
-      FILE /nonfatal "setup_graalpy_venv.bat"
-      FILE /nonfatal "setup_graalpy_venv.ps1"
 
       ; Grant write access to $INSTDIR so the (non-admin) user can later create
       ; the venvs under Program Files without elevation.
       AccessControl::GrantOnFile "$INSTDIR" "(BU)" "FullAccess"
       Pop $0
 
-      ; Offer to run the Python environment setup (GraalPy, CPython 3.11 env and
-      ; the DL stack, ~2-4 GB). All Python-based plugins call the same helper,
-      ; so the prompt appears once.
-      Call OfferPythonSetup
 	SectionEnd
 
 	;--------------------------------
@@ -725,12 +704,6 @@ SectionGroup "Misc" SecOptional
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-cellpose.jar"
-      ; Cellpose needs the Python environment, which ships with the GraalPy
-      ; setup scripts, so make sure they are present even without SecGraalPy.
-      SetOutPath "$INSTDIR"
-      FILE /nonfatal "setup_graalpy_venv.bat"
-      FILE /nonfatal "setup_graalpy_venv.ps1"
-      Call OfferPythonSetup
 	SectionEnd
 
 	;--------------------------------
@@ -739,68 +712,48 @@ SectionGroup "Misc" SecOptional
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-stardist.jar"
-      SetOutPath "$INSTDIR"
-      FILE /nonfatal "setup_graalpy_venv.bat"
-      FILE /nonfatal "setup_graalpy_venv.ps1"
-      Call OfferPythonSetup
 	SectionEnd
 
 	;--------------------------------
-	; Tracking with trackpy.
+	; Tracking, analysis and calibration plugins.
 	; Jar names follow the convention plugins\youscope-<gradle-module>.jar.
 	Section "Trackpy Tracker" SecTrackpy
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-trackpy-tracker.jar"
-      SetOutPath "$INSTDIR"
-      FILE /nonfatal "setup_graalpy_venv.bat"
-      FILE /nonfatal "setup_graalpy_venv.ps1"
-      Call OfferPythonSetup
 	SectionEnd
 
 	Section "BTrack Tracker" SecBTrack
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-btrack-tracker.jar"
-      SetOutPath "$INSTDIR"
-      FILE /nonfatal "setup_graalpy_venv.bat"
-      FILE /nonfatal "setup_graalpy_venv.ps1"
-      Call OfferPythonSetup
 	SectionEnd
 
 	Section "CellProfiler Quantifier" SecCellProfiler
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-cellprofiler-quantifier.jar"
-      SetOutPath "$INSTDIR"
-      FILE /nonfatal "setup_graalpy_venv.bat"
-      FILE /nonfatal "setup_graalpy_venv.ps1"
-      Call OfferPythonSetup
 	SectionEnd
 
 	Section "TrackMate Tracker" SecTrackMate
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-trackmate-tracker.jar"
-	  SetOutPath "$INSTDIR"
-      FILE /nonfatal "setup_graalpy_venv.bat"
-      FILE /nonfatal "setup_graalpy_venv.ps1"
-      Call OfferPythonSetup
 	SectionEnd
 
-	Section "Quantitative phase imaging with TIE" SecTie
+	Section "TIE" SecTie
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-tie.jar"
 	SectionEnd
 
-	Section "fastER Segmentation" SecFaster
+	Section "FASTER" SecFaster
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-faster.jar"
 	SectionEnd
 
-	Section "Argolight Microscope Calibration" SecArgolight
+	Section "Argolight Calibration" SecArgolight
 	  SetOutPath "$INSTDIR\plugins"
 	  SectionIn 1 3 4
       FILE "plugins\youscope-argolight-calibration.jar"
@@ -957,6 +910,59 @@ SectionEnd
 
 
 ;--------------------------------
+; Post-install: (re)create the Python environments and graalpy_config.txt
+; for the Python-based plugins that were selected. Runs once, after all sections,
+; so it sees the final selection. The script is idempotent: environments that
+; already exist are reused, graalpy_config.txt is merged (manual edits are kept).
+!macro AddPythonPlugin SecId Name
+  SectionGetFlags ${SecId} $1
+  IntOp $1 $1 & ${SF_SELECTED}
+  ${If} $1 <> 0
+    ${If} $PythonPlugins == ""
+      StrCpy $PythonPlugins "${Name}"
+    ${Else}
+      StrCpy $PythonPlugins "$PythonPlugins,${Name}"
+    ${EndIf}
+  ${EndIf}
+!macroend
+
+Function .onInstSuccess
+  StrCpy $PythonPlugins ""
+  !insertmacro AddPythonPlugin ${SecGraalPy}      "graalpy"
+  !insertmacro AddPythonPlugin ${SecCellpose}     "cellpose"
+  !insertmacro AddPythonPlugin ${SecStarDist}     "stardist"
+  !insertmacro AddPythonPlugin ${SecTrackpy}      "trackpy"
+  !insertmacro AddPythonPlugin ${SecBTrack}       "btrack"
+  !insertmacro AddPythonPlugin ${SecCellProfiler} "cellprofiler"
+  !insertmacro AddPythonPlugin ${SecTrackMate}    "trackmate"
+  !insertmacro AddPythonPlugin ${SecFairExport}   "fairexport"
+  !insertmacro AddPythonPlugin ${SecFaster}       "faster"
+  !insertmacro AddPythonPlugin ${SecCellDetection} "celldetection"
+
+  ${If} $PythonPlugins == ""
+    Return
+  ${EndIf}
+  ; Never download gigabytes in silent mode; the user can run setup_graalpy_venv.bat later.
+  ${If} ${Silent}
+    Return
+  ${EndIf}
+
+  MessageBox MB_YESNO|MB_ICONQUESTION \
+      "The selected plugins need Python environments: $PythonPlugins$\n$\n\
+This downloads roughly 2-5 GB and takes 10-40 minutes. graalpy_config.txt is updated, \
+existing settings in it are kept.$\n$\n\
+CellProfiler additionally needs a full JDK (17 recommended) and the Microsoft C++ Build Tools.$\n$\n\
+Run the Python setup now? (Recommended and needs an internet connection.)$\n$\n\
+You can also run it later (or again after adding plugins) by double-clicking:$\n$INSTDIR\setup_graalpy_venv.bat" \
+      IDNO python_setup_done
+  ; The installer is a 32-bit process: use the native 64-bit PowerShell (sysnative) so that
+  ; Program Files paths resolve correctly. -PauseAtEnd keeps the window open so the
+  ; result and any errors can be read; details are also logged to setup_graalpy_venv.log.
+  ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -ExecutionPolicy Bypass -NoProfile -File "$INSTDIR\setup_graalpy_venv.ps1" -Plugins "$PythonPlugins" -PauseAtEnd'
+  python_setup_done:
+FunctionEnd
+
+;--------------------------------
 ; Uninstaller
 Section "Uninstall"
     SetShellVarContext all
@@ -977,6 +983,8 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\cpython-env"
     RMDir /r "$INSTDIR\graalpy-standalone"
     RMDir /r "$INSTDIR\uv"
+    RMDir /r "$INSTDIR\cellprofiler-env"
+    RMDir /r "$INSTDIR\fiji-env"
 
     Delete "$INSTDIR\YouScope64.exe"
     Delete "$INSTDIR\LICENSE"
@@ -986,6 +994,8 @@ Section "Uninstall"
     Delete "$INSTDIR\setup_graalpy_venv.ps1"
     Delete "$INSTDIR\graalpy_config.txt"
     Delete "$INSTDIR\graalpy_requirements.txt"
+    Delete "$INSTDIR\setup_graalpy_venv.log"
+    Delete "$INSTDIR\graalpy_config.txt.bak"
     Delete "$INSTDIR\launch_youscope_jdk21.bat"
     Delete "$INSTDIR\launch_youscope_jdk17.bat"
     Delete "$INSTDIR\vcredist_x64.exe"
@@ -1059,7 +1069,7 @@ SectionEnd
 	LangString DESC_SecGraalJs ${LANG_ENGLISH} "JavaScript scripting through GraalJS, with full Java interop. Uses the bundled JDK 21 runtime; no extra download required."
 	LangString DESC_SecCellpose ${LANG_ENGLISH} "Deep-learning cell segmentation (Cellpose). Requires the GraalPy Python environment and PyTorch, which are downloaded by the Python setup script."
 	LangString DESC_SecStarDist ${LANG_ENGLISH} "Star-convex nucleus segmentation (StarDist). Requires the GraalPy Python environment and TensorFlow, which are downloaded by the Python setup script."
-	LangString DESC_SecFairExport ${LANG_ENGLISH} "Export measurements as FAIR datasets (OME-Zarr / OME-TIFF) with rich metadata. All required libraries ship with the installer."
+	LangString DESC_SecFairExport ${LANG_ENGLISH} "Export measurements as FAIR datasets (OME-Zarr / OME-TIFF) with rich metadata. All required Java libraries ship with the installer; the optional napari / OME-Zarr viewer tools are installed into the Python environment."
 	LangString DESC_SecImageFormats ${LANG_ENGLISH} "Possibility to save images in various image formats like tiff."
 
 	LangString DESC_SecTrackpy ${LANG_ENGLISH} "Particle/cell tracking with trackpy. Requires the GraalPy Python environment (downloaded by the Python setup script)."
