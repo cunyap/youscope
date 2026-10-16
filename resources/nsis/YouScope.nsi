@@ -155,8 +155,8 @@ Section "-Main Program" SecMain
 	FILE YouScope64.exe
 
 	; Python environment setup (run by .onInstSuccess for the selected plugins, or manually later)
-    FILE "..\..\setup_graalpy_venv.bat"
-	FILE "..\..\setup_graalpy_venv.ps1"
+    FILE "setup_graalpy_venv.bat"
+	FILE "setup_graalpy_venv.ps1"
 
     ; Private JDK 21. YouScope does not require a system Java installation.
     SetOutPath "$INSTDIR\runtime"

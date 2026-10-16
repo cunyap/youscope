@@ -565,6 +565,23 @@ tasks.register('createInstaller', Exec) {
                 "Missing NSIS script: ${installerScript}"
             )
         }
+
+        // The Python setup scripts live in the repository root so users can also
+        // run them by hand. Stage them next to YouScope.nsi for makensis.
+        copy {
+            from(rootProject.projectDir) {
+                include 'setup_graalpy_venv.bat', 'setup_graalpy_venv.ps1'
+            }
+            into nsisStage
+        }
+
+        ['setup_graalpy_venv.bat', 'setup_graalpy_venv.ps1'].each { n ->
+            if (!file("${nsisStage}/${n}").exists()) {
+                throw new GradleException(
+                    "Missing ${n} in ${rootProject.projectDir}; it is shipped by the installer."
+                )
+            }
+        }
     }
 
     def makensis = System.getenv('MAKENSIS') ?: 'makensis'
