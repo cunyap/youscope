@@ -16,6 +16,8 @@
 !include "LogicLib.nsh"
 !include "Sections.nsh"
 !include "x64.nsh"
+!include "StrFunc.nsh"
+${StrRep}
 
 ;--------------------------------
 ;General
@@ -155,8 +157,8 @@ Section "-Main Program" SecMain
 	FILE YouScope64.exe
 
 	; Python environment setup (run by .onInstSuccess for the selected plugins, or manually later)
-    FILE "setup_graalpy_venv.bat"
-	FILE "setup_graalpy_venv.ps1"
+	FILE /nonfatal "setup_graalpy_venv.bat"
+	FILE /nonfatal "setup_graalpy_venv.ps1"
 
     ; Private JDK 21. YouScope does not require a system Java installation.
     SetOutPath "$INSTDIR\runtime"
@@ -168,19 +170,12 @@ Section "-Main Program" SecMain
     IfFileExists "$INSTDIR\runtime\bin\server\jvm.dll" +2 0
         MessageBox MB_OK|MB_ICONSTOP "The bundled Java 21 runtime is incomplete ($INSTDIR\runtime\bin\server\jvm.dll is missing).$\nYouScope will not start. Please rebuild the installer with a full JDK/JRE 21 in the 'runtime' folder."
 
-    ; JVM options read by the YouScope64.exe launcher (Launch4j reads
-    ; <exe-name>.l4j.ini next to the exe).
-    ; One option per line. %EXEDIR% is expanded by the launcher to the install dir.
-    FileOpen $0 "$INSTDIR\YouScope64.l4j.ini" w
-    FileWrite $0 "-Djava.library.path=%EXEDIR%\drivers64$\r$\n"
-    FileWrite $0 "--enable-native-access=ALL-UNNAMED$\r$\n"
-    FileWrite $0 "--add-opens=java.base/java.util=ALL-UNNAMED$\r$\n"
-    FileWrite $0 "--add-opens=java.base/java.lang=ALL-UNNAMED$\r$\n"
-    FileWrite $0 "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED$\r$\n"
-    FileWrite $0 "--add-opens=java.base/java.text=ALL-UNNAMED$\r$\n"
-    FileWrite $0 "--add-opens=java.base/java.math=ALL-UNNAMED$\r$\n"
-    FileWrite $0 "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED$\r$\n"
-    FileClose $0
+    ; The JVM options (--add-opens, --enable-native-access, java.library.path, ...) are
+    ; embedded in YouScope64.exe by Gradle (createExe.jvmOptions). Do not write a
+    ; YouScope64.l4j.ini: Launch4j appends its options unquoted, so an install path with a
+    ; space (C:\Program Files\...) splits an option and Java exits with code 1.
+    ; Remove an .ini left behind by an earlier installer build.
+    Delete "$INSTDIR\YouScope64.l4j.ini"
 	
 	AccessControl::GrantOnFile "$INSTDIR" "(BU)" "FullAccess" 
 	Pop $0
@@ -232,6 +227,25 @@ Section "!Server" SecServer
 	;Files:
 	SetOutPath "$INSTDIR"
 	FILE "YSConfig_demo.cfg"
+
+	; Default client settings (FlatDark skin, demo configuration). Written only when the
+	; file does not exist yet, so an upgrade never overwrites the user's own settings.
+	; Generated here because it contains the install path,
+	; which must be escaped as in a Java .properties file (C\:\\Program Files\\...).
+	IfFileExists "$INSTDIR\youscope_properties.prop" ys_props_done 0
+		${StrRep} $R0 "$INSTDIR" "\" "\\"
+		${StrRep} $R0 "$R0" ":" "\:"
+		FileOpen $0 "$INSTDIR\youscope_properties.prop" w
+		FileWrite $0 "#YouScope Settings$\r$\n"
+		FileWrite $0 "YouScope.configFileLast0=$R0\\YSConfig_demo.cfg$\r$\n"
+		FileWrite $0 "YouScope.general.startupType=CLIENT_SERVER$\r$\n"
+		FileWrite $0 "YouScope.server.forceConnectionConfiguration=false$\r$\n"
+		FileWrite $0 "YouScope.server.lastPort=1237$\r$\n"
+		FileWrite $0 "YouScope.server.lastURL=127.000.000.001$\r$\n"
+		FileWrite $0 "YouScope.server.microscopeConnectionType=YouScope.StandAlone$\r$\n"
+		FileWrite $0 "YouScope.skin=YouScope.Skins.FlatDark$\r$\n"
+		FileClose $0
+	ys_props_done:
 	SetOutPath "$INSTDIR\lib"
 	FILE "lib\youscope-server.jar"
 	SetOutPath "$INSTDIR\plugins"
@@ -989,6 +1003,7 @@ Section "Uninstall"
     Delete "$INSTDIR\YouScope64.exe"
     Delete "$INSTDIR\LICENSE"
     Delete "$INSTDIR\YSConfig_demo.cfg"
+    Delete "$INSTDIR\youscope_properties.prop"
     Delete "$INSTDIR\YouScope64.l4j.ini"
     Delete "$INSTDIR\setup_graalpy_venv.bat"
     Delete "$INSTDIR\setup_graalpy_venv.ps1"
@@ -1082,7 +1097,7 @@ SectionEnd
 	LangString DESC_SecArbitraryMicroplateEditor ${LANG_ENGLISH} "Editor to define microplates with arbitrary well layouts."
 	LangString DESC_SecContinuationMeasurement ${LANG_ENGLISH} "Measurement which continues a previously run measurement."
 	LangString DESC_SecShowMeasurementInfo ${LANG_ENGLISH} "Displays information about a measurement."
-	LangString DESC_SecSLIMControl ${LANG_ENGLISH} "User interface to control SLIM microscopy hardware for quantitative phase imaging."
+	LangString DESC_SecSLIMControl ${LANG_ENGLISH} "User interface to control SLIM microscopy hardware."
 
 	LangString DESC_SecDocumentation ${LANG_ENGLISH} "In program documentation of the YouScope tools and measurement types."
 	LangString DESC_SecExampleScripts ${LANG_ENGLISH} "Script snipplets which exemplify how jobs can be programmed by using different script engines."
