@@ -334,7 +334,9 @@ function New-UvVenv {
     if (Test-Path $py) { Write-OK "venv present: $Dir"; return $true }
     Write-Host "  Creating Python $PythonVersion venv at $Dir ..."
     if (Test-Path $Dir) { Remove-Item $Dir -Recurse -Force -ErrorAction SilentlyContinue }
-    & $UvExe venv $Dir --python $PythonVersion 2>&1 | Select-Object -Last 3 | Out-Host
+    $prevEap = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"   # uv logs to stderr
+    & $UvExe venv $Dir --python $PythonVersion 2>&1 | ForEach-Object { "$_" } | Select-Object -Last 3 | Out-Host
+    $ErrorActionPreference = $prevEap
     if (Test-Path $py) { Write-OK "venv at $Dir (Python $PythonVersion)"; return $true }
     Write-Fail "uv venv creation failed: $Dir"
     return $false
@@ -523,14 +525,10 @@ if ($wCellProfiler) {
             #   uv pip install --no-build-isolation python-javabridge==4.0.5 python-bioformats
             #   uv pip install cellprofiler==4.2.8.1
             #   uv pip install setuptools
+            # A fresh uv venv contains no build tools, and --no-build-isolation builds inside the venv.
+            [void](Install-CpPkg -Spec @("setuptools","wheel","cython","numpy") -Label "build prerequisites" -Python $CpfPython -Tail 4)
             Write-Host "  Installing python-javabridge 4.0.5 + python-bioformats (compiles javabridge, can take several minutes)..."
             $ok = Install-CpPkg -Spec @("python-javabridge==4.0.5","python-bioformats") -Python $CpfPython -ExtraArgs @("--no-build-isolation") -Tail 8
-            if (-not $ok) {
-                # --no-build-isolation needs the build tools inside the venv; a fresh uv venv has none.
-                Write-Host "  Retrying with build prerequisites (setuptools, wheel, cython, numpy)..."
-                [void](Install-CpPkg -Spec @("setuptools","wheel","cython","numpy") -Python $CpfPython -Tail 4)
-                $ok = Install-CpPkg -Spec @("python-javabridge==4.0.5","python-bioformats") -Python $CpfPython -ExtraArgs @("--no-build-isolation") -Tail 8
-            }
             if ($ok) {
                 Write-Host "  Installing cellprofiler 4.2.8.1..."
                 $ok = Install-CpPkg -Spec @("cellprofiler==4.2.8.1") -Python $CpfPython -Tail 8
@@ -762,9 +760,19 @@ if ($wTrackMate) {
 
 if ($wGraal) {
     $gv = $null
+    $gOut = @()
     if ($graalNumpyOk -and (Test-Path $VenvGraalPy)) {
-        $gv = & $VenvGraalPy -c "import numpy; print('YSNUMPY ' + numpy.__version__)" 2>&1 |
-              ForEach-Object { "$_" } | Where-Object { $_ -like "YSNUMPY *" } | Select-Object -Last 1
+        # Script file instead of -c solving quoting problems with spaces in the install path.
+        $GraalTest = Join-Path $env:TEMP "ys_graal_$PID.py"
+        [System.IO.File]::WriteAllText($GraalTest, "import numpy`nprint('YSNUMPY ' + numpy.__version__)`n", $Utf8NoBom)
+        $gOut = @(& $VenvGraalPy $GraalTest 2>&1 | ForEach-Object { "$_" })
+        $gExit = $LASTEXITCODE
+        Remove-Item $GraalTest -Force -ErrorAction SilentlyContinue
+        $gv = $gOut | Where-Object { $_ -like "YSNUMPY *" } | Select-Object -Last 1
+        if (-not $gv) {
+            Write-Warn "graalpy numpy check failed (exit code $gExit). Output:"
+            $gOut | Where-Object { $_.Trim() } | Select-Object -Last 12 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
+        }
     }
     if ($gv) { [void]$coverage.Add(@{ Name = "GraalPy scripting (numpy)"; Status = "OK"; Detail = $gv.Substring(8) }) }
     else {
