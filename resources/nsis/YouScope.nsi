@@ -40,6 +40,7 @@ Var StartMenuFolder
 ; Comma separated list of the selected Python-based plugins, filled in .onInstSuccess
 ; and handed to setup_graalpy_venv.ps1 (-Plugins) so only the needed environments are built.
 Var PythonPlugins
+Var KeptFolders
 
 ;--------
 ; Config
@@ -963,7 +964,7 @@ Function .onInstSuccess
 
   MessageBox MB_YESNO|MB_ICONQUESTION \
       "The selected plugins need Python environments: $PythonPlugins$\n$\n\
-This downloads roughly 2-5 GB and takes 10-40 minutes. graalpy_config.txt is updated, \
+This downloads roughly 2-5 GB and takes 10-40 minutes. The environments are created in$\n$INSTDIR\environments, logs go to $INSTDIR\logs. graalpy_config.txt is updated, \
 existing settings in it are kept.$\n$\n\
 CellProfiler additionally needs a full JDK (17 recommended) and the Microsoft C++ Build Tools.$\n$\n\
 Run the Python setup now? (Recommended and needs an internet connection.)$\n$\n\
@@ -971,8 +972,11 @@ You can also run it later (or again after adding plugins) by double-clicking:$\n
       IDNO python_setup_done
   ; The installer is a 32-bit process: use the native 64-bit PowerShell (sysnative) so that
   ; Program Files paths resolve correctly. -PauseAtEnd keeps the window open so the
-  ; result and any errors can be read; details are also logged to setup_graalpy_venv.log.
-  ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -ExecutionPolicy Bypass -NoProfile -File "$INSTDIR\setup_graalpy_venv.ps1" -Plugins "$PythonPlugins" -PauseAtEnd'
+  ; result and any errors can be read; details are also logged to $INSTDIR\logs.
+  ; The working directory is set to $INSTDIR (the last SetOutPath was scripts\) and the
+  ; install folder is passed explicitly, so environments always land in $INSTDIR\environments.
+  SetOutPath "$INSTDIR"
+  ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -ExecutionPolicy Bypass -NoProfile -File "$INSTDIR\setup_graalpy_venv.ps1" -YouScopeDir "$INSTDIR" -Plugins "$PythonPlugins" -PauseAtEnd'
   python_setup_done:
 FunctionEnd
 
@@ -985,6 +989,7 @@ Section "Uninstall"
     IfFileExists "$INSTDIR\drivers64\nemesys\NemesysDotCom.dll" 0 +2
         ExecWait '"$WINDIR\sysnative\regsvr32.exe" /u /s "$INSTDIR\drivers64\nemesys\NemesysDotCom.dll"'
 
+    ; ---- Program files (always removed) ----
     RMDir /r "$INSTDIR\runtime"
     RMDir /r "$INSTDIR\drivers64"
     RMDir /r "$INSTDIR\lib"
@@ -992,31 +997,94 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\documentation"
     RMDir /r "$INSTDIR\cellx"
     RMDir /r "$INSTDIR\openbis"
-	; Remove Python environments
-    RMDir /r "$INSTDIR\graalpy-venv"
-    RMDir /r "$INSTDIR\cpython-env"
-    RMDir /r "$INSTDIR\graalpy-standalone"
-    RMDir /r "$INSTDIR\uv"
-    RMDir /r "$INSTDIR\cellprofiler-env"
-    RMDir /r "$INSTDIR\fiji-env"
 
     Delete "$INSTDIR\YouScope64.exe"
     Delete "$INSTDIR\LICENSE"
     Delete "$INSTDIR\YSConfig_demo.cfg"
-    Delete "$INSTDIR\youscope_properties.prop"
     Delete "$INSTDIR\YouScope64.l4j.ini"
+    Delete "$INSTDIR\YouScope64.l4j.bak"
     Delete "$INSTDIR\setup_graalpy_venv.bat"
     Delete "$INSTDIR\setup_graalpy_venv.ps1"
-    Delete "$INSTDIR\graalpy_config.txt"
     Delete "$INSTDIR\graalpy_requirements.txt"
-    Delete "$INSTDIR\setup_graalpy_venv.log"
-    Delete "$INSTDIR\graalpy_config.txt.bak"
     Delete "$INSTDIR\launch_youscope_jdk21.bat"
     Delete "$INSTDIR\launch_youscope_jdk17.bat"
     Delete "$INSTDIR\vcredist_x64.exe"
 
-    ; Do not recursively remove scripts or $INSTDIR: these may contain
-    ; measurements, configuration, user scripts, or Python environments.
+    ; ---- Files generated while running YouScope (always removed) ----
+    Delete "$INSTDIR\error_client.txt"
+    Delete "$INSTDIR\error_server.txt"
+    Delete "$INSTDIR\log_client.txt"
+    Delete "$INSTDIR\log_server.txt"
+    Delete "$INSTDIR\launch4j.log"
+    Delete "$INSTDIR\youscope_properties.prop"
+    Delete "$INSTDIR\setup_graalpy_venv.log"
+
+    ; ---- User folders: ask for each one, default is KEEP ----
+    ; Silent uninstall (/S) keeps all of them.
+    StrCpy $KeptFolders ""
+
+    IfFileExists "$INSTDIR\configuration\*.*" 0 ys_cfg_done
+        MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
+            "Delete the 'configuration' folder?$\n$\n$INSTDIR\configuration$\n$\nIt contains your microscope configurations. This cannot be undone.$\n$\nYes = delete it, No = keep it." \
+            /SD IDNO IDYES ys_cfg_delete
+        StrCpy $KeptFolders "$KeptFolders$\n  configuration"
+        Goto ys_cfg_done
+    ys_cfg_delete:
+        RMDir /r "$INSTDIR\configuration"
+    ys_cfg_done:
+
+    IfFileExists "$INSTDIR\scripts\*.*" 0 ys_scripts_done
+        MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
+            "Delete the 'scripts' folder?$\n$\n$INSTDIR\scripts$\n$\nIt contains the example scripts and your own scripts. This cannot be undone.$\n$\nYes = delete it, No = keep it." \
+            /SD IDNO IDYES ys_scripts_delete
+        StrCpy $KeptFolders "$KeptFolders$\n  scripts"
+        Goto ys_scripts_done
+    ys_scripts_delete:
+        RMDir /r "$INSTDIR\scripts"
+    ys_scripts_done:
+
+    ; Python environments (also the layout used by earlier test builds, directly in $INSTDIR).
+    ; graalpy_config.txt describes these environments, so it follows the same decision.
+    StrCpy $0 0
+    IfFileExists "$INSTDIR\environments\*.*" 0 +2
+        StrCpy $0 1
+    IfFileExists "$INSTDIR\cpython-env\*.*" 0 +2
+        StrCpy $0 1
+    IfFileExists "$INSTDIR\graalpy-venv\*.*" 0 +2
+        StrCpy $0 1
+    IfFileExists "$INSTDIR\uv\*.*" 0 +2
+        StrCpy $0 1
+    ${If} $0 = 1
+        MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
+            "Delete the Python environments?$\n$\n$INSTDIR\environments$\n$\nThey are several GB in size and are downloaded again by the Python setup. graalpy_config.txt is removed with them.$\n$\nYes = delete them, No = keep them." \
+            /SD IDNO IDYES ys_env_delete
+        StrCpy $KeptFolders "$KeptFolders$\n  environments (and graalpy_config.txt)"
+        Goto ys_env_done
+    ys_env_delete:
+        RMDir /r "$INSTDIR\environments"
+        ; legacy layout
+        RMDir /r "$INSTDIR\graalpy-venv"
+        RMDir /r "$INSTDIR\cpython-env"
+        RMDir /r "$INSTDIR\graalpy-standalone"
+        RMDir /r "$INSTDIR\uv"
+        RMDir /r "$INSTDIR\cellprofiler-env"
+        RMDir /r "$INSTDIR\fiji-env"
+        Delete "$INSTDIR\graalpy_config.txt"
+        Delete "$INSTDIR\graalpy_config.txt.bak"
+    ${EndIf}
+    ys_env_done:
+
+    IfFileExists "$INSTDIR\logs\*.*" 0 ys_logs_done
+        MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 \
+            "Delete the 'logs' folder?$\n$\n$INSTDIR\logs$\n$\nIt contains the Python setup and install logs.$\n$\nYes = delete it, No = keep it." \
+            /SD IDNO IDYES ys_logs_delete
+        StrCpy $KeptFolders "$KeptFolders$\n  logs"
+        Goto ys_logs_done
+    ys_logs_delete:
+        RMDir /r "$INSTDIR\logs"
+    ys_logs_done:
+
+    ; Never remove $INSTDIR recursively: it may contain measurements or other user data.
     Delete "$INSTDIR\Uninstall.exe"
 
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
@@ -1031,7 +1099,11 @@ Section "Uninstall"
 
     RMDir "$INSTDIR"
 
-    MessageBox MB_OK "YouScope has been uninstalled. User-created data remaining in the installation directory was preserved."
+    ${If} $KeptFolders == ""
+        MessageBox MB_OK "YouScope has been uninstalled."
+    ${Else}
+        MessageBox MB_OK "YouScope has been uninstalled.$\n$\nThese folders were kept in $INSTDIR:$KeptFolders$\n$\nDelete them manually if you no longer need them."
+    ${EndIf}
 SectionEnd
 
 ;--------------------------------

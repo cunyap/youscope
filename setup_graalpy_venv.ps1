@@ -33,6 +33,11 @@
                        Microsoft C++ Build Tools to compile python-javabridge)
       fiji-env         PyImageJ for the TrackMate plugin (Fiji is fetched on first start)
 
+    Layout inside the YouScope folder:
+      environments\   uv, graalpy-standalone, graalpy-venv, cpython-env, cellprofiler-env,
+                      fiji-env (everything this script downloads; safe to delete and re-create)
+      logs\           setup_graalpy_venv.log and one <env>_install.log per environment
+
     graalpy_config.txt is merged and never overwritten: environment paths are refreshed,
     missing plugin defaults (ports, timeouts, work dirs) are added, and every other
     line (manual edits, settings written by the plugin UIs) is kept. The previous file
@@ -102,8 +107,12 @@ try {
         [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 } catch { }
 
+if (-not $YouScopeDir -and $MyInvocation.MyCommand.Path) { $YouScopeDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $YouScopeDir) { $YouScopeDir = (Get-Location).Path }
 $YouScopeDir = $YouScopeDir.TrimEnd('\')
+$EnvRoot = Join-Path $YouScopeDir "environments"   # all Python environments
+$LogDir  = Join-Path $YouScopeDir "logs"           # setup and install logs
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 if (-not $FijiPython) { $FijiPython = $CpythonVersion }
 
 $script:Problems   = New-Object 'System.Collections.Generic.List[string]'
@@ -115,8 +124,8 @@ function Write-OK    { param([string]$T) Write-Host "  [OK] $T" -ForegroundColor
 function Write-Warn  { param([string]$T) Write-Host "  [WARN] $T" -ForegroundColor Yellow }
 function Write-Fail  { param([string]$T) Write-Host "  [FAIL] $T" -ForegroundColor Red; $script:Problems.Add($T) }
 
-# Keep a log next to the scripts so problems can be diagnosed after the window closes.
-$LogFile = Join-Path $YouScopeDir "setup_graalpy_venv.log"
+# Keep a log so problems can be diagnosed after the window closes.
+$LogFile = Join-Path $LogDir "setup_graalpy_venv.log"
 $script:Transcribing = $false
 try { Start-Transcript -Path $LogFile -Force | Out-Null; $script:Transcribing = $true } catch { }
 
@@ -169,28 +178,29 @@ Write-Host "YouScope : $YouScopeDir"
 Write-Host "Plugins  : $($selNames -join ', ')"
 Write-Host "GraalPy  : $GraalPyVersion"
 Write-Host "CPython  : $CpythonVersion (via uv)"
+Write-Host "Envs     : $EnvRoot"
 Write-Host "Log      : $LogFile"
 Write-Host ""
 
-$UvDir         = Join-Path $YouScopeDir "uv"
+$UvDir         = Join-Path $EnvRoot "uv"
 $UvExe         = Join-Path $UvDir "uv.exe"
-$StandaloneDir = Join-Path $YouScopeDir "graalpy-standalone"
+$StandaloneDir = Join-Path $EnvRoot "graalpy-standalone"
 $GraalPyExe    = Join-Path $StandaloneDir "bin\graalpy.exe"
-$VenvDir       = Join-Path $YouScopeDir "graalpy-venv"
+$VenvDir       = Join-Path $EnvRoot "graalpy-venv"
 $VenvGraalPy   = Join-Path $VenvDir "Scripts\graalpy.exe"
 $VenvPip       = Join-Path $VenvDir "Scripts\pip.exe"
-$CpEnvDir      = Join-Path $YouScopeDir "cpython-env"
+$CpEnvDir      = Join-Path $EnvRoot "cpython-env"
 $CpPython      = Join-Path $CpEnvDir "Scripts\python.exe"
-$CpfEnvDir     = Join-Path $YouScopeDir "cellprofiler-env"
+$CpfEnvDir     = Join-Path $EnvRoot "cellprofiler-env"
 $CpfPython     = Join-Path $CpfEnvDir "Scripts\python.exe"
-$FijiEnvDir    = Join-Path $YouScopeDir "fiji-env"
+$FijiEnvDir    = Join-Path $EnvRoot "fiji-env"
 $FijiPyExe     = Join-Path $FijiEnvDir "Scripts\python.exe"
 $GraalWheels   = "https://www.graalvm.org/python/wheels/"
 $ConfigFile    = Join-Path $YouScopeDir "graalpy_config.txt"
 
 # Keep everything uv downloads inside the YouScope folder: the managed CPython
 # interpreters must not live in the profile of whichever admin ran this script,
-# otherwise the environments break for other users. The uninstaller removes uv\.
+# otherwise the environments break for other users. It lives in environments\uv.
 $env:UV_PYTHON_INSTALL_DIR = Join-Path $UvDir "python"
 $env:UV_CACHE_DIR          = Join-Path $UvDir "cache"
 $env:UV_PYTHON_PREFERENCE  = "only-managed"
@@ -335,11 +345,24 @@ function New-UvVenv {
     Write-Host "  Creating Python $PythonVersion venv at $Dir ..."
     if (Test-Path $Dir) { Remove-Item $Dir -Recurse -Force -ErrorAction SilentlyContinue }
     $prevEap = $ErrorActionPreference; $ErrorActionPreference = "SilentlyContinue"   # uv logs to stderr
-    & $UvExe venv $Dir --python $PythonVersion 2>&1 | ForEach-Object { "$_" } | Select-Object -Last 3 | Out-Host
+    $venvOut = @(& $UvExe venv $Dir --python $PythonVersion 2>&1 | ForEach-Object { "$_" })
     $ErrorActionPreference = $prevEap
+    $venvOut | Select-Object -Last 3 | Out-Host
+    Write-EnvLog $py "venv $Dir --python $PythonVersion" $venvOut
     if (Test-Path $py) { Write-OK "venv at $Dir (Python $PythonVersion)"; return $true }
     Write-Fail "uv venv creation failed: $Dir"
     return $false
+}
+
+function Write-EnvLog {
+    # Appends the full output of an uv call to logs\<env>_install.log (the console only shows the tail).
+    param([string]$Python, [string]$Command, [object[]]$Output)
+    try {
+        $envName = Split-Path -Leaf (Split-Path -Parent (Split-Path -Parent $Python))
+        $text = "=== " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + " uv " + $Command + "`r`n" +
+                (($Output | ForEach-Object { "$_" }) -join "`r`n") + "`r`n`r`n"
+        [System.IO.File]::AppendAllText((Join-Path $LogDir "${envName}_install.log"), $text, $Utf8NoBom)
+    } catch { }
 }
 
 function Install-CpPkg {
@@ -350,7 +373,9 @@ function Install-CpPkg {
     Write-Host "    $Label..." -NoNewline
     $uvArgs = @("pip", "install") + $Spec + @("--python", $Python, "-q") + $ExtraArgs
     $out = & $UvExe @uvArgs 2>&1
-    if ($LASTEXITCODE -eq 0) { Write-Host " OK" -ForegroundColor Green; return $true }
+    $uvExit = $LASTEXITCODE
+    Write-EnvLog $Python ($uvArgs -join " ") $out
+    if ($uvExit -eq 0) { Write-Host " OK" -ForegroundColor Green; return $true }
     Write-Host " WARN" -ForegroundColor Yellow
     # NB: PowerShell variables are case-insensitive, so this must not be named $tail ($Tail is the [int] parameter)
     $errText = ($out | ForEach-Object { "$_" } | Where-Object { $_.Trim() } | Select-Object -Last $Tail) -join " | "

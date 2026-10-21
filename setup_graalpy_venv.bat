@@ -19,6 +19,7 @@ echo  YouScope Python Environment Setup
 echo =========================================
 echo.
 echo This will (for the selected plugins; everything if none are given):
+echo   All environments go to the "environments" folder, logs to the "logs" folder.
 echo   1. Download uv (~20 MB, fast Python manager)
 echo   2. Download GraalPy standalone (~600 MB) and create graalpy-venv
 echo   3. Create cpython-env: scikit-image, OpenCV, zarr/ome-zarr, napari, trackpy,
@@ -83,7 +84,7 @@ echo =========================================
 echo  Setup encountered issues (see above)
 echo =========================================
 echo.
-echo Details were written to: %~dp0setup_graalpy_venv.log
+echo Details were written to: %~dp0logs\setup_graalpy_venv.log
 echo.
 echo Common fixes:
 echo   - Run as Administrator
