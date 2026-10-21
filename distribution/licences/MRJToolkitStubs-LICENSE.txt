@@ -1,0 +1,49 @@
+License text obtained from: https://leopard-adc.pepas.com/samplecode/MRJToolkitStubsOld/listing1.html
+
+MRJToolkitStubsOld - /README.txt
+
+ADC Home > Reference Library > Sample Code > Legacy Documents > Java > MRJToolkitStubsOld >
+
+Legacy Document
+
+Important: This document is part of the Legacy section of the ADC Reference Library. This information should not be used for new development.
+
+Current information on this Reference Library topic can be found here:
+
+Java > Design Guidelines
+
+MRJToolkitStubsOld
+
+/README.txt
+
+View Source Code:
+Select File
+/README.txt
+
+Download Sample (MRJToolkitStubsOld.zip, 19.4K)
+
+Download Sample (MRJToolkitStubsOld.dmg, 76.6K)
+
+MRJToolkitStubs
+v 1.0.1
+
+This sample contains a current MRJToolkitStubs.zip library with empty
+implementations and definitions of the MRJToolkit classes and interfaces that
+are part of Apple's J2SE 1.3.1 distribution.
+
+This file is for developers who are building or distributing on non-Mac OS X
+systems and need definitions of these methods and classes for proper
+compilation and execution.
+
+For an example of how to use the stubs, open a new Java Swing Application in
+Project Builder on Mac OS X.
+
+[02/12/2003]
+
+Did this document help you?
+
+Yes: Tell us what works for you.
+
+It’s good, but: Report typos, inaccuracies, and so forth.
+
+It wasn’t helpful: Tell us what would have helped.

@@ -1,0 +1,6 @@
+JSON-java (org.json) 20231013 - license
+Source: https://github.com/stleary/JSON-java/blob/master/LICENSE
+
+==============================================================================
+
+Public Domain.
