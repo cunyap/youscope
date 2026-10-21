@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="true" name="Immersion RI" default-value="1.515 (oil)">
+    <value>1.0 (air)</value>
+    <value>1.33 (water)</value>
+    <value>1.34 (glycerol-water)</value>
+    <value>1.47 (glycerol)</value>
+    <value>1.515 (oil)</value>
+	<value>1.56 (oil high)</value>
+    <value>Other</value>
+    <type>DEFAULT</type>
+</metadata-definition>

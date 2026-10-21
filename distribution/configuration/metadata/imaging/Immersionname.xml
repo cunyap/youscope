@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="true" name="Immersion name" default-value="Nikon Type F" placeholder="e.g. Nikon Type F">
+    <type>DEFAULT</type>
+</metadata-definition>

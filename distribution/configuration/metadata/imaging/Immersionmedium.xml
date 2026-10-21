@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="false" name="Immersion medium">
+    <value>Air</value>
+    <value>Oil</value>
+    <value>Water</value>
+    <value>Glycerol</value>
+    <value>Silicone oil</value>
+    <value>Other</value>
+    <type>DEFAULT</type>
+</metadata-definition>

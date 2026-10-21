@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="true" name="Microscope Model" default-value="Nikon Ti2-E">
+    <value>Nikon Ti2-E</value>
+    <value>Nikon Ti-E</value>
+    <value>Other</value>
+    <type>OPTIONAL</type>
+</metadata-definition>

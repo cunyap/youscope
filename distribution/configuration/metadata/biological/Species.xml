@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<metadata-definition custom-values="true" name="Species">
+<metadata-definition custom-values="true" name="Species" default-value="Saccharomyces cerevisiae">
   <value>Anolis carolinensis</value>
   <value>Arabidopsis thaliana</value>
   <value>Caenorhabditis elegans</value>
@@ -18,5 +18,5 @@
   <value>Schizosaccharomyces pombe</value>
   <value>Tetrahymena thermophila</value>
   <value>Xenopus laevis</value>
-  <type>DEFAULT</type>
+  <type>MANDATORY</type>
 </metadata-definition>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="false" name="Sex">
+  <value>Female</value>
+  <value>Male</value>
+  <value>Hermaphrodite</value>
+  <value>Mixed</value>
+  <value>Unknown</value>
+  <value>Not applicable</value>
+  <value>alpha</value>
+  <value>a</value>
+  <type>DEFAULT</type>
+</metadata-definition>

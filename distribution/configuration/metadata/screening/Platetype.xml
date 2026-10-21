@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="false" name="Plate type">
+    <value>6</value>
+    <value>12</value>
+    <value>24</value>
+    <value>48</value>
+    <value>96</value>
+    <value>384</value>
+    <value>1536</value>
+    <value>Other</value>
+    <type>DEFAULT</type>
+</metadata-definition>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="true" name="Detector type" default-value="CMOS">
+    <value>CMOS</value>
+    <value>EMCCD</value>
+    <value>CCD</value>
+    <value>PMT</value>
+    <value>sCMOS</value>
+    <value>Other</value>
+    <type>OPTIONAL</type>
+</metadata-definition>

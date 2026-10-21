@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="false" name="License">
+   <!-- Public Domain -->
+    <value>CC0-1.0</value>
+
+    <!-- Creative Commons -->
+    <value>CC-BY-4.0</value>
+    <value>CC-BY-SA-4.0</value>
+    <value>CC-BY-ND-4.0</value>
+    <value>CC-BY-NC-4.0</value>
+    <value>CC-BY-NC-SA-4.0</value>
+    <value>CC-BY-NC-ND-4.0</value>
+
+    <!-- Open Data -->
+    <value>ODC-By-1.0</value>
+    <value>ODbL-1.0</value>
+    <value>PDDL-1.0</value>
+
+    <!-- Software-style licenses sometimes used for datasets -->
+    <value>MIT</value>
+    <value>BSD-2-Clause</value>
+    <value>BSD-3-Clause</value>
+    <value>Apache-2.0</value>
+    <value>GPL-3.0-only</value>
+    <value>GPL-3.0-or-later</value>
+    <value>LGPL-3.0-only</value>
+    <value>MPL-2.0</value>
+
+    <!-- Institutional -->
+    <value>Internal</value>
+    <value>Restricted</value>
+    <value>Embargoed</value>
+    <value>Proprietary</value>
+
+    <type>DEFAULT</type>
+</metadata-definition>

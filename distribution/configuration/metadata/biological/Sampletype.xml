@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="false" name="Sample type">
+    <value>Cells</value>
+    <value>Tissue</value>
+    <value>Organoid</value>
+    <value>Embryo</value>
+    <value>Whole organism</value>
+    <value>Biofilm</value>
+    <value>Plant</value>
+    <value>Microfluidic device</value>
+    <type>DEFAULT</type>
+</metadata-definition>

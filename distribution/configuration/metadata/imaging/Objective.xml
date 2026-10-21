@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="true" name="Objective" default-value="40x/1.30 Oil">
+    <value>10x/0.30 Air</value>
+    <value>20x/0.75 Air</value>
+    <value>40x/0.95 Air</value>
+    <value>40x/1.30 Oil</value>
+    <value>60x/1.40 Oil</value>
+    <value>63x/1.40 Oil</value>
+    <value>100x/1.45 Oil</value>
+    <type>DEFAULT</type>
+</metadata-definition>

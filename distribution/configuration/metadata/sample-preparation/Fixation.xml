@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="false" name="Fixation">
+  <value>Live</value>
+  <value>PFA</value>
+  <value>Methanol</value>
+  <value>Ethanol</value>
+  <value>Acetone</value>
+  <value>Other</value>
+  <value>Microfluidic chip</value>
+  <type>DEFAULT</type>
+</metadata-definition>

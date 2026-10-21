@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="false" name="Image modality">
+    <value>Widefield fluorescence</value>
+    <value>Brightfield</value>
+    <value>Phase contrast</value>
+    <value>DIC</value>
+    <value>Polarized light</value>
+    <value>Darkfield</value>
+    <value>TIRF</value>
+    <value>Confocal</value>
+    <value>Spinning disk confocal</value>
+    <value>Light-sheet</value>
+    <value>Multiphoton</value>
+    <value>FLIM</value>
+    <value>FRET</value>
+    <value>Other</value>
+    <type>DEFAULT</type>
+</metadata-definition>

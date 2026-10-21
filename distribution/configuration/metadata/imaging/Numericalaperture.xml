@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<metadata-definition custom-values="true" name="Numerical aperture" default-value="1.3">
+    <value>0.75</value>
+    <value>1.3</value>
+    <value>Other</value>
+    <type>DEFAULT</type>
+</metadata-definition>
