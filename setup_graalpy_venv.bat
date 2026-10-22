@@ -68,7 +68,6 @@ echo  Setup complete!
 echo =========================================
 echo.
 echo Open YouScope and test in the scripting console (engine: GraalPy):
-echo   import numpy; print(numpy.__version__)
 echo   exec_in_cpython_background("import numpy; print(f'Numpy version: {numpy.__version__}')")
 goto :done
 

@@ -157,6 +157,18 @@ Section "-Main Program" SecMain
 	FILE LICENSE
 	FILE YouScope64.exe
 
+	; Content of /distribution that Gradle stages next to the installer script.
+	; licences: third-party license texts are always replaced.
+	SetOutPath "$INSTDIR\licences"
+	FILE /r "licences\*"
+	; configuration: default microscope configurations. SetOverwrite ifnewer keeps a file that
+	; the user has modified since the install (its timestamp is newer than the installer's copy).
+	SetOutPath "$INSTDIR\configuration"
+	SetOverwrite ifnewer
+	FILE /r "configuration\*"
+	SetOverwrite on
+	SetOutPath "$INSTDIR"
+
 	; Python environment setup (run by .onInstSuccess for the selected plugins, or manually later)
 	FILE /nonfatal "setup_graalpy_venv.bat"
 	FILE /nonfatal "setup_graalpy_venv.ps1"
@@ -997,6 +1009,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\documentation"
     RMDir /r "$INSTDIR\cellx"
     RMDir /r "$INSTDIR\openbis"
+    RMDir /r "$INSTDIR\licences"
 
     Delete "$INSTDIR\YouScope64.exe"
     Delete "$INSTDIR\LICENSE"
@@ -1035,7 +1048,7 @@ Section "Uninstall"
 
     IfFileExists "$INSTDIR\scripts\*.*" 0 ys_scripts_done
         MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
-            "Delete the 'scripts' folder?$\n$\n$INSTDIR\scripts$\n$\nIt contains the example scripts and your own scripts. This cannot be undone.$\n$\nYes = delete it, No = keep it." \
+            "Delete the 'scripts' folder?$\n$\n$INSTDIR\scripts$\n$\nIt contains the example scripts, the CPython bridge scripts used by GraalPy scripting and your own scripts. This cannot be undone.$\n$\nYes = delete it, No = keep it." \
             /SD IDNO IDYES ys_scripts_delete
         StrCpy $KeptFolders "$KeptFolders$\n  scripts"
         Goto ys_scripts_done
@@ -1076,7 +1089,7 @@ Section "Uninstall"
 
     IfFileExists "$INSTDIR\logs\*.*" 0 ys_logs_done
         MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 \
-            "Delete the 'logs' folder?$\n$\n$INSTDIR\logs$\n$\nIt contains the Python setup and install logs.$\n$\nYes = delete it, No = keep it." \
+            "Delete the 'logs' folder?$\n$\n$INSTDIR\logs$\n$\nIt contains the Python setup and install logs and the temporary work files of plugins such as Cellpose, CellProfiler and TrackMate.$\n$\nYes = delete it, No = keep it." \
             /SD IDNO IDYES ys_logs_delete
         StrCpy $KeptFolders "$KeptFolders$\n  logs"
         Goto ys_logs_done

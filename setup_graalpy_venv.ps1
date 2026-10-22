@@ -154,7 +154,9 @@ $wNapari       = ($sel["napari"] -or $sel["fairexport"]) -and (-not $SkipNapari)
 if ($SkipCpython) { $wCellpose = $false; $wStarDist = $false; $wTrackpy = $false; $wBTrack = $false; $wNapari = $false; $wFair = $false; $wFaster = $false; $wCellDet = $false }
 # Any plugin with a Python backend (not CellProfiler / TrackMate, which have their own envs)
 # needs the base cpython-env; the order in which plugins were selected does not matter.
-$wCp           = ($wCellpose -or $wStarDist -or $wTrackpy -or $wBTrack -or $wNapari -or $wFair -or $wFaster -or $wCellDet)
+# GraalPy scripting also needs cpython-env: numpy/matplotlib do not work inside the embedded GraalPy,
+# scripts reach them through exec_in_cpython_background() / run_in_cpython() (cpython_executable).
+$wCp           = ($wGraal -or $wCellpose -or $wStarDist -or $wTrackpy -or $wBTrack -or $wNapari -or $wFair -or $wFaster -or $wCellDet)
 $wCellProfiler = $sel["cellprofiler"]
 $wTrackMate    = $sel["trackmate"]
 
@@ -631,9 +633,10 @@ if (-not $cfgIsNew) {
 $cfgBefore = ($script:cfg -join "`n")
 
 function Merge-ConfigSection {
-    # Pairs: array of @{K=key; V=value; M=$true}. M (managed) = refresh the value of existing keys
-    # (all occurrences, since the last duplicate wins in a properties file); without M a key is
-    # only added when it is missing, so manual edits and plugin-UI settings are never touched.
+    # Pairs: array of @{K=key; V=value; M=$true; Old=oldDefault}. M (managed) = refresh the value of
+    # existing keys (all occurrences, since the last duplicate wins in a properties file); without M a
+    # key is only added when it is missing, so manual edits and plugin-UI settings are never touched.
+    # Old = a previous default value: an existing key that still holds exactly that value is migrated.
     param([string]$Header, [object[]]$Pairs)
     $new = New-Object 'System.Collections.Generic.List[string]'
     foreach ($p in $Pairs) {
@@ -642,7 +645,8 @@ function Merge-ConfigSection {
         for ($i = 0; $i -lt $script:cfg.Count; $i++) {
             if ($script:cfg[$i] -match $pat) {
                 $hit = $true
-                if ($p.M) { $script:cfg[$i] = "$($p.K)=$($p.V)" }
+                $curVal = ($script:cfg[$i] -replace '^\s*[^=]*=\s*', '').Trim()
+                if ($p.M -or ($p.Old -and ($curVal -eq $p.Old))) { $script:cfg[$i] = "$($p.K)=$($p.V)" }
             }
         }
         if (-not $hit) { $new.Add("$($p.K)=$($p.V)") }
@@ -667,28 +671,28 @@ if (Test-Path $UvExe)       { $envPairs += @{ K = "uv_executable"; V = $UvExe; M
 if ($envPairs.Count -gt 0) { Merge-ConfigSection "# environments" $envPairs }
 
 if ($wCellpose) {
-    $wd = Join-Path $YouScopeDir "cellpose"; New-WorkDir $wd
+    $wd = Join-Path $LogDir "cellpose"; New-WorkDir $wd; $oldWd = Join-Path $YouScopeDir "cellpose"
     Merge-ConfigSection "# cellpose" @(
         @{ K = "cellpose_timeout_seconds";      V = "1200" },
         @{ K = "cellpose_server_start_seconds"; V = "300" },
-        @{ K = "cellpose_work_dir";             V = $wd })
+        @{ K = "cellpose_work_dir"; V = $wd; Old = $oldWd })
 }
 if (Test-Path $CpfPython) {
-    $wd = Join-Path $YouScopeDir "cellprofiler"; New-WorkDir $wd
+    $wd = Join-Path $LogDir "cellprofiler"; New-WorkDir $wd; $oldWd = Join-Path $YouScopeDir "cellprofiler"
     Merge-ConfigSection "# cellprofiler" @(
         @{ K = "cellprofiler_cpython_executable";   V = $CpfPython; M = $true },
         @{ K = "cellprofiler_backend_port";         V = "59716" },
         @{ K = "cellprofiler_backend_host";         V = "127.0.0.1" },
-        @{ K = "cellprofiler_work_dir";             V = $wd },
+        @{ K = "cellprofiler_work_dir"; V = $wd; Old = $oldWd },
         @{ K = "cellprofiler_idle_timeout_seconds"; V = "1800" })
 }
 if (Test-Path $FijiPyExe) {
-    $wd = Join-Path $YouScopeDir "trackmate"; New-WorkDir $wd
+    $wd = Join-Path $LogDir "trackmate"; New-WorkDir $wd; $oldWd = Join-Path $YouScopeDir "trackmate"
     Merge-ConfigSection "# trackmate" @(
         @{ K = "trackmate_cpython_executable";   V = $FijiPyExe; M = $true },
         @{ K = "trackmate_backend_port";         V = "59717" },
         @{ K = "trackmate_backend_host";         V = "127.0.0.1" },
-        @{ K = "trackmate_work_dir";             V = $wd },
+        @{ K = "trackmate_work_dir"; V = $wd; Old = $oldWd },
         @{ K = "trackmate_idle_timeout_seconds"; V = "1800" },
         @{ K = "trackmate_server_start_seconds"; V = "300" })
 }
@@ -784,25 +788,44 @@ if ($wTrackMate) {
 }
 
 if ($wGraal) {
+    # numpy cannot be imported inside GraalPy on Windows (by design: scripts reach numpy/matplotlib through
+    # the CPython bridge, exec_in_cpython_background). So the GraalPy check covers what really works:
+    # the interpreter of graalpy-venv starts and imports its pure-Python packages, and the bridge target
+    # (cpython-env, cpython_executable) can import numpy. A numpy import in GraalPy is only reported as info.
     $gv = $null
     $gOut = @()
-    if ($graalNumpyOk -and (Test-Path $VenvGraalPy)) {
+    if (Test-Path $VenvGraalPy) {
         # Script file instead of -c solving quoting problems with spaces in the install path.
         $GraalTest = Join-Path $env:TEMP "ys_graal_$PID.py"
-        [System.IO.File]::WriteAllText($GraalTest, "import numpy`nprint('YSNUMPY ' + numpy.__version__)`n", $Utf8NoBom)
+        $graalSrc = "import sys, requests`nprint('YSGRAAL ' + sys.version.split()[0])`n" +
+                    "try:`n    import numpy`n    print('YSNUMPY ' + numpy.__version__)`nexcept BaseException as e:`n    print('YSNUMPY-NO ' + type(e).__name__)`n"
+        [System.IO.File]::WriteAllText($GraalTest, $graalSrc, $Utf8NoBom)
         $gOut = @(& $VenvGraalPy $GraalTest 2>&1 | ForEach-Object { "$_" })
         $gExit = $LASTEXITCODE
         Remove-Item $GraalTest -Force -ErrorAction SilentlyContinue
-        $gv = $gOut | Where-Object { $_ -like "YSNUMPY *" } | Select-Object -Last 1
+        $gv = $gOut | Where-Object { $_ -like "YSGRAAL *" } | Select-Object -Last 1
         if (-not $gv) {
-            Write-Warn "graalpy numpy check failed (exit code $gExit). Output:"
+            Write-Warn "graalpy interpreter check failed (exit code $gExit). Output:"
             $gOut | Where-Object { $_.Trim() } | Select-Object -Last 12 | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkYellow }
         }
     }
-    if ($gv) { [void]$coverage.Add(@{ Name = "GraalPy scripting (numpy)"; Status = "OK"; Detail = $gv.Substring(8) }) }
-    else {
-        [void]$coverage.Add(@{ Name = "GraalPy scripting (numpy)"; Status = "FAIL"; Detail = "graalpy-venv/numpy not working" })
-        $script:Problems.Add("GraalPy: numpy not importable in graalpy-venv")
+    $bridgeOk = $false
+    $bridgeVer = ""
+    if (Test-Path $CpPython) {
+        $br = Test-PyModule $CpPython "numpy"
+        $bridgeOk = $br.Ok; $bridgeVer = $br.Info
+    }
+    if ($gv -and $bridgeOk) {
+        $gnum = $gOut | Where-Object { $_ -like "YSNUMPY *" } | Select-Object -Last 1
+        $note = "GraalPy " + $gv.Substring(8) + "; numpy " + $bridgeVer + " via CPython bridge"
+        if ($gnum) { $note += " (numpy also importable in GraalPy)" }
+        [void]$coverage.Add(@{ Name = "GraalPy scripting + CPython bridge"; Status = "OK"; Detail = $note })
+    } else {
+        $why = @()
+        if (-not $gv) { $why += "graalpy-venv interpreter not working" }
+        if (-not $bridgeOk) { $why += "cpython-env numpy not importable (exec_in_cpython_background needs it)" }
+        [void]$coverage.Add(@{ Name = "GraalPy scripting + CPython bridge"; Status = "FAIL"; Detail = ($why -join "; ") })
+        $script:Problems.Add("GraalPy scripting: " + ($why -join "; "))
     }
 }
 
@@ -822,7 +845,7 @@ if ($wGraal) {
 }
 if (Test-Path $CpPython) {
     Write-Host "CPython env      : $CpEnvDir (via uv)" -ForegroundColor Green
-    Write-Host "  For            : cellpose (torch), stardist (tensorflow), trackpy, btrack, napari + OME-Zarr, scikit-image, OpenCV"
+    Write-Host "  For            : cellpose (torch), stardist (tensorflow), trackpy, btrack, napari, OME-Zarr, scikit-image, OpenCV"
     Write-Host ""
 }
 if (Test-Path $CpfPython) { Write-Host "CellProfiler env : $CpfEnvDir (Python $CellProfilerPython)" -ForegroundColor Green; Write-Host "" }
@@ -846,8 +869,7 @@ Write-Host ""
 Write-Host "Add more CPython packages (fast):" -ForegroundColor Cyan
 Write-Host "  `"$UvExe`" pip install <pkg> --python `"$CpPython`""
 Write-Host ""
-Write-Host "Test in YouScope scripting console (GraalPy):" -ForegroundColor Cyan
-Write-Host "  import numpy; print(numpy.__version__)"
+Write-Host "Test in YouScope scripting console (GraalPy). numpy runs through the CPython bridge:" -ForegroundColor Cyan
 Write-Host "  exec_in_cpython_background(`"import numpy; print(numpy.__version__)`")"
 Write-Host "  result = run_cellpose(img)  # uses CPython bridge"
 Write-Host ""
