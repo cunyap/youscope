@@ -17,8 +17,12 @@ application {
 
     applicationDefaultJvmArgs = [
         '-Djava.library.path=drivers64',
-        '-Dpython.console.encoding=UTF-8'
-	]
+        '-Dpython.console.encoding=UTF-8',
+        // YouScope still installs a Security Manager for its RMI server/client.
+        // JDK 18+ rejects System.setSecurityManager() unless this is "allow".
+        // NOTE: JDK 24+ no longer supports the Security Manager at all.
+        '-Djava.security.manager=allow'
+    ]
 }
 
 allprojects {
@@ -106,6 +110,9 @@ createExe {
     jvmOptions = [
         '-Dpython.console.encoding=UTF-8',
         '-Djava.library.path=drivers64',
+        // Required on JDK 18+ so the server/client can call
+        // System.setSecurityManager() (see applicationDefaultJvmArgs above).
+        '-Djava.security.manager=allow',
         '--enable-native-access=ALL-UNNAMED',
         '--add-opens=java.base/java.util=ALL-UNNAMED',
         '--add-opens=java.base/java.lang=ALL-UNNAMED',
