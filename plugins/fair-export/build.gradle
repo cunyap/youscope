@@ -1,0 +1,42 @@
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+compileJava.doFirst {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+
+// Incoming classpaths resolve as Java 17, so the Java 8 Bio-Formats transitives are acceptable.
+configurations.configureEach { configuration ->
+    if (configuration.canBeResolved) {
+        configuration.attributes {
+            attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 17)
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://artifacts.openmicroscopy.org/artifactory/maven/' }
+}
+
+dependencies {
+    implementation project(':core:api')
+
+    compileOnly fileTree(
+        dir: rootProject.file('libs'),
+        include: '*.jar'
+    )}
+
+processResources {
+    exclude 'META-INF/MANIFEST.MF'
+}
+
+jar {
+    manifest {
+        from 'src/main/resources/META-INF/MANIFEST.MF'
+    }
+}
